@@ -1,0 +1,65 @@
+
+
+\section{Image and Data Models}
+\label{sec:setup}
+
+Before discussing how to reconstruct images from the data products discussed in Section~\ref{sec:meas}, it is first important to show how to generate samples of these data products from a known emission image.
+%underlying image %or video 
+%of the emission. 
+
+%Constructing a generative model of the samples is important in 
+
+\subsection{Image}
+
+An image of instantaneous emission, $I(\xpos,\ypos)$, is defined over the continuous space of angular coordinates $\xpos$ and $\ypos$. However, to make computation tractable,
+we represent this continuous image as a square $M \times M$ array of values that represent the emission image's flux over a specified field of view (FOV). 
+
+Following the image parameterization convention of BLAH, we represent the continuous image, $I$, as the sum of a discrete number of scaled and shifted triangle pulses of height $\im$ centered around $(\xpos, \ypos) \in L \times L$, where
+
+\begin{align}
+L &=  \left \{ k \Delta + \frac{\Delta}{2}  -\frac{FOV}{2} \right \} \hspace{0.26in} \mbox{for} \hspace{0.1 in} k = 0,...,M-1
+\label{eq:discrete1}
+\end{align} 
+
+
+\noindent{for $\Delta = \frac{FOV}{\npix}$. Using this representation, we are able to describe the 2D continuous image as a vector, $\im$, of length $M^2$. When applicable, we denote a single image in a sequence of images as $\im_t$, where $t$ indexes the time of the instantaneous image.}
+
+%By representing $I(\xpos, \ypos)$ as its vectorized coefficients, $x$, we are able to represent a continuous image using a discrete number of terms. 
+
+\subsection{Data Products}
+\label{sec:dataproducts}
+
+In order to evaluate how consistent a proposed image, $\im$, is with the measured VLBI data, $\meas$, we construct a function $f(\im)$ that returns the values we would expect to see in $\meas$ if $\im$ were the true underlying image, and no additional noise was added. This measurement function, $f(\im)$, is composed of a set of sub-functions, $g_k(\im)$, that each simulate an ideally observed data product: 
+
+\begin{align}
+f(\im) = \Spvek{g_1(\im); g_2(\im); ...; g_{\nmeas}(\im)} : \Re^{ M^2 \times 1} \rightarrow \Re^{ \nmeas \times 1 }
+\end{align}
+
+Each $g_k(\im)$ produces a real-value corresponding to element $k$ of the vector $\meas$. For example, $g_k(\im)$ may return the imaginary portion of $\im$'s spatial frequency, corresponding to the visibility obtained between a pair of telescopes.
+
+Depending on the data products selected for $\meas$, the measurement function, $f(\im)$, may be a linear or non-linear function of $\im$. Although this choice does not affect the quality of the values produced by $f(\im)$, it does affect the optimization process during inference (refer to Section~\ref{sec:static}). % and~\ref{sec:dynamic_inference}). %Thus, we list the cases when the measurement function can be expressed linearly or must require a non-linear function.  
+Below we list the cases when a data product can be expressed linearly or requires a non-linear function. In the supplemental material we provide the exact measurement function used for each data product and their derivatives. 
+
+\vspace{.1in}
+\subsubsection{Linear Measurement Functions}
+\label{sec:dataproducts_lin}
+%The question remains how to define each $g(x)$. 
+Since each measured complex visibility is approximated as the Fourier transform of $I(\xpos,\ypos)$, we can extract an image's ideal visibilities by performing a linear matrix operation similar to a Discrete Time Fourier Transform (DTFT): $f(\im) = \FTmtx \im$.
+%When complex visibilities can be used for image reconstruction, $f(\im)$ is expressed simply as a linear matrix operation: $f(\im) = \FTmtx \im$. 
+In particular, BLAH shows that by plugging the parameterized image, $\im$, into the van Cittert-Zernike theorem (Equation~\ref{eq:vcz}), we can express a single visibility as $\im$ multiplied by a complex row-vector $\vecFTmtx(u,v)$ of size $1 \times \npix^2$.  $\FTmtx$ is then constructed by stacking the real and imaginary components of these row vectors for each of sampled $(u,v)$ point into a matrix of size $\nmeas \times \npix^2$. 
+%Additionally, blurring via convolution to simulate interstellar scattering is also a linear operation and can be represented in an 
+
+
+%\begin{align}
+%f(\im) = \FTmtx \im = \Spvek{\Re \left[ \vecFTmtx(u,v) \right]; \Im \left[ \vecFTmtx(u,v) \right]} \im 
+%\end{align}
+
+\vspace{.1in}
+\subsubsection{Non-Linear Measurement Functions}
+In the case of atmospheric noise, uniformly random phase errors are included in each complex visibility measurements. 
+%However, these phase errors are incorporated in a way that preserves closure phase (refer to Section BLAH). 
+In order to handle this additional phase error, without having to explicitly model the errors as latent variables, we populate $\meas$ with measured data products that are invariant to atmospheric inhomogeneity. 
+The bispectrum, closure phase, and visibility amplitude data products are invariant to this error, but come at the cost of requiring a non-linear measurement function, $f(\im)$ to \katie{BLAH BLAH express them(?).} 
+
+
+

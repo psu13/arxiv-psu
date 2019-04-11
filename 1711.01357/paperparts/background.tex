@@ -1,0 +1,155 @@
+\vspace{-.1in}
+\section{Previous Imaging Approaches}
+\label{sec:setup}
+
+VLBI image reconstruction has similarities with other spectral image reconstruction problems, such as Synthetic Aperture Radar (SAR), Magnetic Resonance Imaging (MRI), Computed Tomography (CT), and seismic interferometry~\cite{bracewell2004fourier, lustig2007sparse, 1456966,demanet}. 
+However, VLBI image reconstruction faces a number of unique challenges.
+For instance, SAR, MRI, and CT are generally not plagued by large corruption of the signal's phase, as is the case due to atmospheric differences in mm/sub-mm VLBI. Additionally, the frequency coverage obtained in VLBI is dictated by where there are existing telescopes, and often contains large gaps of unsampled space.  
+Accounting for these differences is crucial.
+
+
+
+%Before discussing our proposed approach to imaging evolving sources, we first review the standard approach to VLBI imaging and summarize a few significant algorithms from the astronomical interferometry imaging literature. 
+
+Traditional interferometric imaging methods, such as CLEAN, are not inherently capable of handing the atmosphere's corruption of the visibility phases in mm/sub-mm wavelengths, even for static sources~\cite{hogbom1974aperture, taylor1999synthesis}. Thus, they frequently have trouble imaging with sparse, short-wavelength interferometric arrays like the EHT. 
+%are not able to easily handle sparse and heterogeneous interferometric arrays, such as the EHT. 
+However, Bayesian-style methods have made it possible to handle sparse and heterogeneous arrays in the mm/sub-mm regime, and can often even achieve accurate super-resolved images in the case of a static source~\cite{Narayan_Nityananda_1986, skilling1990quantified,  andrew}.
+
+%search for an image that is most-likely to have produced the data observed by each unique telescope. 
+
+%specify the seemlessly integrate these heterogenous arrays into the image reconstruction 
+%These methods have proven successful in imaging with sparse arrays like the EHT's. 
+In order to reconstruct an image from the observed VLBI data, $\meas$, 
+%best image, $\hat{I}$, given the observed data, $\meas$, 
+these methods first approximate the continuous image $I(\xpos, \ypos)$ as a square $M \times M$ array of values, $\im$, that represents the source image's flux over a specified field of view (FOV)\footnote{The FOV for a time-varying source can be estimated from the variation in visibilities obtained over simultanoulsy observed frequency bands. }. Using this representation, the imaging methods aim to solve %minimize an objective function 
+%that explains the measurements
+\begin{align}
+\hat{\im} = \argmin_{\im} \left[ \chi(\im,\meas) - \gamma \mathcal{R}(\im) \right]
+\label{eq:setup}
+\end{align}
+\noindent{where $\chi(\im,\meas)$ indicates how inconsistent the image, $\im$, is with the observed data, $\meas$, and $\mathcal{R}(\im)$ expresses how likely we are to have observed the image $\im$. 
+	These two terms often have different preferences for the ``best" image, 
+	and fight against each other in selecting $\hat{\im}$.
+	Their relative impact in this minimization process is specified with the hyperparameter $\gamma$. Equation~\ref{eq:setup} can be interpreted probabilistically when %these terms can be expressed as log-probabilities 
+	$- \chi(\im,\meas) = \log p(\meas|\im) $, $ \mathcal{R}(\im) = \log p(\im)$, and $\gamma=1$. In this case, the minimizing cost function is a log-posterior %and can be solved using a Bayesian inference method 
+	with maximum a posteriori (MAP) estimate $\hat{\im}$, and can be solved using a Bayesian inference method. 
+	%However, this is not necessarily, and generally not, the case in practice. 
+	While many methods do not have a probabilistic interpretation, their formulation leads to a similar optimization.
+}
+
+
+Multiple algorithms have taken this Bayesian-style approach to VLBI imaging. These algorithms often define a similar data inconsistency measure, $\chi(\im, \meas)$ (refer to Section~\ref{sec:dataproducts}), but vary in what characterizes a ``good'' image, $\mathcal{R}(\im)$. Maximum entropy, total variation, sparsity, and patch-based priors have all been used to construct $\mathcal{R}(\im)$, and have been demonstrated in imaging both optical and radio interferometry data taken with sparse, heterogeneous arrays of static sources~\cite{bouman2016computational, andrew, Fish_2016_Imaging, baron2010novel, buscher1994direct, Suksmono, lofar}. 
+
+VLBI data taken from an evolving source are significantly different from that of a static source~\cite{flaring, freek}. 
+For example, Figure~\ref{fig:amplandphase} shows a simulated visibility amplitude and closure phase expected for a source evolving over time, and compares it to the data products expected if the same source were static.
+As the data can no longer be explained by a single image with similar structure, most static imaging methods break down on this data and are unable to produce accurate results.
+%One notable %significant 
+%exception to this is the work of~\cite{freek}. 
+
+Recent work has attempted 
+%, the motion is approximated as being periodic, and 
+%the authors attempt 
+to recover a single average image by first normalizing the data and then smoothing it within a characteristic time-frame~\cite{freek}\footnote{In the case of no atmospheric error the visibilities are smoothed. In the case of atmospheric error the bispectrum and visibility amplitudes are smoothed.}. However, as this method was designed to be applied to multi-epoch data, it is often unable to recover an improved reconstruction for a single day's observation when there is significant source variability. (see Section~\ref{sec:results}). 
+
+In~\cite{Johnson_dynamical} we simultaneously developed an alternative method for time-variability imaging that also reconstructs a video of the underlying emission region from sparse interferometric measurements. 
+In that work, we develop a more flexible framework with fewer model constraints. However, this modeling choice leads to a much more difficult optimization problem that is prone to local minima, and often requires ad hoc methods to achieve satisfactory convergence.
+This frequently leads to a solution inconsistent with the true structure of the source images when the data is especially sparse or noisy. Thus, the strengths and weaknesses of this alternative method are complementary to those of the approach we develop here. Similarly, in~\cite{anderson1979optimal} a Kalman Filter based approach was proposed for video generation from sparse interferometric measurements. This early work has striking similarities to parts of our own presented approach; however, the method was not demonstrated on interferometric data -- real or synthetic -- and does not address many of the limiting characteristics of EHT-quality data. 
+
+The problem of reconstructing video of a moving subject from sparse frequency samples appears in the MRI literature and is often referred to as Dynamic MRI (dMRI)~\cite{tsao2012mri, liang1994efficient, fessler, chun2012spatial}. Recent dMRI approaches reconstruct time-evolving MRI images using a variety of sophisticated regularization techniques, such as non-linear manifold~\cite{nakarmi2017kernel} and sparsity models~\cite{chen2008prior, biswas}. Although this problem has similarities to VLBI, there are substantial differences that make it not possible to blindly apply approaches developed for dMRI to VLBI. As discussed in Section~\ref{sec:dataproducts}, due to atmospheric inhomogeneity, VLBI measurements for short wavelength observations lose absolute phase information. Not only does this mean it is not possible to simply use a linear DTFT relationship to recover the underlying image from the data, but additionally the absolute position of the image on the sky is lost. Therefore, the common strawman approach of using a sliding-window to share data across time results in a series of frames with no spatial consistency, leading to a flickering video. 
+%As shown in the example of M87 in~\cite{Johnson_dynamical} as well as later in this paper, even when there is enough information to recover each ``snapshot" image independently and subsequently align images, reconstructing frames simultaneously removes flickering, which has proven to be helpful in understanding the source evolution.
+
+
+%Although the methods presented in~\cite{Johnson_dynamical} allow more flexibility in the model constraints than are allowed in this paper, they come at the expense of having a harder time converging to a solution consistent with the true source images. % in the case of sparse and noisy data. 
+
+% \subsection{Image}
+
+% An image of instantaneous emission, $I(\xpos,\ypos)$, is defined over the continuous space of angular coordinates $\xpos$ and $\ypos$. However, to make computation tractable,
+% this continuous image is approximated as a square $M \times M$ array of values that represent the emission image's flux over a specified field of view (FOV). 
+
+% Following the image parameterization convention of BLAH, we represent the continuous image, $I$, as the sum of a discrete number of scaled and shifted triangle pulses of height $\im$ centered around $(\xpos, \ypos) \in L \times L$, where
+
+% \begin{align}
+% L &=  \left \{ k \Delta + \frac{\Delta}{2}  -\frac{FOV}{2} \right \} \hspace{0.26in} \mbox{for} \hspace{0.1 in} k = 0,...,M-1
+% \label{eq:discrete1}
+% \end{align} 
+
+
+% \noindent{for $\Delta = \frac{FOV}{\npix}$. Using this representation, we are able to describe the 2D continuous image as a vector, $\im$, of length $M^2$. When applicable, we denote a single image in a sequence of images as $\im_t$, where $t$ indexes the time of the instantaneous image.}
+
+\vspace{-.1in}
+\subsection{Data Consistency}
+\label{sec:dataproducts}
+
+Methods often constrain the image reconstruction using a different set of data products. However, most can be generalized through a common definition of $\chi(\im, \meas)$. This generalization will become helpful in defining models in Sections~\ref{sec:static} and~\ref{sec:dynamic_model}.
+
+%In order to evaluate the inconsistency of a proposed image, $\im$, with the measured VLBI data, $\meas$, the following expression is evaluated
+
+
+Let $\meas$ be a $\nmeas$-dimensional real vector of, possibly heterogeneous, data products. 
+%In these Bayesian-style methods, 
+%In order to evaluate $\chi(\im,\meas)$, a function $f(\im)$ is first constructed to return the expected value of $\meas$ if $\im$ were the true underlying image. This measurement function, $f(\im)$, is composed of a set of sub-functions, $g_k(\im)$, that each simulate an ideally observed data product: 
+%produces a real-value corresponding to element $k$ of the vector $\meas$.
+We define a function $f(\im)$ to return the expected value of $\meas$ if $\im$ were the true underlying image. This measurement function, $f(\im)$, is composed of a set of sub-functions, $g_k(\im)$, that each simulate an ideally observed data product: 
+\begin{align}
+f(\im) = \Spvek{g_1(\im); g_2(\im); ...; g_{\nmeas}(\im)} : \Re^{ M^2 \times 1} \rightarrow \Re^{ \nmeas \times 1 }.
+\end{align}
+
+Although interferometric observables  (e.g. visibilities, bispectrum) are in general complex valued, we break up these complex quantities into their real and imaginary parts in the vector $\meas$.
+%Thus, each $g_k(\im)$ produces a real-value corresponding to element $k$ of the real-valued vector $\meas$.
+For example, if we wish to constrain image reconstruction with complex visibilities for $P$ observing telescope sites, then $\meas_{2k} = \Re \left[ \vis(u_k,v_k) \right]$ and  $\meas_{2k+1} = \Im \left[ \vis(u_k,v_k) \right]$ for $K=\ntele(\ntele-1) /2$. In this case, %$g_{2k}(\im)$ and $g_{2k+1}(\im)$ would be
+\begin{align}
+g_{2k} ( \im ) = & \Re[ \vecFTmtx(u_k,v_k) ]^T  \im\\
+g_{2k+1} ( \im ) = & \Im[ \vecFTmtx(u_k,v_k) ]^T \im ,
+\end{align} 
+for the complex row-vector $\vecFTmtx(u_k,v_k)$ that extracts a single spatial frequency $(u_k,v_k)$ from the vectorized image $\im$. %, similar to a Discrete Time Fourier Transform (DTFT).
+
+%In particular, if $\meas[2k]$ and $\meas[2k+1]$ are the real and imaginary components of a bispectrum measurement then, $g$ is defined with the following polynomial equations:
+%
+%\begin{align}
+%B(\im, u_1,v_1,u_2,v_2) &=  \vecFTmtx(u_1, v_1 )^T  \im \times  \vecFTmtx(u_2, v_2 )^T  \im \times  \vecFTmtx(-u_1 - u_2, -v_1 - v_2 )^T \im \\
+%g_{2k}( \hat{I}(\im) )   = &  \Re \left[ B(\im, u_1,v_1,u_2,v_2)  \right]   \\
+%g_{2k+1}( \hat{I}(\im) )   = &  \Im \left[ B(\im, u_1,v_1,u_2,v_2)  \right] .
+%\end{align}
+
+
+%For example, $g_k(\im)$ may return the imaginary portion of $\im$'s spatial frequency, corresponding to the visibility obtained between a pair of telescopes. 
+Using these functions, we define $\chi(\im,\meas)$ as
+\begin{align}
+\chi(\im, \meas) &\propto   \sum_{k=1}^{\nmeas} \frac{(\meas[k] - g_k(\im))^2 }{\sigma[k]^2} \\
+& = (\meas - f(\im))^T \bR^{-1} (\meas - f(\im)),
+\label{eq:chi2}
+\end{align}
+\noindent{for $\bR = \mathrm{diag} [\sigma[1]^2, .., \sigma[K]^2]$ composed of the variance of noise on each $\meas[k]$. If $\meas$ is sampled from a Gaussian distribution with mean $f(\im)$ and covariance $\bR$ then $\frac{1}{K}\chi(\im, \meas) \approx 1$. }
+	%~\footnote{This $\chi$ definition assumes $\meas$ is sampled from a Gaussian distribution with mean $f(\im)$ and covariance $\bR$. In this case, $\frac{1}{K}\chi(\im, \meas)$ will be close to 1. }.   }
+
+Depending on the data products selected for $\meas$, the measurement function, $f(\im)$, may be a linear or non-linear function of $\im$. %Although this choice does not affect the quality of the values produced by $f(\im)$, it often affects the optimization process during inference (refer to Section~\ref{sec:static}).  
+%Below we list the cases when a data product can be expressed linearly or requires a non-linear function. 
+%In the Appendix we provide the exact measurement function used for each data product and their derivatives. 
+Visibilities can be extracted by performing a linear matrix operation similar to a Discrete Time Fourier Transform (DTFT): $f(\im) = \FTmtx \im$~\cite{bouman2016computational}. However, in the presence of atmospheric noise, 
+%uniformly random phase errors are included in each complex visibility measurements. 
+%In order to handle this additional phase error, without having to explicitly model the errors as latent variables, 
+$\meas$ may be populated with data products that are invariant to atmospheric inhomogeneity.
+The bispectrum, closure phase, and visibility amplitude data products are invariant to this error, but come at the cost of requiring a non-linear measurement function, $f(\im)$~\cite{bouman2016computational, andrew, buscher1994direct}. 
+
+
+%As discussed earlier, the distributions of these non-linear data products are also non-Gaussian. 
+
+%This definition of $\chi$ assumes $\meas$ is sampled from a Gaussian distribution with covariance $\bR$. As mentioned in Section~\ref{sec:bispec} However as discussed in~\cite{TMS} this is a good approximation for high SNR bispectrum as well, where the noise is not truly Gaussian.
+
+% \vspace{.1in}
+% \subsubsection{Linear Measurement Functions}
+% \label{sec:dataproducts_lin}
+
+% Since each measured complex visibility is approximated as the Fourier transform of $I(\xpos,\ypos)$, ideal visibilities can be extracted by performing a linear matrix operation similar to a Discrete Time Fourier Transform (DTFT): $f(\im) = \FTmtx \im$.
+% In particular, 
+% BLAH shows that by plugging the parameterized image, $\im$, into the van Cittert-Zernike theorem (Equation~\ref{eq:vcz}), 
+% we can express a single visibility as $\im$ multiplied by a complex row-vector $\vecFTmtx(u,v)$ of size $1 \times \npix^2$.  $\FTmtx$ is then constructed by stacking the real and imaginary components of these row vectors for each of sampled $(u,v)$ point into a matrix of size $\nmeas \times \npix^2$. 
+
+
+% \vspace{.1in}
+% \subsubsection{Non-Linear Measurement Functions}
+% In the case of atmospheric noise, uniformly random phase errors are included in each complex visibility measurements. 
+% In order to handle this additional phase error, without having to explicitly model the errors as latent variables, we populate $\meas$ with measured data products that are invariant to atmospheric inhomogeneity. 
+% The bispectrum, closure phase, and visibility amplitude data products are invariant to this error, but come at the cost of requiring a non-linear measurement function, $f(\im)$ to \katie{BLAH BLAH express them(?).} 
+
+
