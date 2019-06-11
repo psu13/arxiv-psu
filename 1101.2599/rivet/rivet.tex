@@ -1,0 +1,360 @@
+
+Validation in the context of Monte Carlo generators means confronting a model with all
+relevant data that it claims to be able to describe. It is essential that the
+validation is global, because the model should describe the underlying physics
+and not just parameterize the data, otherwise it would not have any predictive
+power. In this sense validation is important for developing models as well as
+for debugging both code and physics models. Tuning means adjusting the free
+parameters of the model within their allowed ranges to improve the description
+of the relevant data.
+
+
+\mcsubsection{Generator validation and tuning strategies}
+\label{sec:tuningstrategy}
+
+As mentioned, generator validation must simultaneously consider a range of
+observables to be meaningful and predictive beyond the observables considered.
+The choice of observables must also be limited according to the model being
+considered: poor description of an observable whose responsible process is not
+modelled conveys little information.
+
+For tuning, similarly, a range of observables is required for predictivity and
+to obtain a generally usable single set of parameters. Again, depending on the
+suitability of observables to the model being tuned, it may or may not be
+\emph{possible} to describe all data simultaneously: this in itself may be a
+useful result for model development. The optimization of MC parameters to the
+chosen observables may be performed manually -- guided by the expected physical
+behaviour of the models -- or by a more automated method driven by the quality
+of the fit to data. In both approaches, some sampling of the parameter space is
+typical to ascertain the generator behaviour in response to parameter changes.
+The allowed ranges of parameter values in this sampling typically span all
+values for which the underlying physical picture is valid, although scans of
+more restricted ranges are usually necessary to produce a final tune.
+
+The choice of reference data is important since all simulations lack some known
+physics effects. Generator tuning should primarily optimize phenomenological
+simulation aspects, and not make up for shortcomings in modelling of event
+aspects that should be robustly described by calculable QCD. For example, tuning
+a Monte Carlo generator that contains only a $2 \to 2$ scattering matrix element to
+high jet-multiplicity data will tend to distort the parton shower and underlying
+event in an attempt to make up for the lack of higher multiplicity matrix
+elements. However, there are modelling aspects that do not fall neatly into
+either a perturbative or non-perturbative definition, \eg the primordial~\kt as
+discussed in \SecRef{sec:primkt}. The parameters of these models are perfectly
+valid for use in tuning -- with appropriate care. For example, while a
+primordial~\kt width may have no numerical upper limit in the generator
+implementation, a tuned value located far into the perturbative regime would be
+an abuse of the model and suggest deficiencies elsewhere.
+
+As general-purpose event generators contain models for many processes, most have
+of order 15 or more tuning parameters. This defines a parameter space whose
+dimensionality is far too high for comprehensive exploration, even with an
+automated sampling method. The practical consequence is that factorization of
+the parameters into minimal sets suitable for each group of observables has been
+found to be important. Hence, tuning of generators usually occurs in several
+distinct stages, in the following order:
+%
+\begin{itemize}
+\item {\em Hadronization and final-state fragmentation:} The flavour and kinema\-tic
+  structure of the final-state shower and hadronization mechanisms are assumed
+  to be universal between \ee and hadron colliders. As \ee
+  observables (\eg event shapes and identified particle rates and \pt spectra)
+  may be described by a generator without first requiring a reasonable tune of
+  initial-state hadron collider effects, these are typically used to tune final-state
+  shower and hadronization parameters. Flavour structure and kinematics
+  may themselves be factorized to some extent, perhaps with iteration.
+
+  Some typical parameters for tuning of fragmentation kinematics are the
+  \alphaS/\LambdaQCD values and IR-cutoff for the final-state shower, the string
+  tension and fragmentation function parameters for string hadronization models,
+  and the gluon constituent mass and cluster momentum smearing in cluster
+  hadronization models. Light and heavy quark fragmentation kinematics are often
+  treated separately, which permits further factorization to charm- and
+  bottom-specific observables without compromising the statistically dominant
+  light fragmentation. Tuning of flavour parameters in hadronization -- for
+  string hadronization in particular -- introduces an extra collection of
+  parameters for, \eg, enhancement and suppression of strangeness/charm/beauty,
+  $\eta/\eta'$ and baryon fractions. A final semi-distinct group of parameters
+  may be available for adjusting the admixtures of different orbitally excited
+  hadron states: whether these are considered in tuning depends on the purpose
+  at which the tuning is aimed.
+
+  The recent availability of identified particle data from hadron colliders such
+  as RHIC and the LHC is of interest from the point of view of hadronization
+  tuning, but violates the desirable feature of not requiring a viable
+  initial-state effect tune before beginning. At present, such data have not
+  been included in tunings: they are, however, of great interest for validating
+  the assumption that hadronization parameters tuned to \ee observables will
+  remain valid in a hadron collider environment.
+
+\item {\em Initial-state parton shower:} Once a reasonable tune of final-state
+  parameters has been obtained, the typical next step is to tune the
+  initial-state (space-like) parton shower parameters. The reason for tuning
+  this before the soft QCD effects is that we desire the shower to be tuned
+  to observables with little MPI/beam-remnant contamination, and then use the
+  full flexibility of the heavily-parameterized MPI machinery to make the final
+  best fit to data. This way, we avoid the danger of absorbing effects which
+  should be perturbatively describable into the relatively unconstrained MPI
+  modelling.
+
+  Some typical observables for initial-state shower tuning are dijet azimuthal
+  decorrelations (from the Tevatron and the LHC, with concern that $2 \to 2$ matrix
+  elements are not abused to include third hard jet contributions) and hadron
+  collider jet shapes. Typical parameters are the shower IR-cutoff, the shower
+  \alphaS/\LambdaQCD, and perhaps a scaling factor for the \alphaS evaluation
+  scale and the starting scale for the parton cascade. The philosophy of what
+  shower parameters are available for tuning varies according to generator: some
+  permit use of multiple \alphaS definitions, while others insist that the same
+  values be used throughout the generator, perhaps based on the value specified
+  in the PDF.
+
+\item {\em MPI and beam remnant effects:} As discussed above, since MPI modelling is
+  the element of Monte Carlo modelling least constrained by \textit{ab initio} QCD
+  calculation, it is left untuned until the final stage. There may be many
+  parameters in MPI models -- essentially all modelling aspects described in
+  \SecRef{sec:mbmpi} can introduce one or more parameters.  The key parameters
+  common to most eikonal MPI models are the \pPerp{\mr{min}} cutoff/regulator
+  for perturbative $2 \to 2$ scattering, the parameterization of the scaling of
+  this cutoff with collision energy, the hadronic matter distribution/overlap,
+  and any parameters relating to colour-reconnection of either strings or
+  clusters. The primordial~\kt width is often considered as part of this tuning
+  step, as it may affect soft QCD observables as well as the peak region of the
+  $Z^0$ \pt spectrum. As MPI models generate multiple scattering from low-$x$
+  gluons extracted from the beam-remnants, they are profoundly affected by the
+  choice of PDF. Hence, distinct MPI tunings are required for each PDF. The most
+  obvious parameter affected by a change of PDF is \pPerp{\mr{min}}: when using
+  a PDF with a large low-$x$ gluon fraction, the MPI model will require more
+  screening of the divergent partonic cross section than for a PDF with a
+  smaller amount of soft gluon. Accordingly, tunes with PDFs such as
+  LO*~\cite{Sherstnev:2007nd} which have a lot of low-$x$ gluon tend to have
+  higher \pPerp{\mr{min}} values than tunes of the same generator using \eg the
+  CTEQ6L1~\cite{Pumplin:2002vw} PDF.
+
+  The observables for MPI tuning are minimum bias and underlying event data from
+  as many hadron colliders as possible. As a key feature of soft QCD modelling
+  is the scaling of MPI activity with the collider center-of-mass energy, a wide
+  range of collision energies is desirable. Experimental tunings may place
+  emphasis on the collider of most interest -- currently the LHC -- for the
+  purpose of best describing the soft QCD backgrounds to hard-process simulations
+  at that collider. To date the most comprehensive MPI tunes have included data
+  from the CERN S\ppbar{S}, RHIC, the Tevatron, and the LHC. HERA data have not yet
+  been included in hadron collider MPI tuning, but whether a single tune can
+  describe both \ep and \pp/\ppbar data is a strong check on the domain of validity of
+  the generator's MPI model~\cite{Carli:2010jb}. LHC results on identified
+  particle distributions in minimum bias and underlying event data will provide
+  another test of currently unprobed model details.
+\end{itemize}
+
+
+The \rivet~\cite{Buckley:2010ar} package for MC generator validation and the
+\professor~\cite{Buckley:2009bj} system for generator tuning have become
+established tools in both the collider theory and experiment communities. Their
+strength is in systematically verifying event simulations and optimizing their
+parameters, where required and physically sensible. Both tools are
+described in the following sections.
+
+
+\mcsubsection{\rivet}
+\label{sec:rivet}
+
+\rivet is a Monte Carlo \emph{validation} tool: it encodes MC equivalents of an ever
+more comprehensive set of high-energy collider analyses which are particularly useful
+for testing the physics of MC generators. \rivet does not itself produce
+generator tunings, but provides a standard set of analyses by which to verify
+the accuracy of a given generator with a given tuning. These analyses are based
+upon a set of calculational tools that make writing of new analyses by either
+phenomenologists or experimentalists relatively straightforward.
+
+Several fundamental design principles have been derived from the experience on
+\rivet's predecessor system, \hztool~\cite{Bromley:1995np,Waugh:2006ip}, and
+from iteration of the \rivet design:
+%
+\begin{itemize}
+\item No generator steering: \rivet relies entirely on being provided, by
+  unspecified means, with events represented by the \hepmc~\cite{Dobbs:2001ck}
+  event record.
+\item No generator-specific analyses: official \rivet analyses are specifically
+  not allowed to use the generator-specific portions of the supplied event
+  records. Apart from a few very limited exceptions, all analyses are based
+  solely on physical observables, \ie those constructed from stable particles
+  (those with \hepmc status 1) and physical decayed particles (those with status
+  2). This approach is fully compatible with the approach to robust generator
+  phenomenology discussed in \SecRef{sec:mcfriendlyobs}.
+\item \rivet can be used as a \cpp library to be interfaced with generator
+  author or experiment analysis frameworks, as a Python module for construction
+  of higher-level tools (for example, much of the \rivet documentation is
+  generated this way), or as a command line tool (which itself makes use of the
+  Python interface). This exemplifies a general philosophy to keep the tools
+  simple and flexible, rather than constrain \rivet's applicability to a
+  pre-defined collection of specific tasks.
+\end{itemize}
+
+Internally, \rivet analyses are based on a comprehensive set of calculational
+tools called \emph{projections}, which perform standard computations such as jet
+algorithms (using \fastjet~\cite{Cacciari:2006sm}), event shape observables, and
+a variety of other common tasks. Use of projections allows, \eg
+%
+\begin{itemize}
+\item simplification of analysis code;
+\item encapsulation of complexities arising from the ban on use of event record
+  internal entities (the summation of photon momenta around charged leptons
+  during vector boson reconstruction is a good example);
+\item and efficiency gains over pure library functions, via a complex (but
+  hidden) system of automatic projection result caching.
+\end{itemize}
+
+Users can write their own analyses using the \rivet components and use them via
+the \rivet programming interface (API) or command-line tool without re-compiling \rivet, due to use of
+an analysis ``plugin'' system. Separation between generator and \rivet on the
+command-line is most simply achieved by using the \hepmc plain text
+\texttt{IO\_GenEvent} format via a UNIX pipe (a.k.a. FIFO): this avoids disk
+access and writing of large files, and the CPU penalty in converting event
+objects to and from a text stream is in many cases outweighed by the
+general-purpose convenience. For generator-specific use of \rivet, the
+programmatic interface allows \hepmc objects to be passed directly in code,
+without this computational detour. While this method requires some up-front
+integration into generator frameworks, eliminating the temporary conversions to and
+from a plain text format provides a significant performance gain, and the API
+control gives more flexibility, \eg in use of resulting histograms, than is
+possible with the command-line tool. A sister tool,
+\agile~\cite{Buckley:2007hi}, is provided for convenient control of several
+legacy \fortran-based generators, while the \mcnet generators either feed a
+\hepmc text stream into \rivet, or in several cases use the direct programmatic
+interface.
+
+Reference data for the standard analyses are included in the \rivet package as a
+set of XML files in the AIDA~\cite{AIDA} format. After several years of
+re-development as part of the CEDAR~\cite{Buckley:2007hi} project, the
+\hepdata~\cite{Buckley:2010jn} database of HEP experimental results is used to
+directly export data files usable by \rivet from its Web interface at
+\url{http://hepdata.cedar.ac.uk/}: this can be used by anyone developing new
+analyses based on papers in \hepdata. Analysis histograms are directly booked
+using the reference data as a binning template, ensuring that data and MC
+histograms are always maximally consistent.
+
+% \rivet is in use within the MC generator development community, particularly in
+% general-purpose shower MC programs, and the LHC experimental community, for MC
+% validation and MC analysis studies which do not require detector simulation.
+
+The most recent version of \rivet at the time of writing is 1.4.0. This release
+focuses on quality control of official analyses, and was largely driven by
+requirements of LHC experiment MC tuning studies, by validation requirements of
+\mcnet ME/PS merging algorithm developments, and by increasingly wide use of
+weighted events to cover disparate phase space regions in single MC
+runs. Development of \rivet has also driven much of the feature development and
+bug-fixing in \hepmc in recent years, in particular improving the treatment of
+physical units, propagation of cross section information in the event record
+(supported by all \mcnet generators), and a more complete event weighting
+system.
+
+With the increasing user demand for \rivet functionality, major effort has been
+devoted to making the command-line tools and post-processing scripts intuitive,
+comprehensive and bug-free. The emphasis on usability also led to making \rivet
+analyses ``self-documenting'': each analysis has a structured set of metadata
+specifying name, authors, run conditions, a description, etc., which is used
+(via the Python interface) to provide interactive help, HTML documentation, and
+a reference section in the \rivet manual.
+
+The next major stage of development is the upgrade of \rivet's histogramming and
+data analysis code, which is currently rather basic. The developing data
+analysis library will be of general-purpose usefulness, but will provide some
+features particularly useful for MC validation and tuning analyses, such as
+parallel handling of event weight vectors for integrated event re-weighting, and
+non-contiguous histogram binning as required by several experimental analyses.
+The upgrade will also enable statistically accurate combination of runs,
+allowing for greater parallelization of \rivet analyses that require large
+event statistics: this major development will mark \rivet version 2.0.0.
+
+
+\mcsubsection{\professor}
+\label{sec:professor}
+
+The \professor system builds on the output of MC validation analyses such as
+those in \rivet, by optimizing generator parameters to achieve the best possible
+fit to reference data. The main description of \professor's details is found in
+reference~\cite{Buckley:2009bj}, so we will only summarize it here. The most
+recent version of \professor at the time of writing is 1.1.0.
+
+Fundamentally, generator tuning is an example of the more general problem of
+optimizing a very expensive function with many parameters: the volume of the
+space grows exponentially with the number of parameters and the CPU requirements
+of even a single evaluation of the function mean that any attempt to scan the
+parameter space will fail for more than a few parameters. Here, the expensive
+function is running a generator with a particular parameter set to recreate a
+wide range of analysis observables, using a package such as \rivet. The approach
+adopted by \professor is to parameterize the expensive function based on a
+non-exhaustive scan of the space: it is therefore an approximate method, but its
+accuracy is systematically verifiable and it is currently the best approach available.
+
+The MC parameterization is generated by independently fitting a function to each
+of the observable bin values, approximating how they vary in response to changes
+in the parameter vector. One approach to fitting the functions would be to make
+each function a linear combination of algebraic terms with $n$ coefficients
+$\alpha_i$, then to sample $n$ points in the parameter space. A matrix inversion
+would then fix the values of $\alpha_i$. However, use of a pseudoinverse for
+rectangular matrices allows a more robust coefficient definition with many more
+samples than are required, with an automatic least-squares fit to each of the
+sampled ``anchor points'': this is the method used by \professor. By aggregating
+the parameterizations of all the observable bins under a weighted goodness of
+fit (GoF) measure a numerical optimization can be used to create an ``optimal''
+tune. The GoF currently used in \professor is a heuristic function based on a
+\chisq, but augmented with inclusion of all available errors -- as opposed to
+the traditional Pearson definition which uses the number of MC events in each
+bin as the sole uncertainty measure in the denominator.  In practice, many
+different semi-independent (sampled with replacement) combinations of MC runs
+are used to provide a systematic handle on the degree of variation expected in
+tunes as a result of the inputs, to avoid the problem that a single
+``maximum-information'' tune may not be typical of the parameter space.
+
+The \professor tools have been used in tuning of several generators, including
+the \mcnet ones already featured, particularly for the hadronization and soft
+QCD multiple-scattering aspects of event generation, where theory is least
+predictive and generators have most free parameters. Initial studies focused on
+the \pythiasix MC generator~\cite{Sjostrand:2006za}, as this had already been
+the focus of a CDF tuning campaign and was well understood. It was found that
+the parameterization method worked well in all cases, and a range of systematic
+methods and tools were developed to check the accuracy of the approximations,
+such as line-scans through the parameter space. Parameter spaces and observables
+with discontinuous behaviours -- \eg some aspects of cluster hadronization --
+remain problematic for any method that assumes smooth parameterizations.
+Several approaches exist to handle this, including parameter transformation, use
+of separate parameterizations in distinct regions, and manually avoiding tuning
+across such discontinuities. As discussed in \SecRef{sec:tuningstrategy},
+factorization of the total parameter space into block diagonal tuning stages is
+required: with \professor, \oforder{10} parameters at a time has been found to
+be a practical maximum.
+
+Much of the effort in constructing a generator tune is now focused on the
+development of a set of fit weights for the observables in a tune: different
+applications may wish to place different emphases on different observables,
+\eg LHC vs.\ Tevatron data, or underlying event vs.\ minimum bias data. Once a
+set of weights has been chosen, it is a matter of logistics to create equivalent
+tunes for different PDFs: this permits a more accurate measure of the systematic
+effect of PDF choice than was previously possible. In the particular case of MPI
+model tuning to soft QCD observables, this approach has shown that much of the
+effect of PDF changes can be absorbed into typical MPI model parameter
+choices.
+
+The intermediate parameterizations have proven useful in their own right: the
+\texttt{prof-I} GUI tool provides interactive visualization of observable
+responses to parameter changes and is useful for MC developers as a
+model-exploration and debugging tool. The usefulness of fast parameterization is
+not limited to MC generators, and \professor has been used for other studies
+from extra-solar planets to exploration of supersymmetric model phenomenology.
+As the LHC era matures, the demand for ``new'' tunes will naturally reduce -- to
+be replaced with a need for more accurate assessments of systematic
+uncertainty. \professor will remain a useful tool for this purpose, as the MC
+parameterizations can be used for construction of tune-error estimates. In one
+approach, parameter points sampled from the multi-dimensional Gaussian
+distribution defined by the numerical minimizer covariance matrix are mapped
+into observables using the parameterizations, defining error bands for given
+statistical confidences. Alternatively, the same covariance matrix can be used
+slightly differently to construct Hessian ``error tunes'', or
+``eigentunes''. The latter approach is already in use by LHC experimental
+collaborations to improve the accuracy of MC-derived modelling systematics for
+detailed LHC physics studies.
+
+% Local Variables:
+% mode: LaTeX
+% TeX-master: "../mcreview"
+% End:

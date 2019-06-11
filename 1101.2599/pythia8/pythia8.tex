@@ -1,0 +1,405 @@
+
+\mcsubsection{\gensectionintro}
+
+\pythia is a general-purpose event generator. It has been used 
+extensively for $e^+e^-$, $ep$ and $pp/p\overline{p}$ physics, 
+\eg at LEP, HERA and the Tevatron, and during the last 20 years 
+has probably been the most used generator for LHC physics studies.
+As a building block it has also been used in heavy-ion
+physics and cosmic-ray physics.
+ 
+The history of the Lund family of event generators began with 
+\jetset \cite{Sjostrand:1982fn,Sjostrand:1982am,Sjostrand:1985ys,
+Sjostrand:1986hx} in 1978, which later was merged into 
+\pythia \cite{Bengtsson:1982jr,Bengtsson:1984yx,Bengtsson:1987kr,
+Sjostrand:1993yb,Sjostrand:2000wi,Sjostrand:2006za}. Over the years 
+many new physics models, especially for perturbative and 
+nonperturbative QCD, have been developed and tested in parallel 
+with the respective code. Thus the \pythiasix generator is the 
+product of over thirty years of progress, but some of the code 
+has not been touched in a very long time. New options have been 
+added, but old ones seldom removed. The basic structure has been 
+expanded in different directions, well beyond what it was once 
+intended for, making it rather cumbersome by now.
+
+{}From the outset, all code was written in Fortran~77. For the
+LHC era, the experimental community made the decision to discontinue
+Fortran and move heavy computing to \cpp. Therefore it was logical
+also to migrate \pythia to \cpp, and in the process clean up and 
+modernize various aspects. A first attempt in this direction was 
+the \pythiaseven project \cite{Lonnblad:1998cq,Bertini:2000uh}, 
+however, early on this was redirected to become a generic 
+administrative structure, and renamed \thepeg (see \SecRef{sec:thepeg}).
+
+\pythiaeight is a clean new start, to provide a successor to \pythiasix. 
+It is a completely standalone generator, but several optional hooks 
+for links to other programs are provided. Work on it began in 2004, 
+and the first fully operational version (8.100) was released in 2007 
+\cite{Sjostrand:2007gs}. It is not yet as well tested and tuned as 
+\pythiasix, and therefore not as much used, although a slow shift is 
+underway. Since priority has been to be ready in time for LHC startup,
+some topics have not yet been addressed. Other parts of the \pythiasix 
+were deemed obsolete and are permanently dropped.
+
+Here follows a very brief summary of the current \pythia~8.1 program.
+Much of the physics is the same as documented in the \pythia~6.4 manual 
+\cite{Sjostrand:2006za} and the literature quoted there, with some relevant 
+later updates \cite{Corke:2009tk,Corke:2010zj,Navin:2010kk,
+Kasemets:2010sg,Carloni:2010tw,Corke:2010yf}. 
+A complete manual also comes with the code distribution.
+ 
+The physics summary below is split into core processes, the further 
+perturbative evolution, and hadronization. An introduction to the 
+code structure completes this outline.  
+
+\mcsubsection{\gensectionhard}
+
+Currently the program is only set up to handle collisions either between 
+hadrons, such as $p$, $\overline{p}$, $\pi^{\pm}$ and $\pi^0$, or between 
+same-generation leptons. That is, $pp$, $p\overline{p}$ and $e^+e^-$ 
+beam combinations can be used,  but currently not $ep$, 
+$\gamma\mathrm{p}$ or $\gamma\gamma$.
+
+\pythia contains an extensive list of hardcoded subprocesses, over 200, 
+that can be switched on individually. These are mainly $2 \to 1$ and 
+$2 \to 2$, some $2 \to 3$, but no multiplicities higher than that. 
+Consecutive resonance decays may of course lead to more final-state 
+particles, as will parton showers. A brief summary of the main sets 
+of subprocesses is as follows:
+\begin{itemize}
+\item hard  QCD processes, giving two high-$p_{\perp}$ partons;
+\item $t$-channel exchange of a $\gamma^*/Z^0$ or $W^{\pm}$, also giving
+  two high-\pt partons;
+\item prompt-photon production with one or two photons in the final state;
+\item a single $\gamma^*/Z^0$ or $W^{\pm}$ gauge boson, a pair of gauge 
+bosons, or a gauge boson together with a parton; 
+\item charmonium and bottomonium in the colour singlet and octet models;
+\item top and a hypothetical heavy fourth generation;
+\item Higgses within and beyond the Standard Model;
+\item Supersymmetry (in progress); and
+\item other exotic physics with new gauge bosons, left--right symmetry,
+leptoquarks, excited fermions, hidden valleys, or extra dimensions. 
+\end{itemize}
+
+The subprocess cross sections have to be convoluted with PDFs to obtain
+the event rates. Several proton PDFs are hardcoded in \pythia for ease 
+of use and speed. These include
+\begin{itemize}
+\item traditional LO sets such as GRV 94L, CTEQ 5L, 6L and 6L1, 
+and MSTW 2008 LO; 
+\item the newer-style Monte-Carlo-adapted modified LO sets MRST LO* and 
+LO**, and CT09 MC1, MC2 and MCS; and 
+\item two central members of NLO sets, namely MSTW 2008 NLO and
+CTEQ 66.00; 
+\end{itemize}
+see \SecRef{sec:pdfs-event-gener}.  
+Further sets are available through an interface to the LHAPDF library.
+It is possible to use separate PDF sets for the hard interaction, on one
+hand, and for the subsequent showers and MPIs, on the other. Specifically, 
+NLO sets are only intended to be used for hard subprocesses.
+
+Obviously this list is far from complete, in terms of what will be
+required at the LHC. Furthermore \pythia does not have automatic code 
+generation for new processes, unlike some other generators. 
+The intention is that \pythia should be open to external input to the 
+largest extent possible, however. That way specialists from many areas 
+can contribute hard subprocesses, which thereafter are handled further 
+by the normal \pythia machinery.
+\begin{itemize}
+\item If an external program can generate a Les Houches Event File
+\cite{Alwall:2006yp}, this can easily be read in by \pythia. 
+A large number of programs can do just that. This includes 
+general-purpose matrix-element programs, such as MadGraph or 
+CompHep/CalcHep, and ready-made collections of processes, such as 
+ALPGEN or AcerMC, see \SecRef{sec:subprocesses}. It also includes 
+several processes implemented in the POWHEG approach to NLO calculations,
+see \SecRef{sec:me-nlo-matching}. 
+\item It is also possible to have a runtime link to \cpp or Fortran
+programs, using the Les Houches Accord \cite{Boos:2001cv} structure 
+to transfer information between the programs.
+\item You can implement your own hard process inside a class derived from 
+a \pythia base class, send in a pointer to it, and then let \pythia
+handle the generation exactly as if it were an internal process. 
+Notably MadGraph~5 will provide a facility whereby the complete code 
+for such a class can be written automatically, ready to be linked.  
+\end{itemize}  
+\pythia is also open to input from other sources, such as the 
+SUSY Les Houches Accord \cite{Skands:2003cj,Allanach:2008qq}.
+
+
+\mcsubsection{Soft processes}
+
+The so-called soft processes are elastic, single and double diffractive, 
+and nondiffractive, see \SecRef{sec:mbtypes}. Together they are intended to 
+offer an inclusive description of the total $pp$ cross section, with the 
+exception of some of the rare (and even hypothetical) processes that
+are better simulated separately. Thus the inelastic event sample includes 
+high-$p_{\perp}$ physics as a tail of the low-$p_{\perp}$ one, in a 
+consistent way, as provided by the MPI framework. To be precise, 
+``soft'' events contain an inclusive production of standard QCD 
+$2 \to 2$ processes, prompt photons, charmonia and bottomonia, low-mass 
+Drell-Yan pairs, and $t$-channel $\gamma^*/\mathrm{Z}^0/\mathrm{W}^{\pm}$ 
+exchange, in their expected proportions, with the MPI approach ensuring
+that several of them can occur in the same event. One can alternatively use 
+the same list as exclusive ``hard'' processes, if one is only interested in 
+the high-$p_{\perp}$ tail, where a generation of the complete cross section 
+would be inefficient.
+
+Nondiffractive events provide the bulk of the inelastic cross section,
+\ie what is observed in central detectors. Inside \pythia it is also 
+referred to as the {\it minbias} component, but it does not have a one-to-one
+overlap with the experimental definition of minimum bias,
+see the warning in \SecRef{sec:mbtypes}. The nondiffractive
+component is expected to provide an even bigger fraction of the events
+that contain a hard process. Therefore, if the user requests an exclusive
+hard process, currently \pythia would always simulate the underlying 
+event as being of the nondiffractive type.
+
+Diffractive events are handled in the Ingelman--Schlein picture
+\cite{Ingelman:1984ns}, wherein single diffraction is viewed
+as the emission of a pomeron pseudoparticle from one incoming proton,
+leaving that proton intact but with reduced momentum, followed by the 
+subsequent collision between this pomeron and the other proton. The
+pomeron is, to first approximation, viewed as a glueball state with
+the quantum numbers of the vacuum, but by QCD interactions it will also
+have a quark content. The pomeron--proton collision can then be handled 
+as a normal hadron--hadron nondiffractive event, displaying the same
+structure with MPI, ISR, FSR and the rest. Double diffractive
+events contain two pomeron--proton collisions. 
+
+Elastic scattering by default only includes strong interactions
+\cite{Schuler:1993wr}, but it is possible to switch on the QED 
+Coulomb term and interference as well \cite{Bernard:1987vq}.  
+
+\mcsubsection{The perturbative evolution}
+
+The \pythiaeight showers are ordered in transverse momentum 
+\cite{Sjostrand:2004ef}, both for ISR and for FSR. Also MPIs are ordered 
+in $p_{\perp}$ \cite{Sjostrand:1987su}.
+This allows a picture where MPI, ISR and FSR are interleaved in one 
+common sequence of decreasing $p_{\perp}$ values. 
+This is most important for MPI and ISR, since they are in direct 
+competition for momentum from the beams, while FSR mainly 
+redistributes momenta between already kicked-out partons.
+The interleaving implies that there is one combined evolution equation
+\begin{eqnarray}
+\frac{\mathrm{d} \mathcal{P}}{\mathrm{d} p_{\perp}}&=& 
+\left( \frac{\vphantom{\left(\right)} \mathrm{d}\mathcal{P}_{\mathrm{MPI}}}%
+{\mathrm{d} p_{\perp}}  + 
+\sum   \frac{\vphantom{\left(\right)} \mathrm{d}\mathcal{P}_{\mathrm{ISR}}}%
+{\mathrm{d} p_{\perp}}  +
+\sum   \frac{\vphantom{\left(\right)} \mathrm{d}\mathcal{P}_{\mathrm{FSR}}}%
+{\mathrm{d} p_{\perp}} \right)
+\nonumber \\ 
+ & \times & \exp \left( - \int_{p_{\perp}}^{p_{\perp\mathrm{max}}} 
+\left( \frac{\vphantom{\left(\right)} \mathrm{d}\mathcal{P}_{\mathrm{MPI}}}%
+{\mathrm{d} p_{\perp}'}  + 
+\sum   \frac{\vphantom{\left(\right)} \mathrm{d}\mathcal{P}_{\mathrm{ISR}}}%
+{\mathrm{d} p_{\perp}'}  +
+\sum   \frac{\vphantom{\left(\right)} \mathrm{d}\mathcal{P}_{\mathrm{FSR}}}%
+{\mathrm{d} p_{\perp}'} 
+\right) \mathrm{d} p_{\perp}' \right) 
+\label{eq:pythiacombinedevol}
+\end{eqnarray}
+that probabilistically determines what the next step will be.
+Here the ISR sum runs over all incoming partons, two per
+already produced MPI (including the hard process), the FSR sum runs over 
+all outgoing partons, and $p_{\perp\mathrm{max}}$ is the $p_{\perp}$ of the 
+previous step.
+
+Starting from a large $p_{\perp}$ scale of the hard process, the 
+decreasing $p_{\perp}$ of \EqRef{eq:pythiacombinedevol} can be viewed 
+as an evolution towards
+increasing resolution; given that the event has a particular structure
+when activity above some $p_{\perp}$ scale is resolved, how might that 
+picture change when the resolution cutoff is reduced by some infinitesimal
+$\mathrm{d} p_{\perp}$? That is, let the ``harder'' features of the event 
+set the pattern to which ``softer'' features have to adapt.
+It does not have a simple interpretation in absolute time;
+all the MPIs occur essentially simultaneously (in a simpleminded
+picture where the protons have been Lorentz contracted to pancakes),
+while ISR stretches backwards in time and FSR forwards in time. 
+
+\mcsubsection{\gensectionshower}
+
+The initial- and final-state algorithms are partly based on a 
+dipole-type approach to recoils, see \SecRef{sec:dipoles}, but with 
+some modifications. 
+
+In the simplest case, consider a colour dipole stretched between 
+two final-state partons. The emission off such a dipole can be 
+associated with either of the two ends, approximately in proportion 
+to the respective $1/Q^2$ propagator, which gives a smooth transition 
+across phase space for having it associated with either end, 
+say $(1 \pm \cos\theta)/2$ in the soft-gluon limit.
+By this classification the radiator end is the one that branches 
+into two, which implies changed kinematics, to be compensated by 
+the recoiler end. 
+
+If the colour dipole is stretched between a final and an initial 
+parton, radiation off  the final end has to be compensated by a 
+changed momentum for this incoming parton. The subdivision of 
+radiation from the two dipole ends is also somewhat more delicate 
+in this case, and necessitates the introduction of a special damping 
+factor on emission from the final end. 
+ 
+ISR is described by backwards evolution \cite{Sjostrand:1985xi}, 
+wherein branchings are constructed from the hard subprocess, back to 
+the shower initiators. In each step the whole previously generated
+partonic system takes the recoil of the newly emitted parton.
+This applies whether the radiating initial dipole end has a 
+colour partner in the initial or in the final state. In the latter 
+case the pure dipole picture dictates that only this one partner
+should take the recoil, but such a picture would not give the correct 
+resummation behaviour \eg for $Z^0$ production, see \SecRef{sec:dipoles},  
+and is therefore rejected. Emissions are allowed partially to line up 
+in azimuthal angle by colour flow, however, which retains some memory 
+of the dipole structure.
+
+The evolution variable is closely related to the transverse momemtum
+of a branching, but is not identical with it. Instead the 
+lightcone-motivated relationships $p_{\perp\mathrm{evol}}^2 = (1-z)Q^2$ 
+for ISR and $p_{\perp\mathrm{evol}}^2 = z(1-z)Q^2$ for FSR are used to 
+define the space- or time-like virtuality $Q^2$ of the off-shell 
+intermediate parton, given the chosen $p_{\perp\mathrm{evol}}$ 
+and $z$. When kinematics are actually reconstructed, Lorentz
+invariant expressions for $z$ are being used, based on ratios of 
+invariant masses, which leads to a kinematical 
+$p_{\perp\mathrm{kin}} \leq p_{\perp\mathrm{evol}}$.
+Specifically, as a function of emission angle, $p_{\perp\mathrm{kin}}$
+peaks at $90^{\circ}$, whereas $Q^2$ and hence $p_{\perp\mathrm{evol}}$ 
+keeps on rising with angle.
+
+Both QCD and QED emissions are allowed, and fully interleaved. 
+Currently allowed branchings in the shower are $q \to qg$,
+$g \to gg$, $g \to q\overline{q}$, $q \to q \gamma$,
+$\ell \to \ell \gamma$ and, for FSR only, $\gamma \to \ell^+ \ell^-$
+and $\gamma \to q\overline{q}$. 
+
+Many resonance decays involve full matching to NLO QCD matrix 
+elements. For production, however, all internally implemented 
+processes are LO only. Production of $\gamma^*/Z^0/W^{\pm}$ is
+matched to the real-emission corrections, so as to obtain the 
+NLO $p_{\perp}$ spectrum, but without the NLO $K$-factor.
+Showers have been constructed so that they, by default, have a 
+sensible behaviour over the full phase space, all the way up to 
+the kinematical limit, for a wide range of processes, but they 
+will not be perfect. 
+
+Final-state showers have a sharp lower cutoff, that should define 
+the transition to hadronization. For ISR it is also possible to
+use a sharp cutoff, but a valid alternative is a smooth turn-off
+related to what is done for MPI below.
+
+\mcsubsection{\gensectionMPI}
+
+MPI modelling has traditionally been a hallmark of \pythia.
+The framework is extensively described in \SecRef{sec:mbmpi},
+and here only the basic principles are recapitulated, to put
+them in context.
+
+The perturbative $2 \to 2$ QCD cross section, which is dominated by 
+$t$-channel gluon exchange, diverges roughly like 
+$\mathrm{d} p_{\perp}^2 / p_{\perp}^4$. But this is based on the 
+assumption of free incoming states, which is not the case when 
+partons are confined in colour-singlet hadrons. Screening by nearby 
+opposite colour charges will dampen the interaction of gluons with a 
+large transverse wavelength. This is introduced by reweighting the 
+interaction cross section by the factor in \EqRef{eq:ptzerodampen},
+where $p_{\perp 0}$ is a free parameter in the model. To be more precise, 
+it is the physical cross section $\mathrm{d} \sigma / \mathrm{d} p_{\perp}^2$ 
+that needs to be regularized, \ie  the convolution of
+$\mathrm{d} \hat{\sigma} / \mathrm{d} p_{\perp}^2$ with the two 
+parton densities. One is thus at liberty to associate the screening 
+factor with the incoming hadrons, half for each of them, instead of 
+with the interaction. Such an association also gives a recipe to 
+regularize the ISR divergence, as already noted.
+
+The $p_{\perp 0}$ parameter can be energy-dependent,
+since higher energies probe partons at smaller $x$, where the 
+parton density increases and thereby the colour screening distance
+decreases. An ansatz $p_{\perp 0} \propto E_{\mathrm{CM}}^{\epsilon}$
+is therefore assumed, with some small power $\epsilon$. 
+
+The spatial shape of the proton determines the balance between 
+peripheral and central collisions, as reflected for example in the width 
+of the multiplicity distribution. Several different shapes are available,
+starting with a simple Gaussian ansatz.
+
+Rescattering has been implemented, \ie the possibility of one parton 
+scattering several times. So far no good experimental signals have been 
+found for it, and it is off by default.
+
+For dedicated studies of two low-rate processes in coincidence, two
+hard interactions can be set in the same event, by a somewhat 
+simplified duplication of the normal hard-process selection machinery. 
+There are no Sudakov factors included for these two interactions, 
+similarly to normal events with one hard interaction.
+
+Rescaled parton densities are defined after each interaction, 
+that take into account the nature of the previous partons extracted
+from the hadron. This guarantees energy--momentum--flavour conservation.
+
+Currently there is only one scenario for colour reconnection in the 
+final state, see \SecRef{sec:mbmpi-np}, in which there is a certain 
+probability for the partons of two subscatterings to have their 
+colours interarranged in a way that reduces the total string length. 
+(This is intermediate in character between the original strategy 
+\cite{Sjostrand:1987su} and the more recent ones \cite{Skands:2010ak}.) 
+
+At the end of the perturbative stage, a number of leftover partons
+are found in the proton beam remnants, with colour connections to
+the scattered partons, see \SecRef{sec:mbmpi-np}. Primordial $k_{\perp}$'s 
+are introduced both for the scattering subsystems and the remnants, 
+colours are assigned to connect the subsystems and the remnants with 
+each other, and leftover longitudinal momentum is split between the 
+remnant partons. When necessary, the junction approach is used to 
+keep track of the baryon number, see \SecRef{sec:string-model}.
+
+\mcsubsection{\gensectionhadronize}
+
+Hadronization is based solely on the Lund string fragmentation
+framework \cite{Andersson:1983ia,Sjostrand:1984ic}, 
+\SecRef{sec:string-model}, which is at the origin of the \jetset 
+program and thus of \pythia.
+
+Particle data have been updated in agreement with the 2006 PDG
+tables \cite{Yao:2006px}.  Some updated charm and bottom decay 
+tables have been obtained from the DELPHI and LHCb collaborations.
+
+The BE$_{32}$ model for Bose--Einstein effects \cite{Lonnblad:1997kk} 
+has been implemented, but is not on by default. It does a reasonable
+job with $e^+e^-$ data but not so well for hadronic collisions.   
+
+\mcsubsection{Program structure and usage}
+
+The \pythiaeight homepage is at
+\begin{center} 
+\texttt{http://www.thep.lu.se/}$\sim$\texttt{torbjorn/Pythia.html}
+\end{center}
+and from there you can download the most recent version as a gzipped
+tar file, which also includes documentation as well as several example
+main programs illustrating different ways in which \pythiaeight can be
+used and linked. The documentation can also be accessed directly from the
+\pythiaeight homepage. 
+
+It is possible to perform analyses of the event record inside the 
+main program. Alternatively events can be output to the HepMC
+format, from which they can be studied further, or sent on to
+detector simulation programs like Geant.
+
+\mcsubsection{\gensectionoutlook}
+
+\pythiaeight by now offers a complete replacement of \pythiasix
+for essentially all aspects related to LHC physics studies, and in 
+many respects contains improved physics models and new features. 
+While development of \pythiasix has stopped, and new subversions
+will only be prompted by bug fixes, \pythiaeight is being further
+improved and extended in several directions. Experimental usage is 
+still lagging behind, but interest is picking up, so one should 
+expect a gradual phaseover during the next few years. 
+
+% Local Variables: 
+% mode: LaTeX
+% TeX-master: "../mcreview"
+% End: 

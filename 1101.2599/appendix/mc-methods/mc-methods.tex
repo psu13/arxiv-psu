@@ -1,0 +1,225 @@
+\mcsubsection{Generating distributions}
+\label{mcmethods:dist}  
+We give here a very brief review of the numerical methods used in
+Monte Carlo event generators. The basic requirement of such a
+generator is to produce a set of representative points in the phase
+space of the process under study, in such a way that the density of points
+follows the probability distribution predicted for that process. The
+simplest case is that of a single variable $x$ to be distributed in
+the region $[x_{\rm min},x_{\rm max}]$ with probability distribution
+proportional to $f(x)\geq 0$.  Then if $R\in[0,1]$ is a uniform
+pseudo-random number, we want to generate $x$ such that
+\beq
+\int_{x_{\rm min}}^{x} f(x')\,\done x'= R \int_{x_{\rm min}}^{x_{\rm max}}f(x')\,\done x'\;.
+\eeq
+If the indefinite integral of $f(x)$ is a known function $F(x)$ then
+this is equivalent to solving
+\beq\label{eq:mcFx}
+F(x) = R\,F(x_{\rm max}) +(1-R)\,F(x_{\rm min})\;.
+\eeq
+If the inverse function $F^{-1}$ is known, the problem is solved.
+Otherwise, the solution can often be obtained quite fast numerically,
+because the positivity of $f(x)$ ensures that $F(x)$ is monotonic.
+
+If the indefinite integral of $f(x)$ is not known, or if the method of
+numerical solution is too slow, then the {\it hit-or-miss} method can
+be used.  Here we suppose that a function $g(x)\geq f(x)$ on the
+interval $[x_{\rm min},x_{\rm max}]$ has a known indefinite integral
+$G(x)$ that can be inverted or solved for $x$. Then we generate the
+distribution according to $g(x)$ and accept the resulting point with
+probability $f(x)/g(x)$, \ie if $f(x)>R'g(x)$ where $R'\in[0,1]$ is
+another uniform pseudo-random number.  In particular we can choose a
+constant $g(x)=g_u\geq\max\{f(x),x\in [x_{\rm min},x_{\rm max}]\}$,
+generate points uniformly as
+\beq
+x = R\,x_{\rm max} +(1-R)\,x_{\rm min}\;,
+\eeq
+and accept those points that satisfy $f(x)>R'g_u$.  However this may
+be very inefficient (many points may be rejected) if $f(x)$ is very
+non-uniform or if $g_u$ is chosen too large.
+
+\mcsubsection{Monte Carlo integration and variance reduction}
+\label{mcmethods:integ}   
+In reality the phase space is multi-dimensional.
+Then it is important to appreciate that the Monte Carlo method is based on the
+concept of an integral as an average.  Suppose we have a matrix element-squared
+$f({\bf x})$ which is a function of the $n$-component vector ${\bf x}$, and
+we want to integrate it over a region $V$ of ${\bf x}$-space, for
+example to compute a cross section:
+\beq
+I[f] = \int_V \done^n x\,f({\bf x})\;.
+\eeq
+Standard methods of integration (Simpson's, Gaussian, \ldots) are too
+laborious and/or inaccurate for $n$ large (say $n>3$).  However, if
+$N$ points $\{{\bf x}_i,i=1,\ldots,N\}$ are distributed (pseudo-)randomly in
+$V$,  then the central limit theorem of statistics tells us that
+the {\em mean value} of $f$ on those points is an unbiased estimator of the integral,
+\beq
+I[f]\simeq\abr{f} = \frac 1N \sum_{i=1}^N f({\bf x}_i)\;,
+\eeq
+and that the estimated error $E[f]$ on this evaluation is given by
+the {\em variance} of $f$,
+\beq
+\mbox{Var}(f)=\abr{(f-\abr{f})^2} = \abr{f^2}-\abr{f}^2\;,
+\eeq
+as
+\beq
+E[f]= \sqrt{\frac{\mbox{Var}(f)}{N-1}}\;.
+\eeq
+Thus the error decreases as the inverse square root of the number of
+points, independent of the dimensionality of the integral.
+Furthermore, for a given number of points, the error will be less
+if the variance of the integrand is small.
+
+The variance can be reduced by a change of variables that ``flattens''
+the integrand.  Consider the mapping  ${\bf x}\to {\bf y}({\bf x})$ with
+Jacobian
+\beq
+\left|\frac{\partial({\bf y})}{\partial({\bf x})}\right| = g({\bf x})\;.
+\eeq
+Then
+\beq
+I[f] =  \int_{V'} \done^n y\,\frac{f({\bf x})}{g({\bf x})}\;,
+\eeq
+where $V'$ is the region in ${\bf y}$-space corresponding to $V$ in ${\bf x}$-space.
+If $h=f/g$ is a function with less variance than $f$ itself then the error will be
+reduced by distributing points uniformly in ${\bf y}$-space. This is
+known as {\it importance sampling}. To obtain
+a set of points distributed according to $f({\bf x})$,
+as desired for an event generator, we can now apply the hit-or-miss
+method, accepting points with probability $h/h_{\rm lim}$, where
+$h_{\rm lim}$ is an upper bound on the value of $h$ in $V'$. The Monte
+Carlo efficiency, as measured by the fraction of points accepted,
+$\abr{h}/h_{\rm lim}$, will usually also be increased as a result of
+the variance reduction.
+
+ In some applications, for example NLO cross section calculations, the
+ integrand $f({\bf x})$ can contain integrable singularities. Although
+ these would give a finite result if they were calculated
+ analytically, their variance is divergent and hit-or-miss Monte Carlo
+ will fail to converge. Variance reduction, with a carefully chosen
+ generated distribution $g({\bf x})$, becomes mandatory in such cases.
+
+More sophisticated methods for variance reduction, such as {\it
+stratified} or {\it multichannel sampling}, are also applied in Monte
+Carlo generators, particularly when dealing with matrix elements that
+have sharp peaks due to resonance production or matrix element singularities
+close to the physical region, as discussed in \AppRef{sec:app_mcs}.
+
+If it is difficult to arrive at an acceptable efficiency by reducing
+the variance of the integrand and/or finding a good upper bound on it,
+one may wish to resort to generating {\it weighted events}.  In that
+case the phase-space points $\{{\bf x}_i\}$ (or $\{{\bf
+y}_i\}$ if some variance reduction has been achieved) are used to
+represent events, but each event has a different weight $f_i$ (or
+$h_i$) when contributions to observables are computed.  In that case
+one has to take account of the variance of the weights when computing
+error on observables.  That means, for example, that one must keep track of
+the sum of the squared weights as well as the weights contributing to
+each bin of a histogram.  In contrast the error for the {\it
+unweighted events} obtained from hit-or-miss is just given by the
+square root of the number of events in the bin.
+
+An example of a situation in which weighted events can be useful is in the
+study of jet hadroproduction, where the distribution of jet transverse
+energy $E_T$ falls very rapidly, roughly as $E_T^{-5}$.  If events are
+generated according to the relevant hard subprocess matrix elements multiplied
+by $\pt^5$, where $\pt$ is the transverse momentum of the hardest
+final-state parton in the subprocess, and then weighted by
+$\pt^{-5}$, event properties can be explored over the full range of
+jet $E_T$ without generating huge event samples.
+
+For further details of general Monte Carlo methods
+see, for example,\ \cite{James:1980yn} and the relevant section of the
+Review of Particle Physics~\cite{Nakamura:2010zzi}.
+
+\mcsubsection{Veto method}
+\label{mcmethods:veto}
+It often happens in event generators that one wishes to generate an
+ordered sequence of values $\{q_i\}$ of some variable $q$, for example
+the evolution variable of a parton shower, according to a distribution
+function with a rather complicated form, in this case the relevant
+Sudakov form factor.  The {\it veto method}, a variant of
+hit-or-miss, is a useful way of achieving this.
+
+Suppose that, given $Q$, we wish to generate $0<q_1<Q$ such that the
+probability that $q_1<q$ is $F(q)/F(Q)$, where $F(q)$ is a monotonically increasing
+function with $F(0)=0$, \eg the Sudakov form factor $\Delta(Q^2,q^2)$ in
+\EqRef{Sudakov}\footnote{Strictly speaking, \EqRef{Sudakov} requires
+  $q^2>2Q_0^2$ where $Q_0>0$ and $\Delta(Q^2,2Q_0^2)>0$.  We consider
+  here the case that $Q_0\to 0$, and discuss below the effect of
+  $Q_0>0$.}  In simple cases we can do this as in
+\EqRef{eq:mcFx}, by solving the equation $F(q_1) = R
+F(Q)$ where $R\in[0,1]$ is a uniform pseudo-random number.  However,
+if $F(q)$ is too complicated for this, but its derivative $f(q)=\done
+F/\done q$ is known, and we can find a simpler monotonic function
+$G(q)\geq 0$ with derivative $g(q)$ such that $f(q)/F(q)<g(q)/G(q)$ for
+$q<Q$, we can proceed as follows:
+\begin{enumerate}
+\item Solve $G(q') = R\, G(Q)$ for $q'$, where $R$ is a random number
+as above.
+\item If  $f(q')/F(q')>R'\, g(q')/G(q')$,  where $R'$ is another random number, set $q_1=q'$.
+\item Otherwise {\it veto} this choice of $q_1$, \ie  set $Q=q'$ and
+go back to step 1 to find $q''<q'$.
+\end{enumerate}
+To see that this generates the correct probability
+$P(q_1<q)=F(q)/F(Q)$, we note first that the probability distribution
+of $q'$ from step 1 is $dP/dq'=g(q')/G(Q)$, and the probability of
+vetoing $q'$ is
+\beq
+P_{\rm veto}(q') = 1-\frac{f(q')G(q')}{F(q')g(q')}\;.
+\eeq
+Now the probability of finding $q_1<q$ with no veto is
+\beq
+P(q_1<q)_{\rm 0-veto} = \frac{G(q)}{G(Q)}\;,
+\eeq
+while the probability of finding $q_1<q$ after one veto is
+\bea
+P(q_1<q)_{\rm 1-veto} &=& \int_q^Q\done q'\frac{g(q')}{G(Q)}
+P_{\rm veto}(q')\frac{G(q)}{G(q')}\nonumber\\
+&=& \frac{G(q)}{G(Q)}\int_q^Q\done
+q'\left[\frac{g(q')}{G(q')}-\frac{f(q')}{F(q')}\right]\nonumber\\
+&=& \frac{G(q)}{G(Q)}\left[\ln\frac{G(Q)}{G(q)}-\ln\frac{F(Q)}{F(q)}\right]
+\;.
+\eea
+Similarly the probability of finding $q_1<q$ after two vetoes is
+\beq
+P(q_1<q)_{\rm 2-veto}
+=\frac 1{2!}\frac{G(q)}{G(Q)}\left[\ln\frac{G(Q)}{G(q)}-\ln\frac{F(Q)}{F(q)}\right]^2
+\;,
+\eeq
+where the $1/2!$ comes from the fact that the vetoes are ordered,
+$q''<q'<Q$.  Summing over all numbers of vetoes gives an
+exponential series,
+\bea
+P(q_1<q) &=& \sum_{n=0}^\infty
+\frac
+1{n!}\frac{G(q)}{G(Q)}\left[\ln\frac{G(Q)}{G(q)}-\ln\frac{F(Q)}{F(q)}\right]^n\nonumber\\
+&=&\frac{G(q)}{G(Q)}\exp\left[\ln\frac{G(Q)}{G(q)}-\ln\frac{F(Q)}{F(q)}\right]
+=\frac{F(q)}{F(Q)}\;,
+\eea
+as required.
+
+As a simple example, suppose we have an upper bound $a >f(q)/F(q)$
+for all $q<Q$.  Then we can take $G(q)=\exp(aq)$, so that step 1 gives
+$q'=Q+(\ln R_1)/a$, and veto $q'$ if $f(q')/F(q')<a R_2$. As in simple
+hit-or-miss, the method remains valid but becomes less efficient (more
+vetoes) if $a$ is larger than necessary.
+
+Once a value of $q_1$ has been accepted, $q_2$ can be generated by
+repeating steps 1--3 with $Q$ replaced by $q_1$, and so on to
+create a decreasing ordered sequence $\{q_i\}$.  In the case of a
+parton shower, the sequence terminates at $q_n$ when the step 1 with
+$Q=q_n$ produces a value of $q'$ less than the shower cutoff $Q_0$.
+
+
+
+
+
+
+
+
+
+
+
+

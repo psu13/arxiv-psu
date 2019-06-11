@@ -1,0 +1,321 @@
+\mcsubsection{\gensectionintro}
+
+Historically, \herwigpp is based on the event generator \Herwig 
+(Hadron Emission Reactions With Interfering
+Gluons), which was first published in 1986 \cite{Marchesini:1987cf} and was
+developed throughout the era of LEP, with the latest major release
+version 6.5.10 \cite{Corcella:2000bw,Corcella:2002jc} in
+2005\footnote{Version 6.5.20, released in 2010, contains bug fixes.}. From the
+beginning it has featured angular ordered parton showers to take colour
+coherence effects into account.  The cluster hadronization model it uses
+(\SecRef{sec:cluster-model}) was developed at the same time.
+
+\herwig was written  in \fortran, but
+with the advent of the LHC it was decided to freeze its development and
+develop a new generator, with the same strengths as the old program, in
+\cpp.  The idea was to not just rewrite the generator but to introduce
+physics improvements whenever they seemed necessary and feasible.  The
+new generator, \Herwigpp, was first released only for $e^+e^-$
+annihilation in 2003 \cite{Gieseke:2003hm}.  Since then it was
+further developed into a complete event generator for collider
+physics \cite{Bahr:2008tf}, with the current version 2.4.2 released in 2009.
+The code and its physics features are fully documented in the main
+reference \cite{Bahr:2008pv}, which will be updated as the code
+develops continually. Some distinctive physics features of \Herwigpp are:
+\begin{itemize}
+\item Automatic generation of hard processes and decays with full spin
+  correlations for many BSM models.
+\item Matching of many hard processes at NLO with the POWHEG method
+  built in. 
+\item Angular ordered parton showers. 
+\item Cluster hadronization.
+\item Sophisticated hadronic decay models, particularly for bottom
+  hadrons and $\tau$ leptons. 
+\item Hard and soft multiple partonic interactions to  model the
+  underlying event and soft inclusive interactions. 
+\end{itemize}
+We will describe the most important details of the physics models in the
+remainder of this section.
+
+\mcsubsection{ThePEG}
+\label{sec:thepeg}
+
+\Herwigpp is distributed as a comprehensive collection of plugin
+modules to \thepeg, the Toolkit for High
+Energy Physics Event Generation \cite{Lonnblad:2006pt}. 
+\thepeg provides all the infrastructure that
+is necessary to construct an event generator, handling \eg random
+number generation, the event record, tuneable parameter settings, and
+most importantly, a mechanism to plug in physics implementations for
+all steps of event generation. \Herwigpp provides such a set of
+plugins and comes with several complete generator setups for $e^+e^-$,
+$ep$ and hadron-hadron collisions. 
+
+\thepeg's core component is the Repository, which holds the relations
+between all the different modules involved in a generator run and
+their tuneable parameter settings. It can be controlled through a
+simple command language in plain text, which is used to set up the
+modules involved in a generator run.  Using such files at run time,
+the user can override any of the default parameters that \Herwigpp
+comes with; no recompilations are necessary to change parameters, or to
+switch between physics models, different matrix elements or analyses.
+
+\thepeg provides a reader for the Les Houches Accord event format
+\cite{Alwall:2006yp} to read in parton-level events for further processing, an
+output module for HepMC events \cite{Dobbs:2001ck}, as well as a native
+interface to Rivet \cite{Buckley:2010ar}, which avoids the overhead of having
+to pipe events through text files. Additionally, \thepeg can be linked
+to LHAPDF \cite{Whalley:2005nh} to get direct access to any PDF sets that are
+available there.
+
+The repository plugin structure allows for easy inclusion of user-defined
+modules. Any \cpp object that inherits from the respective base
+classes in \thepeg can be used transparently in addition to, or instead
+of, one of the default plugins. Any user code can be loaded at
+runtime as dynamically linked libraries. This allows modification
+of the program's behaviour without having to recompile the 
+main program or needing to edit the core libraries.
+They can therefore always be installed centrally, possibly as part of a larger framework.
+
+
+\mcsubsection{\gensectionhard} 
+Three main mechanisms for
+simulating hard processes are available 
+in \herwigpp. First, there is a large set of
+hand-coded matrix elements for the most common subprocesses for hadron,
+lepton and DIS collisions. They are written using a reimplementation
+of the HELAS helicity amplitude formalism \cite{Murayama:1992gi}, which allows
+the spin correlations to be carried forward to the remaining event
+simulation consistently. Second, \Herwigpp also contains a generic
+matrix element calculator for $2 \to 2$ processes, mainly used for BSM
+physics, which automatically determines the permitted diagrams for a
+set of given external legs from a list of active vertices. The third
+source of hard subprocesses is \thepeg's Les Houches reader, which
+allows parton-level events with any number of legs to be read from
+external sources.
+
+%%% \paragraph{diffraction}
+
+For several processes, \Herwigpp incorporates the full NLO corrections in
+the parton shower \cite{Hamilton:2008pd,Hamilton:2009za,Hamilton:2010mb}
+using the POWHEG formalism (\SecRef{sec:powheg}). An implementation of
+the CKKW merging scheme for tree-level multi-jet events
+(\SecRef{sec:matching-at-tree}) will be included in an upcoming
+release \cite{Hamilton:2009ne}.
+
+\mcsubsection{BSM physics}\label{sec:hwbsm}
+The simulation of BSM physics in \herwigpp
+\cite{Gigg:2007cr,Gigg:2008yc} makes extensive use of \thepeg's plugin
+architecture. Each model is implemented in a model class, which
+holds the relevant new parameters, and a list of Feynman rules for its
+vertices. Based on this information, all possible production and decay
+matrix elements with up to four external legs are constructed and can
+be selected in the text-based input files. 
+\Herwigpp currently provides models to simulate processes in the MSSM
+\cite{Haber:1984rc,Gunion:1984yn} and NMSSM \cite{Ellwanger:2009dp}
+scenarios with an SLHA \cite{Skands:2003cj,Allanach:2008qq}
+ file reader to provide the relevant parameters,
+a model for universal extra dimensions
+\cite{Cheng:2002iz,Appelquist:2000nn},
+an implementation of
+Randall-Sundrum \cite{Randall:1999ee}
+and ADD-type gravitons \cite{ArkaniHamed:1998rs,Antoniadis:1998ig},
+ as well as a model of transplanckian
+scattering \cite{Giudice:2001ce}.
+
+The production and decay matrix elements are all calculated using
+helicity amplitude techniques so that spin correlations between the
+production and decay of unstable particles can be generated using the
+approach of \cite{Richardson:2001df}, as described in
+\SecRef{sec:bsm-general-purpose}.  This ensures that \Herwigpp can
+generate the spin correlations for individual decay chains in a
+computationally efficient way, while still allowing the simulation of
+inclusive BSM signals. The efficiency comes at the expense of
+neglecting interference effects with other decay chains leading to the
+same final state.  Off-shell effects -- including the suppression of
+decay modes close to threshold -- are simulated using the approach of
+\cite{Gigg:2008yc}, which includes the running width of the unstable
+particle in the denominator of the Breit-Wigner propagator and in the
+calculation of the production matrix element for the particle.
+
+
+\mcsubsection{\gensectionshower}
+
+The parton shower in \Herwigpp is based on a new evolution variable
+$\tilde q$ \cite{Gieseke:2003rz}, motivated from the branching of gluons
+off heavy quarks \cite{Catani:2002hc}.  This is one of the possible
+choices in \EqRef{eq:evolchoices}.  As in \Herwig, the evolution in this
+variable ensures the angular ordering of parton shower emissions,
+to take colour coherence effects into account 
+(see \SecRef{parton-shower:initial-conditions}). In addition to the treatment
+of mass effects in the splitting functions and the showering of
+coloured particles in BSM models,
+ the shower differs from \Herwig's implementation in the way it
+ fills the
+available phase space for emissions.  Considering only the first gluon
+emission from a $q\bar q$ pair, the new
+variable fills the soft gluon emission region of phase space 
+without any overlap between the parton showers. 
+
+A so-called dead region is still present in the phase space, as in
+\Herwig, but is filled by either a hard matrix element correction or by
+higher order emissions.  Potential discontinuities in the emission phase
+space at the transition from the parton shower to the hard emission
+region are avoided by applying a so-called soft matrix element
+correction: the emission rates in the parton shower overestimate the
+rates one would obtain from a full matrix element calculation. For each
+parton shower emission, the overestimated rate is then corrected down to
+the matrix element by a veto (see \AppRef{mcmethods:veto}) 
+which reflects the relative emission
+probability between parton shower and matrix element, respectively.  In
+\Herwigpp there are matrix element corrections for $e^+e^-\to q\bar q$,
+Drell-Yan production of vector bosons in hadronic collisions, $gg\to
+h^0$ and for top decays.  In order to fill the phase space smoothly, it
+should be noted that the starting scales of the parton shower are
+adjusted to the values that are given by the requirement of
+colour coherence, see
+\EqRef{eq:psinitialconditions}.  In \herwigpp, these
+initial conditions cannot be
+altered, \eg by raising the initial evolution scale. 
+Before the parton shower generates emissions, all heavy unstable
+particles in the partonic
+final state, which typically have a very narrow width, are decayed.  
+All intermediate coloured lines are then also showered.
+These decays are done for the Higgs particle,
+electroweak gauge bosons, top quarks, and also \eg
+supersymmetric particles (see \SecRef{sec:hwbsm}). 
+
+
+\mcsubsection{\gensectionMPI}
+\label{sec:herwigmpi} 
+
+The default model for the simulation of
+underlying
+event physics is a model for multiple partonic interactions
+\cite{Bahr:2008dy}.  Both hard and soft multiple partonic interactions
+are taken into account.  The hard interactions are modelled as hard QCD
+$2\to 2$ scatters with a transverse momentum above the cutoff value
+$\pt^{\rm min}$.  The hard scattering centres are thought to be
+spatially distributed within the proton similarly to the charge,
+as measured in elastic electron--proton scattering, leading to the
+dipole form factor.  However, a different width for the
+distribution of colour charges, quarks and gluons, parameterized by the inverse
+radius $\mu^2$, is allowed. 
+%
+In the region $0<\pt<\pt^{\rm min}$, soft scatters are generated
+with a transverse momentum distribution that has a Gaussian form, has an
+integral given by the soft parton-parton cross section, and is
+continuously matched with the perturbative distribution at $\pt=\pt^{\rm min}$
+\cite{Borozan:2002fk}. These constraints are sufficient to uniquely specify
+this distribution. The soft partons' longitudinal momentum
+distribution is taken to be like that of the low-energy sea,
+\ie $\xpdf{}(x) \approx \text{flat}$.
+The spatial distribution of soft colour charges, given by a
+parameter $\mu_{\rm soft}^2$, is allowed to be different from the hard ones as
+otherwise it was not possible to obtain a model that is consistent with Tevatron
+data on multiple scattering \cite{Bahr:2008wk}.  The soft cross
+section and $\mu_{\rm soft}^2$ are fixed from measurements of the total
+cross section and the elastic slope parameter, if available, or
+parameterizations of them otherwise.
+
+After initial studies, good agreement with Tevatron underlying event
+measurements from Run I and II were found \cite{Bahr:2008dy}.  With
+the availability of first LHC data, e.g\ \cite{Aad:2010rd,Atlas:2010xx}
+it became clear that the model suffered from the lack of a colour
+reconnection mechanism, which will be included in an upcoming release.
+It gives a very satisfactory description of these hard underlying event
+data.
+
+\mcsubsection{\gensectionhadronize}
+
+\Herwigpp uses the cluster hadronization model, described in
+\SecRef{sec:cluster-model}.  Its first step is a non-perturbative gluon
+splitting, where each gluon splits
+isotropically in its rest frame into a $q\bar q$ pair of
+one of the three lightest flavours. We stress that at this stage all
+partons are treated as non-perturbative objects and acquire a
+constituent mass.  The value of the gluon mass in particular is one of
+the important model parameters.  After cluster formation we are left
+with a small number of heavier clusters of mass $M$, that will fission
+in binary sequential decays, whenever the condition
+\begin{equation}
+  \label{eq:clfission}
+  M^p \geq M_{\rm max}^p +(m_1+m_2)^p
+\end{equation}
+is fulfilled, where $m_{1, 2}$ are the masses of the constituent partons
+of the cluster and $M_{\rm max}$ and $p$ are the main parameters of the
+cluster hadronization model, chosen independently for light,
+charmed and bottom clusters.  Once a cluster is split, a new
+particle-antiparticle pair of quarks or diquarks is taken out of the
+vacuum, chosen with adjustable weights.  The kinematics of the new clusters
+preserve the original directions of the constituent particles and depend
+on whether they contain a perturbative parton or a beam remnant.  Once
+clusters fall below the limit of \EqRef{eq:clfission}, they
+decay isotropically in their rest frames 
+into pairs of hadrons.  The hadron species
+are determined according to available phase space and phenomenological
+weights for flavour multiplets.  As heavier baryons tend to be
+suppressed in this approach \cite{Kupco:1998fx}, the choice between a
+baryonic or non-baryonic decay is made before the hadron
+species are selected.  In some cases clusters will turn out to be too
+light to decay into a pair of hadrons; they will decay into a
+single light particle instead and share some momentum with a 
+cluster close by in spacetime.
+For any cluster that contains a parton from the original hard
+process, \eg a bottom quark, the resulting heavy meson retains the
+original parton direction in the cluster rest frame, up to some Gaussian
+smearing.
+
+In addition to the hadronization of partonic final states, the
+implementation of the model in \Herwigpp can also handle stable coloured
+particles or baryon number violating vertices, which both occur in BSM models.
+
+As with all tuneable parameters, a detailed list and description can be found
+in the manual \cite{Bahr:2008pv}.
+
+
+\mcsubsection{\gensectiondecay}
+
+The decays of both fundamental particles and unstable hadrons in
+\Herwigpp are modelled in the same framework, using either a general
+matrix element based on the spin structure of the decay, or with a
+specific matrix element for important decay modes, with a particular
+emphasis on baryon decays. This allows for a
+sophisticated treatment of off-shell effects, the treatment of excited
+baryonic multiplets, and for example the easy
+integration of the semileptonic $\tau$ lepton
+decays~\cite{Grellscheid:2007tt}. Spin correlation effects are
+included fully for the decays of all unstable
+particles~\cite{Richardson:2001df} and are
+consistent with the preceding stages of event generation all the way
+back to the production matrix element. QED radiation in decays is
+simulated using the YFS formalism
+\cite{Hamilton:2006xz} (see \SecRef{sec:qed-radiation}). 
+All the decay matrix elements have been extensively tested against
+external packages where available, and are in full agreement. 
+
+The particle properties such as masses, widths, lifetimes, decay modes
+and branching ratios that are used in \Herwigpp can be found
+in the online interface to its database of particle properties at
+\begin{center}
+\href{http://www.ippp.dur.ac.uk/~richardn/particles/}{\tt
+  http://www.ippp.dur.ac.uk/$\sim$richardn/particles/}
+\end{center}
+
+\mcsubsection{Outlook}
+
+\Herwigpp in its current version (2.4.2) is 
+superior to its \fortran predecessor in almost all aspects of
+physics simulation and is the recommended version for new
+studies. Once this is true without any exceptions the version 
+number will move to 3.0.  The program package, together
+with \thepeg can be found at 
+\begin{center} 
+\texttt{http://projects.hepforge.org/herwig/}
+\end{center}
+
+
+% Local Variables: 
+% mode: LaTeX
+% TeX-master: "../mcreview"
+% End: 

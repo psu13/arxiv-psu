@@ -1,0 +1,154 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{MC integration and sampling methods}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Once the matrix element for a given process has been constructed, one is left with 
+the task of performing the related integral over the phase space of the 
+initial- and final-state particles. Taking account of the unknown
+momentum fractions of the initial-state partons, the dimension of this phase space 
+is $(3n-4)+2$ at hadron colliders, with the integrand (the matrix element 
+squared) typically exhibiting a challenging structure with pronounced peaks.  
+While the large dimensionality renders traditional quadrature methods useless 
+and enforces the usage of MC techniques, the difficult structures 
+pose a serious threat to the convergence of the integration.  
+This means that highly advanced sampling algorithms need to be introduced,
+which are dubbed phase-space integrators or ``integration channels''.
+From the formal point of view, all integration channels dealing with the same 
+final state are equal, as they must finally yield exactly the same value 
+of the MC integral. However, they usually differ greatly in the
+rate of convergence and in practice one would obviously prefer to use 
+the channel leading to the smallest error in the shortest time.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Multi-channel integration}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+To generate an adequate phase-space integrator for realistic 
+$2\to n$-particle processes, several existing channels can be combined 
+using the multi-channel method~\cite{Kleiss:1994qy}. 
+Symbolically one can write a single channel as a map $X$ from uniformly 
+distributed random numbers $\vec x\in[0,1]^{3n-4}$
+to the four-momenta $\vec p=(p_1,\ldots,p_n)$ of final-state particles,
+The corresponding MC weight $g$ is then given by
+\begin{equation}
+  \frac{1}{g}=\frac{\done\Phi_n(X(\vec x))}{\done\vec x}
+\end{equation}
+where $\Phi_n$ represents the $n$-particle phase space.
+The multi-channel method now combines several maps $X_i$ into a new map
+$\rm X$ as follows:
+\begin{equation}\label{eq:gen_point_mc}
+  {\rm X}(\vec x,\tilde\alpha)=X_k(\vec x)\;,\quad\text{for}\quad
+  \sum_{l=1}^{k-1}\alpha_l<\tilde\alpha<\sum_{l=1}^{k}\alpha_l\;,
+\end{equation}
+requiring an additional random number $\tilde\alpha$ and arbitrary
+coefficients $\alpha_k$ with $\alpha_k>0$ and $\sum_k \alpha_k=1$. 
+The corresponding MC weight is given by
+\begin{equation}\label{eq:gen_weight_mc}
+  G=\sum_k \alpha_k\; g_k\;.
+\end{equation}
+The coefficients $\alpha_k$ can be adapted to minimize the variance of the 
+phase-space integral.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Brief review of phase-space factorization}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Consider the $2\to n$ scattering process in \EqRef{Eq::Master_For_XSec}, 
+where we label incoming particles by $a$ and $b$ and outgoing particles by 
+$1\ldots n$.  The corresponding partonic $n$-particle differential phase 
+space element reads
+\begin{equation}
+  \begin{split}
+  {\rm d}\Phi_n(a,b;1,\ldots,n)=&
+    \left[\,\prod\limits_{i=1}^n\frac{{\rm d}^4 p_i}{(2\pi)^3}\,
+    \delta(p_i^2-m_i^2)\Theta(p_{i0})\,\right]\,\\
+    &\qquad\times(2\pi)^4\delta^{(4)}\left(p_a+p_b-\sum_{i=1}^n p_i\right)\;,
+  \end{split}
+\end{equation}
+where $m_i$ are the on-shell masses of the outgoing particles.  Following 
+Ref.~\cite{James:1968gu}, the $n$-particle phase space can be factorized as
+\begin{equation}\label{eq:split_ps}
+  \begin{split}
+  {\rm d}\Phi_n(a,b;1,\ldots,n)=&\;
+    {\rm d}\Phi_{n-m+1}(a,b;\pi,m+1,\ldots,n)\,\\
+    &\qquad\times \frac{{\rm d} s_\pi}{2\pi}\,
+    {\rm d}\Phi_m(\pi;1,\ldots,m)\;,
+  \end{split}
+\end{equation}
+where $\pi=\{1\ldots m\}$ indicates an $s$-channel virtual particle.
+\EqRef{eq:split_ps} allows one to decompose 
+the complete phase space into building blocks corresponding to
+$s$- and $t$-channel two-body decay processes of the form 
+${\rm d}\Phi_{2}(\{12\};1,2)$ and ${\rm d}\Phi_{2}(a,b;1,2)$.
+We refer to these objects as phase-space 
+vertices, while the integral ${\rm d} s_\pi/2\pi$, introduced in 
+\EqRef{eq:split_ps}, is called a phase-space propagator. 
+There is a close correspondence between matrix element computation and 
+phase-space generation, justifying this notation.
+Even though $s$- and $t$-channel decay seem identical, since 
+both represent a solid angle integration, in practice one would use 
+different sampling strategies~\cite{Byckling:1969sx}. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Sequential algorithm for phase-space integration}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{sec:sequential_phasespace}
+One of the most efficient general approaches to sampling the phase space 
+of multi-particle processes is to employ a sequential algorithm, constructing
+the full phase space based on the pole structure of one of the Feynman diagrams
+that contribute to the matrix element. This technique was suggested 
+very early on in the history of MC programs~\cite{Byckling:1969sx}. 
+It is then also possible to construct a separate integrator for each possible 
+graph and employ multi-channel methods to optimize the integration~\cite{Kleiss:1994qy}. 
+The method provides a general way to adapt to the assumed pole structure of 
+arbitrarily complicated matrix elements. It is nowadays widely used 
+by the most advanced general-purpose phase-space generators~\cite{
+  Kanaki:2000ey,Papadopoulos:2000tt,Cafarella:2007pc,
+  Krauss:2001iv,Maltoni:2002qb,Alwall:2007st,Gleisberg:2008fv}. 
+The core algorithm can be formulated as recursive relations in terms 
+of the phase-space propagators and vertices.
+
+The difference between the various phase-space generators available
+today is usually only {\it how} these recursive equations are employed.
+If the basic building blocks are 
+used to build ``phase-space diagrams'', we obtain an integrator which is
+suitable for combination with a diagram-based matrix-element generator.
+If the recursion is implemented as is, the resulting phase-space generator
+is best combined with a recursive method to compute the matrix elements.
+\if{false}
+In the latter case it is important to note that while momenta 
+labelled by $\alpha$ in \EqRef{eq:ps_building_blocks} 
+may correspond to an off-shell internal particle, $b$ always indicates 
+a fixed external incoming particle. This eventually allows the reuse of 
+MC weights, just as currents are reused in recursive matrix-element 
+computations. 
+\fi
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Other algorithms}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Other algorithms for phase-space integration exist, which are 
+often less general, but potentially more efficient for their purpose.
+One of them is the HAAG method~\cite{vanHameren:2002tc},
+which is designed to produce momenta distributed approximately according to 
+a QCD antenna function for an $n$-particle process, which reads
+\begin{equation}\label{eq:antenna}
+  A_{n}(p_0,p_1,...,p_{n-1})=\frac{1}{
+    (p_0 p_1)(p_1 p_2)...(p_{n-2} p_{n-1})(p_{n-1} p_0)}.
+\end{equation}
+Different antennae can be obtained from permutations of the momenta $\{p_i\}$.
+Generally, like the sequential phase-space integrator described above,
+HAAG relies on phase-space factorization over time-like intermediate 
+momenta.  The main difference lies in the sequence of factorization 
+and in the sampling technique for the basic vertices,
+which resembles the phase-space sampling in a dipole shower.
+
+An important, simple but universally applicable phase-space integrator is 
+Rambo~\cite{Kleiss:1985gy}. It is widely used because the underlying
+algorithm requires no information about the integrand. This makes
+Rambo the preferred default choice if no time is to be spent on the 
+construction of a dedicated integration channel for the process in question.
+Rambo assumes an unconstrained phase space, \ie a phase space where 
+four-momentum conservation does not hold, to generate initial particle
+momenta. These momenta are in turn boosted and rescaled to arrive at 
+a physically meaningful phase-space point. The conformal transformation 
+thus applied is associated with an additional weight. Rambo can be used
+for massless and massive particles alike, where massive particles simply
+require an additional step in the algorithm.
