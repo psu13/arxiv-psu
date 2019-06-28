@@ -60,15 +60,14 @@ verify(){
 if [ $# = 0 ]; then
     usage
     exit 0
-fi    
-
-
-mkdir ~/arxiv-psu/$1
-cd ~/arxiv-psu/$1
+fi
 
 while [ "$#" -gt 0 ]; do
 # Download using current identifier format
     if echo "$1" | grep '^[0-9]\{4\}\.[0-9]\{5\}\(v[0-9]\)\?$' -q ; then
+        echo $1
+        mkdir ~/arxiv-psu/$1
+        cd ~/arxiv-psu/$1
         if ! curl  $URL/$1.pdf -o $1.pdf -s; then
             fail_connect
         else
@@ -84,7 +83,7 @@ while [ "$#" -gt 0 ]; do
                 fail_connect
             fi
         fi
-        rm $1.tgz
+        rm $FILE.tgz
         git add .
         git status
         shift
@@ -92,11 +91,27 @@ while [ "$#" -gt 0 ]; do
 # Download using old identifier format
     elif echo $1 | grep '.\/[0-9]\{7\}\(v[0-9]\)\?$' -q; then
         FILE=$(printf '%s' "$1" | tr '/' '-')
+        echo $FILE
+        
+        mkdir ~/arxiv-psu/$FILE
+        cd ~/arxiv-psu/$FILE
         if ! curl $URL/$1.pdf -o $FILE.pdf -s; then
             fail_connect
         else   
             verify $FILE
-        fi    
+        fi 
+        if ! curl  $PURL/$1 -o $FILE.tgz -s; then
+            fail_connect
+        fi
+        tar xfvz $FILE.tgz
+        if [ $? -eq 1 ]; then
+            if ! curl  $PURL/$1 -o $FILE.tex -s; then
+                fail_connect
+            fi
+        fi
+        rm $FILE.tgz
+        git add .
+        git status   
         shift
 
     elif [ $1 = '--help' ] || [ $1 = '-h' ]; then       
