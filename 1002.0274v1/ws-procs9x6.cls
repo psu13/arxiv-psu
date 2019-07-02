@@ -62,11 +62,11 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Fonts %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
-\def\foliofont{\fontsize{8}{10}\selectfont}
-\def\bibfont{\fontsize{9}{11}\selectfont}
+\def\foliofont{\fontsize{10}{12}\selectfont}
+\def\bibfont{\fontsize{10}{12}\selectfont}
 \def\rhfont{\footnotesize\itshape{}}
 \def\catchlinefont{\footnotesize}
-\def\titlefont{\fontsize{10}{13}\bfseries\boldmath\selectfont\centering{}}
+\def\titlefont{\fontsize{12}{14}\bfseries\boldmath\selectfont\centering{}}
 \def\authorfont{\footnotesize}
 \def\abstractfont{\footnotesize}
 \let\affiliationfont\rhfont
@@ -80,48 +80,55 @@
 \def\tablefont{\footnotesize}
 \def\tablecaptionfont{\footnotesize}
 \def\foot{\small}
-%
 \renewcommand\normalsize{%
-   \@setfontsize\normalsize\@xpt{13}%\@xiiipt    %%10/13pt
-   \abovedisplayskip6\p@\@plus4\p@\@minus2\p@
-   \abovedisplayshortskip\abovedisplayskip
-   \belowdisplayshortskip\abovedisplayshortskip
-   \belowdisplayskip\abovedisplayskip
+   \@setfontsize\normalsize\@xiipt{14.5}%
+   \abovedisplayskip 12\p@ \@plus3\p@ \@minus7\p@
+   \abovedisplayshortskip \z@ \@plus3\p@
+   \belowdisplayshortskip 6.5\p@ \@plus3.5\p@ \@minus3\p@
+   \belowdisplayskip \abovedisplayskip
    \let\@listi\@listI}
 \normalsize
-%
 \newcommand\small{%
-   \@setfontsize\small\@ixpt{11}%
-   \abovedisplayskip 8\p@ \@plus3\p@ \@minus4\p@
-   \abovedisplayshortskip \z@ \@plus2\p@
-   \belowdisplayshortskip 4\p@ \@plus2\p@ \@minus2\p@
+   \@setfontsize\small\@xipt{13.6}%
+   \abovedisplayskip 11\p@ \@plus3\p@ \@minus6\p@
+   \abovedisplayshortskip \z@ \@plus3\p@
+   \belowdisplayshortskip 6.5\p@ \@plus3.5\p@ \@minus3\p@
    \def\@listi{\leftmargin\leftmargini
-               \topsep 4\p@ \@plus2\p@ \@minus2\p@
-               \parsep 2\p@ \@plus\p@ \@minus\p@
+               \topsep 9\p@ \@plus3\p@ \@minus5\p@
+               \parsep 4.5\p@ \@plus2\p@ \@minus\p@
                \itemsep \parsep}%
-   \belowdisplayskip \abovedisplayskip}
-%
+   \belowdisplayskip \abovedisplayskip
+}
 \newcommand\footnotesize{%
-   \@setfontsize\footnotesize\@viiipt{10}%
-   \abovedisplayskip 6\p@ \@plus2\p@ \@minus4\p@
-   \abovedisplayshortskip \z@ \@plus\p@
-   \belowdisplayshortskip 3\p@ \@plus\p@ \@minus2\p@
+   \@setfontsize\footnotesize\@xpt\@xiipt
+   \abovedisplayskip 10\p@ \@plus2\p@ \@minus5\p@
+   \abovedisplayshortskip \z@ \@plus3\p@
+   \belowdisplayshortskip 6\p@ \@plus3\p@ \@minus3\p@
    \def\@listi{\leftmargin\leftmargini
-               \topsep 3\p@ \@plus\p@ \@minus\p@
-               \parsep 2\p@ \@plus\p@ \@minus\p@
+               \topsep 6\p@ \@plus2\p@ \@minus2\p@
+               \parsep 3\p@ \@plus2\p@ \@minus\p@
                \itemsep \parsep}%
-   \belowdisplayskip \abovedisplayskip}
-%
-\newcommand\scriptsize{\@setfontsize\scriptsize\@viipt\@viiipt}
-\newcommand\tiny{\@setfontsize\tiny\@vpt\@vipt}
-\newcommand\large{\@setfontsize\large\@xiipt{14}}%
-\newcommand\Large{\@setfontsize\Large\@xivpt{16}}%%
-\newcommand\LARGE{\@setfontsize\LARGE\@xviipt{22}}
-\newcommand\huge{\@setfontsize\huge\@xxpt{25}}
-\newcommand\Huge{\@setfontsize\Huge\@xxvpt{30}}
+   \belowdisplayskip \abovedisplayskip
+}
+\newcommand\scriptsize{\@setfontsize\scriptsize\@viiipt{9.5}}
+\newcommand\tiny{\@setfontsize\tiny\@vipt\@viipt}
+\newcommand\large{\@setfontsize\large\@xivpt{18}}
+\newcommand\Large{\@setfontsize\Large\@xviipt{22}}
+\newcommand\LARGE{\@setfontsize\LARGE\@xxpt{25}}
+\newcommand\huge{\@setfontsize\huge\@xxvpt{30}}
+\let\Huge=\huge
+\if@twocolumn
+  \setlength\parindent{1em}
+\else
+  \setlength\parindent{1.5em}
+\fi
 \setlength\smallskipamount{3\p@ \@plus 1\p@ \@minus 1\p@}
 \setlength\medskipamount{6\p@ \@plus 2\p@ \@minus 2\p@}
 \setlength\bigskipamount{12\p@ \@plus 4\p@ \@minus 4\p@}
+\setlength\headheight{12\p@}
+\setlength\headsep   {25\p@}
+\setlength\topskip   {12\p@}
+\setlength\footskip{30\p@}
 %
 \DeclareOldFontCommand{\rm}{\rmfamily}{\mathrm}
 \DeclareOldFontCommand{\sf}{\sffamily}{\mathsf}
@@ -159,11 +166,16 @@
 \newdimen\trimwidth \trimwidth6truein
 \newdimen\typeheight \typeheight7.35in
 %
-\setlength\parindent{15pt}
-\setlength\headheight{5\p@}
-\setlength\headsep   {.25in}
-\setlength\topskip   {7\p@}
-\setlength\footskip{10pt}
+\setlength\parindent{1.2em}
+\setlength\smallskipamount{3\p@ \@plus 1\p@ \@minus 1\p@}
+\setlength\medskipamount{6\p@ \@plus 2\p@ \@minus 2\p@}
+\setlength\bigskipamount{12\p@ \@plus 4\p@ \@minus 4\p@}
+\setlength\headheight{12\p@}
+\setlength\headsep   {25\p@}
+\setlength\topskip   {12\p@}
+\setlength\footskip{30\p@}
+
+
 \setlength\maxdepth{4\p@}
 \setlength\@maxdepth\maxdepth
 \setlength\textwidth{4.5in}
@@ -179,21 +191,23 @@
 \setlength\marginparsep{7\p@}
 \setlength\marginparpush{5\p@}
 \setlength\topmargin{0.54in}
-\setlength\footnotesep{6\p@} %6pt
-\setlength{\skip\footins}{18\p@ \@plus 5\p@ \@minus 2\p@}
-\setlength\floatsep    {18\p@ \@plus 2\p@ \@minus 2\p@}
-\setlength\textfloatsep{18\p@ \@plus 2\p@ \@minus 4\p@}
-\setlength\intextsep   {18\p@ \@plus 2\p@ \@minus 2\p@}
-\setlength\dblfloatsep    {18\p@ \@plus 2\p@ \@minus 2\p@}
-\setlength\dbltextfloatsep{18\p@ \@plus 2\p@ \@minus 4\p@}
-\setlength\@fptop{0\p@}
-\setlength\@fpsep{8\p@ \@plus 2fil}
+
+\setlength\footnotesep{8.4\p@}
+\setlength{\skip\footins}{10.8\p@ \@plus 4\p@ \@minus 2\p@}
+\setlength\floatsep    {12\p@ \@plus 2\p@ \@minus 4\p@}
+\setlength\textfloatsep{20\p@ \@plus 2\p@ \@minus 4\p@}
+\setlength\intextsep   {14\p@ \@plus 4\p@ \@minus 4\p@}
+\setlength\dblfloatsep    {14\p@ \@plus 2\p@ \@minus 4\p@}
+\setlength\dbltextfloatsep{20\p@ \@plus 2\p@ \@minus 4\p@}
+\setlength\@fptop{0\p@ \@plus 1fil}
+\setlength\@fpsep{10\p@ \@plus 2fil}
 \setlength\@fpbot{0\p@ \@plus 1fil}
 \setlength\@dblfptop{0\p@ \@plus 1fil}
-\setlength\@dblfpsep{8\p@ \@plus 2fil}
+\setlength\@dblfpsep{10\p@ \@plus 2fil}
 \setlength\@dblfpbot{0\p@ \@plus 1fil}
-\setlength\partopsep{0\p@}
-%
+\setlength\partopsep{3\p@ \@plus 2\p@ \@minus 2\p@}
+
+
 \setlength\lineskip{1\p@}
 \setlength\normallineskip{1\p@}%
 \renewcommand\baselinestretch{}%{}
@@ -1088,7 +1102,7 @@
       \hbox to \textwidth{\vrule width\draftrule \hfill\vrule height\tempdimen width\draftrule}%
            \hrule height\draftrule}}}%%
 %
-\let\trimmarks\cropmarks
+\let\trimmarks\relax
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Crop Marks %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Output Routine %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
