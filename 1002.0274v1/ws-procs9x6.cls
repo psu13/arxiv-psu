@@ -692,7 +692,7 @@
 \long\def\tbl#1#2{%
     \parindent\z@\ignorespaces\noindent\tablecaptionfont
     \caption{#1}%
-    \par\setbox\tempbox\hbox{\tablefont #2}%
+    \par\setbox\tempbox\hbox{\footnotesize #2}%
     \tablewd\hsize\advance\tablewd-\wd\tempbox\global\divide\tablewd\tw@
     \ifdim\wd\captionbox<\wd\tempbox\centerline{\unhbox\captionbox}
     \else\leftskip\tablewd\rightskip\leftskip{\unhbox\captionbox}\par
