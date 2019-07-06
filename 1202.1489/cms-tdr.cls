@@ -1,7 +1,7 @@
 \def\Fileversion$#1: #2 ${\gdef\fileversion{#2}}
 \def\Filedate$#1: #2 #3 ${\gdef\filedate{#2}}
-\Fileversion$Revision: 100792 $
-\Filedate$Date: 2012-02-02 21:35:01 -0500 (Thu, 02 Feb 2012) $
+\Fileversion$Revision: 190780 $
+\Filedate$Date: 2013-06-16 18:07:54 +0200 (Sun, 16 Jun 2013) $
 
 %\def\fileversion{1.0.0}\def\filedate{21 December 2006}
 
@@ -47,7 +47,9 @@
 %to allow for italic formatting
 \newboolean{cms@italic}
 \setboolean{cms@italic}{false}
-
+% to use formatting for a supplement
+\newboolean{cms@supplement}
+\setboolean{cms@supplement}{false}
 \DeclareOption{tdr}{\setboolean{cms@tdr}{true}\def\cms@style{tdr}} % default anyway
 \DeclareOption{note}{\setboolean{cms@note}{true}\def\cms@style{note}}
 \DeclareOption{cmspaper}{\setboolean{cms@paper}{true}\def\cms@style{paper}}
@@ -58,6 +60,7 @@
 \DeclareOption{dn}{\setboolean{cms@dn}{true}\def\cms@style{dn}}
 \DeclareOption{final}{\setboolean{cms@final}{true}}
 \DeclareOption{collab}{\setboolean{cms@collab}{true}}
+\DeclareOption{supplement}{\setboolean{cms@supplement}{true}}
 % unknown options are passed on to report class or article class,
 % depending on the cms@tdr switch (its value is known as its option is declared first)
 \DeclareOption*{%
@@ -96,12 +99,14 @@
 \let\subfigure\subfloat% compatibility between subfigure and subfig packages
 \usepackage{xspace}%
 \usepackage{multirow}%
+\usepackage{dcolumn} % for aligning columns on decimal: rather picky
 
-\usepackage{color}% just for warnings so far
+\usepackage[table,usenames,dvipsnames]{xcolor}% just for warnings so far; do not use for journal submission without prior approval
 
 \usepackage{amsmath,amssymb}% for advanced math typesetting
 \DeclareMathOperator{\sgn}{sgn}% Declare the sgn operator
 \DeclareMathOperator{\sign}{sign}% for those who insist on sign instead
+\DeclareMathOperator{\erf}{erf}% just missing
 \usepackage{pennames-pazo}% particle names: converted from pennames for mathpazo
 
 \usepackage{topcapt}% for captions at top, i.e., tables
@@ -275,6 +280,7 @@
 %
 \usepackage{graphicx,graphics}
 %\DeclareGraphicsExtensions{.eps,.png,.jpg,.jpeg}  % used by includegraphics. Note: .eps and .gif not supported by pdftex
+\DeclareGraphicsExtensions{.pdf,.PDF,.png,.PNG,.jpg,.JPG,.jpeg,.JPEG}  % used by includegraphics. Note: .eps and .gif not supported by pdftex
 \usepackage{lscape} % part of graphicx. used for rotating entire pages.
 \usepackage{rotating}%  LT: added 3 Apr 2006 for Vincenzo
 
@@ -283,7 +289,7 @@
 %\usepackage[bookmarksnumbered,bookmarksopen,bookmarksopenlevel=1,colorlinks,linkcolor=magenta,citecolor=blue,urlcolor=red,plainpages=false,pdfpagelabels]{hyperref}
 
 % Use following line for paper (no coloured links etc)
-\usepackage[bookmarksnumbered,bookmarksopen,bookmarksopenlevel=1,colorlinks=false,pdfborder={0 0 0},plainpages=false,pdfpagelabels]{hyperref}
+%\usepackage[bookmarksnumbered,bookmarksopen,bookmarksopenlevel=1,colorlinks=false,pdfborder={0 0 0},plainpages=false,pdfpagelabels]{hyperref}
 
 \usepackage[numbers,sort&compress,merge]{natbib}
 \ifthenelse{\boolean{cms@tdr}}
@@ -485,6 +491,7 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \providecommand{\titlerunning}[1]{\relax} % for EPJC short titles for running head
+\providecommand{\doi}{\texttt{doi:}\begingroup \urlstyle{tt}\Url}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %   NOTES code
@@ -558,7 +565,7 @@
             {
             }
         }
-        {\relax}    
+        {\relax}
     }
 }
 % Abstract: now a command, not an environment.
@@ -621,11 +628,11 @@
 {
 \begin{center}\includegraphics{cms_draft_\cms@style}\end{center}
 \vskip -0.5em%
-{\RCSgetTag\hfill\raggedleft\ignorespaces\large\begin{tabular}{@{}l@{\hspace{2pt}}l}
+{\ifx\RCSgetTag\empty\relax\else\RCSgetTag\fi\hfill\raggedleft\ignorespaces\large\begin{tabular}{@{}l@{\hspace{2pt}}l}
 \multicolumn{2}{@{}l}{\@date}  \\
 Head Id:  & \ifx\RCSRevision\empty\relax\else\RCSRevision\fi \\
 Archive Id:  & \ifx\svnVersion\empty\relax\else\svnVersion\fi \\
-Archive Date:& \ifx\RCSId\empty\relax\else\expandafter\RCSgetDate\RCSId\RCSSVNDate\fi \\     
+Archive Date:& \ifx\RCSId\empty\relax\else\expandafter\RCSgetDate\RCSId\RCSSVNDate\fi \\
 \ifx\RCSHeadURL\empty\relax     & \\ \else Archive Tag: &\RCSSVNTag\\     \fi
 \end{tabular}}
 }
@@ -705,13 +712,15 @@ Archive Date:& \ifx\RCSId\empty\relax\else\expandafter\RCSgetDate\RCSId\RCSSVNDa
 
   \par
   \vskip 2cm%
-  \begin{CMSabstract}
-  \centering
-  \usebox{\CMSabstractbox}
-  \end{CMSabstract}
-  % submit to : 
+  \ifthenelse{\not\boolean{cms@supplement}}{
+   \begin{CMSabstract}
+    \centering
+    \usebox{\CMSabstractbox}
+    \end{CMSabstract}
+  }{}
+  % submit to :
   \ifx\cmsMessage\undefined\else\vskip 1cm\begin{center}\textit{\cmsMessage}\end{center}\fi
-  \ifthenelse{\boolean{cms@final}}{}{\vfill\hfill{\textcolor{cms@grey}{\framebox{
+  \ifthenelse{\boolean{cms@final}}{\null\vfill\ifthenelse{\boolean{cms@paper}}{\noindent\small{\copyright\,\the\year\ CERN for the benefit of the CMS Collaboration. \href{http://creativecommons.org/licenses/by/3.0}{CC-BY-3.0 license}}}{}}{\vfill\hfill{\textcolor{cms@grey}{\framebox{
   \begin{tabular}{lp{0.8\textwidth}}
   \multicolumn{2}{l}{This box is only visible in draft mode. Please make sure the values below make sense.}\\
   \cline{1-2}\\
@@ -721,8 +730,8 @@ Archive Date:& \ifx\RCSId\empty\relax\else\expandafter\RCSgetDate\RCSId\RCSSVNDa
   PDFKeywords:&\expandafter\string\@pdfkeywords\\
   \cline{1-2}\\
   \multicolumn{2}{l}{Please also verify that the abstract does not use any user defined symbols}
-  \end{tabular}}}}\hfill}
-  \vfil\null
+  \end{tabular}}}}\hfill\vfil}
+  \null
   \end{titlepage}%
   \cleardoublepage
   \pagestyle{fancy}
@@ -747,7 +756,8 @@ Archive Date:& \ifx\RCSId\empty\relax\else\expandafter\RCSgetDate\RCSId\RCSSVNDa
 }
 \renewenvironment{thebibliography}[1]
      {\section*{\refname}%
-      \list{\@biblabel{\@arabic\c@enumiv}}%
+           \@mkboth{\MakeUppercase\refname}{\MakeUppercase\refname}
+           \list{\@biblabel{\@arabic\c@enumiv}}%
            {\settowidth\labelwidth{\@biblabel{#1}}%
             \leftmargin\labelwidth
             \advance\leftmargin\labelsep
@@ -841,6 +851,7 @@ Archive Date:& \ifx\RCSId\empty\relax\else\expandafter\RCSgetDate\RCSId\RCSSVNDa
 \let\RCSRevision\empty
 \let\RCSDate\empty
 \let\RCSHeadURL\empty
+\let\RCSId\empty
 \global\def\RCS$#1: #2${\expandafter\def\csname RCS#1\endcsname{#2}}
 % use RCSgetDate with Id field to get Zulu time; with Date (i.e., local time), change to #1-#2-#3..., etc
 \gdef\RCSgetDate#1 #2 #3-#4-#5 #6Z #7 {\gdef\RCSSVNDate{#3/#4/#5}}
@@ -848,7 +859,7 @@ Archive Date:& \ifx\RCSId\empty\relax\else\expandafter\RCSgetDate\RCSId\RCSSVNDa
 \gdef\RCStagtag{tags}
 \gdef\RCSgetExTag  svn+ssh://#1/reps/tdr2/#2/#3/#4/#5.tex {\gdef\RCStail{#5\par} \gdef\RCSstem{#4} }% need \par to end input
 \gdef\RCSparseTag #1/#2\par{\gdef\RCSSVNTag{#1}}
-\gdef\RCSgetTag{\expandafter\RCSgetExTag\RCSHeadURL\ifx\RCStagtag\RCSstem\expandafter\RCSparseTag\RCStail\else\gdef\RCSSVNTag{\RCSstem}\fi}
+\gdef\RCSgetTag{\ifx\RCSHeadURL\empty\relax\else\expandafter\RCSgetExTag\RCSHeadURL\ifx\RCStagtag\RCSstem\expandafter\RCSparseTag\RCStail\else\gdef\RCSSVNTag{\RCSstem}\fi\fi}
 %
 %
 % These were previously in pieces of the skeleton. Brought here to clean up the export version.
