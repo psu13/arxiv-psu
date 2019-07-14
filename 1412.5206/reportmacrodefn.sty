@@ -1,0 +1,52 @@
+\ProvidesPackage{reportmacrodefn}
+
+\RequirePackage{currfile}
+
+\def\reportmacrodefn#1{%
+    \ifdefined #1
+        \edef\foundmacrodefn{^^J^^J\space'\string #1' is already defined^^J\space\space\space\space (with meaning \meaning #1),^^J\space\space\space\space(i.e. it is defined before executing the '\string\reportmacrodefn' line, possibly earlier in the document, in the format file or as a primitive.)^^J\space\space\space\space Will look for re-definitions}%
+        \show\foundmacrodefn
+    \else
+        \typeout{** Looking for definitions of \string #1...}%
+    \fi
+    \expandafter\let\csname macrodefn\string #1\endcsname #1%
+    \AtBeginOfFiles{%
+        \expandafter\let\csname\currfilename/ macrodefn\string #1\endcsname #1%
+    }%
+    \AtEndOfFiles{%
+        \begingroup\expandafter\endgroup\expandafter\let\expandafter\reportmacrodefntmp\csname\currfilename/ macrodefn\string #1\endcsname% avoid \relax side-effect of \csname...\endcsname
+        \unless\ifx\reportmacrodefntmp #1% check if the macro has changed within file \currfilename
+            \begingroup\expandafter\endgroup\expandafter\let\expandafter\reportmacrodefntmpreported\csname macrodefn\string #1\endcsname
+            \unless\ifx\reportmacrodefntmpreported #1%check if the macro has changed since the last time we reported it
+                % don't report a line number as this only gets executed at the end of the input file so would be useless and misleading
+                \edef\foundmacrodefn{^^J^^J\space'\string #1' changed^^J\space\space\space\space in '\currfilename' (file stack: \currfiledumpstack), ^^J\space\space\space\space was \meaning\reportmacrodefntmp^^J\space\space\space\space now \meaning #1}%
+                \show\foundmacrodefn
+                \expandafter\let\csname macrodefn\string #1\endcsname #1%
+            \fi
+        \fi
+    }}
+
+% currfile doesn't provide a friendly way to dump the stack, so here's one:
+\ifcurrfile@abspath
+\newcommand*\currfiledumpstack{%
+  \expandafter\currfile@dumpstack\currfile@stack\stopquark\stopquark\stopquark\stopquark
+}
+\def\currfile@dumpstack#1#2#3#4{%
+  \ifx#1\stopquark\@empty
+  \else
+  {#2\ifx\empty#3\empty\else.#3\fi}%
+  \expandafter\currfile@dumpstack
+  \fi
+}
+\else
+\newcommand*\currfiledumpstack{%
+  \expandafter\currfile@dumpstack\currfile@stack\stopquark\stopquark\stopquark
+}
+\def\currfile@dumpstack#1#2#3{%
+  \ifx#1\stopquark\@empty
+  \else
+  {#2\ifx\empty#3\empty\else.#3\fi}%
+  \expandafter\currfile@dumpstack
+  \fi
+}
+\fi
