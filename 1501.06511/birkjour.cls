@@ -1767,9 +1767,9 @@ DOI 10.1007/\@DOInr-\@DOI\hfill\boxr\par\fi}
 \copyright\ \@cpyear\ Birkh\"auser Verlag Basel/Switzerland\br
 \ifjournal@\textit{Published online}\! \@onlinedate\fi\br
 DOI 10.1007/\@DOInr-\@DOI\hfill\boxr\par}\fi
-\ifteinsformat@\usepackage[paperwidth=155mm,paperheight=235mm,tmargin=21mm,lmargin=19mm,rmargin=19mm,bmargin=21mm,asymmetric]{geometry}
-\special{papersize=15.5cm,23.5cm}\RequirePackage{amsmath}
-\fi
+%\ifteinsformat@\usepackage[paperwidth=155mm,paperheight=235mm,tmargin=21mm,lmargin=19mm,rmargin=19mm,bmargin=21mm,asymmetric]{geometry}
+%\special{papersize=15.5cm,23.5cm}\RequirePackage{amsmath}
+%\fi
 
 
 \newcommand\issuenumber[1]{%
