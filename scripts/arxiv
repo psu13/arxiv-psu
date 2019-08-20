@@ -114,13 +114,18 @@ while [ "$#" -gt 0 ]; do
         fi
         tar xfvz $FILE.tgz
         if [ $? -eq 1 ]; then
-            if ! curl  $PURL/$1 -o $FILE.tex -s; then
-                fail_connect
-            fi
+	    echo tar failed try gunzip
+            mv $FILE.tgz $FILE.tex.gz
         fi
-        rm $FILE.tgz
+        gunzip $FILE.tex.gz
+        if [ $? -eq 1 ]; then
+	    echo gunzip failed, use .tex
+            mv $FILE.tex.gz $FILE.tex
+        fi
+        rm -f $FILE.tgz
+	rm -f $FILE.gz
         git add .
-        git status   
+        git status
         shift
 
     elif [ $1 = '--help' ] || [ $1 = '-h' ]; then       
