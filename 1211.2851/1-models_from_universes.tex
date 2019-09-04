@@ -1,0 +1,504 @@
+
+\section{Models from Universes} \label{section:models-from-universes}
+
+In this section, we set up the machinery which we will use, in later sections, to model type theory in simplicial sets.  The type theory we consider, and some of the technical machinery we use, are standard; the main original contribution is a new technique for solving the so-called coherence problem, using universes.
+
+\subsection{The type theory under consideration} \label{subsec:the-type-theory}
+
+Formally, the type theory we will consider is a slight variant of Martin-Löf’s Intensional Type Theory, as presented in e.g.\ \cite{martin-lof:bibliopolis}.  The rules of this theory are given in full in Appendix~\ref{app:type-theory}; briefly, it is a dependent type theory, taking as basic constructors $\synPi$-, $\synSigma$-, $\synId$-, and $\synW$-types, $\synZero$, $\synOne$, $+$, and one universe à la Tarski closed under these constructors.
+
+A related theory of particular interest is the Calculus of Inductive Constructions, on which the Coq proof assistant is based (\cite{werner:thesis}).  CIC differs from Martin-Löf type theory most notably in its very general scheme for inductive definitions, and in its treatment of universes.  We do not pursue the question of how our model might be adapted to CIC, but for some discussion and comparison of the two systems, see  \cite{paulin-mohring:habilitation}, \cite{barras:habilitation}, and \cite[6.2]{voevodsky:notes-on-type-systems}.
+
+One abuse of notation that we should mention: we will sometimes write e.g.\ $A(x)$ or $t(x,y)$ to indicate free variables on which a term or type may depend, so that we can later write $A(g(z))$ to denote the substitution $[g(z)/x]A$ more readably.  Note however that the variables explicitly shown need not actually appear; and there may also always be other free variables in the term, not explicitly displayed.
+
+\subsection{Contextual categories} \label{subsec:contextual-cats}
+
+Rather than working formally with the syntax of this type theory, we work instead in terms of \emph{contextual categories}, a class of algebraic objects abstracting the key structure given by the syntax.\footnote{Contextual categories are not the only option; the closely related notions of \emph{categories with attributes} \cite{cartmell:thesis,moggi:program-modules,pitts:categorial-logic}, \emph{categories with families} \cite{dybjer:internal-type-theory,hofmann:syntax-and-semantics}, and \emph{comprehension categories} \cite{jacobs:comprehension-categories} would all also serve our purposes.}  The plain definition of a contextual category corresponds to the structural core of the syntax; further syntactic rules (logical constructors, etc.)\ correspond to extra algebraic structure that contextual categories may carry.  Essentially, contextual categories are intended to provide a completely equivalent alternative to the syntactic presentation of type theory.
+
+Why do we make this bait-and-switch?  The trouble with the syntax is that it is very tricky to handle rigorously. Any full presentation must account for (among other complications) variable binding, capture-free substitution, and the possibility of multiple derivations of a judgement; and so any careful construction of an interpretation must deal with all of these, at the same time as tackling the details of the particular model in question.  Contextual categories, by contrast, are a purely algebraic notion, with no such subtleties.  The idea is therefore that given any contextual category $\CC$ with structure corresponding to the logical rules of some syntactic type theory $\TT$, one should obtain an interpretation of the syntax of $\TT$ in $\CC$; and in proving this, one deals with the subtleties and bureaucracy of $\TT$ once and for all, giving a clear framework for subsequently constructing models of $\TT$.
+
+Such an “initiality theorem” (cf.\ Conjecture~\ref{conj:initiality} below) has been proven for some specific rather small type theories, e.g.\ by Streicher in the Correctness Theorem of \cite[Ch.~III, p.~181]{streicher:book}.  For larger type theories such as the present one, however, its status is debatable, and at best unsatisfactory.  The traditional view is that for suitable type theories, a straightforward extension of Streicher’s and other standard methods suffices, and therefore the theorem can be regarded as established.  However, Voevodsky has argued persuasively that this is an unacceptably unrigorous attitude.  No precise definition has been given of what “suitable type theories” the methods apply to; nor (to our knowledge) has the proof been even sketched in detail for any type theory beyond small toy examples; and while a “straightforward” extension of standard methods may indeed suffice for a type theory such as the present one, that sufficiency is far from obvious.
+
+For the present paper, therefore, we work formally entirely in terms of contextual categories, and avoid relying on initiality theorems in any form.
+
+Conversely, then, why bring up syntax at all, other than as motivation?  The trouble on this side is that working with higher-order logical structure in contextual categories quickly becomes unreadable: compare, for instance, the statements of functional extensionality in Sections~\ref{subsec:optional-rules} and \ref{subsec:optional-rules-alg}.
+
+We therefore make free use of the syntax of type theory, as a \emph{notation} for working in contextual categories.  The situation is rather comparable to that of string diagrams, as used in monoidal and more elaborately structured categories \cite{selinger:graphical-languages}, or indeed of the traditional notations for differentiation and integration.  In each case, one has a powerful, flexible, and intuitive notation, whose rigorous definition and validity requires quite non-trivial work to establish; but in lieu of such a general justification, one may still fruitfully make use of the notation, trusting the reader to translate it into the unproblematic algebraic form as required.
+
+\begin{definition}[Cartmell {\cite[Sec.~2.2]{cartmell:thesis}}, Streicher {\cite[Def.~1.2]{streicher:book}}] \label{def:cxl-cat}
+A \emph{contextual category} $\CC$ consists of the following data:
+\begin{enumerate}
+\item a category $\CC$;
+\item a grading of objects as $\ob \CC = \coprod_{n:\N} \ob_n \CC$;
+\item an object $\pt \in \ob_0 \CC$;
+\item maps $\ft_n : \ob_{n+1} \CC \to \ob_n \CC$ (whose subscripts we usually suppress);
+\item for each $X \in \ob_{n+1} \CC$, a map $p_X \colon X \to \ft X$ (the \emph{canonical projection} from $X$);
+\item for each $X \in \ob_{n+1} \CC$ and $f \colon Y \to \ft(X)$, an object $f^*(X)$ together with a map $q(f,X) \colon f^*(X) \to X$;
+\newcounter{tempcounter}
+\setcounter{tempcounter}{\theenumi}
+\end{enumerate}  
+such that:
+\begin{enumerate}
+\setcounter{enumi}{\thetempcounter}
+\item $\pt$ is the unique object in $\ob_0(\CC)$;
+\item $\pt$ is a terminal object in $\CC$;
+\item for each $n > 0$, $X \in \ob_n \CC$, and $f \colon Y \to \ft(X)$, we have $\ft(f^*X) = Y$, and the square
+\[\xymatrix{
+  f^* X \ar[d]_{p_{f^*X}} \ar[r]^{q(f,X)} \pb & X \ar[d]^{p_x} \\
+  Y                   \ar[r]^f      & \ft (X)
+}\]
+is a pullback (the \emph{canonical pullback} of $X$ along $f$); and
+\item these canonical pullbacks are strictly functorial: that is, for $X \in \ob_{n+1} \CC$, $1_{\ft X}^* X = X$ and $q(1_{\ft X},X) = 1_X$; and for $X \in \ob_{n+1} \CC$, $f \colon Y \to \ft X$ and $g \colon Z \to Y$, we have $(fg)^*(X) = g^*(f^*(X))$ and $q(fg,X) = q(f,X)q(g,f^*X)$.
+\end{enumerate}
+
+  Contextual cateories have also been studied under the name \emph{$C$-systems} (\cite{voevodsky:c-system-of-module} et seq.)
+\end{definition}
+
+\begin{remark}
+  Note that these may be seen as models of a multi-sorted essentially algebraic theory (\cite[3.34]{adamek-rosicky}), with sorts indexed by $\N + \N \times \N$.
+\end{remark}
+
+This definition is best understood in terms of its prototypical example:
+
+\begin{example}[Cartmell {\cite[p2.6]{cartmell:thesis}}; cf.\ also \cite{voevodsky:c-system-of-module}, \cite{voevodsky:subsystems-and-quotients}]
+Let $\TT$ be the dependent type theory given by the structural rules of Section~\ref{subsec:structural-rules}, plus any selection of the subsequent logical rules.\footnote{Heuristically, $\TT$ may be “any type theory” here; but there is no established definition of what this means!}  Then there is a contextual category $\CC(\TT)$, described as follows:
+\begin{itemize}
+\item $\ob_n \CC(\TT)$ consists of the contexts $[ x_1 \oftype A_1,\ \ldots,\ x_n \oftype A_n ]$ of length $n$, up to definitional equality and renaming of free variables;
+\item maps of $\CC(\TT)$ are \emph{context morphisms}, or \emph{substitutions}, considered up to definitional equality and renaming of free variables.  That is, a map 
+\[f \colon [ x_1 \oftype A_1,\ \ldots,\ x_n \oftype A_n] \to [ y_1 \oftype B_1,\ \ldots,\ y_m \oftype B_m(y_1, \ldots, y_{m-1}) ] \]
+is an equivalence class of sequences of terms $f_1, \ldots, f_m$ such that
+\begin{equation*}
+\begin{split}
+  x_1 \oftype A_1,\ \ldots,\ x_n \oftype A_n & \types f_1 : B_1 \\
+  & \vdots  \\
+  x_1 \oftype A_1,\ \ldots,\ x_n \oftype A_n & \types f_m : B_m(f_1,\ \ldots,\ f_{m-1}),
+\end{split}
+\end{equation*}
+ and two such maps $[f_i]$, $[g_i]$ are equal exactly if for each $i$,
+\[  x_1 \oftype A_1,\ \ldots,\ x_n \oftype A_n \types f_i = g_i \colon B_i(f_1,\ \ldots\ f_{i-1}); \]
+\item composition is given by substitution, and the identity $\Gamma \to \Gamma$ by the variables of $\Gamma$, considered as terms;
+\item $\pt$ is the empty context $\emptycxt$;
+\item $\ft [ x_1 \oftype A_1,\ \ldots,\ x_{n+1} \oftype A_{n+1}] = [ x_1 \oftype A_1,\ \ldots,\ x_n \oftype A_n]$;
+\item for $\Gamma = [ x_1 \oftype A_1,\ \ldots,\ x_{n+1} \oftype A_{n+1}]$, the map $p_\Gamma \colon \Gamma \to \ft \Gamma$ is the \emph{dependent projection} context morphism 
+\[ (x_1,\, \ldots,\, x_n) \colon [ x_1 \oftype A_1,\ \ldots,\ x_{n+1} \oftype A_{n+1}] \to [ x_1 \oftype A_1,\ \ldots,\ x_n \oftype A_n ], \]
+simply forgetting the last variable of $\Gamma$;
+\item for contexts
+\[\Gamma = [ x_1 \oftype A_1,\ \ldots,\ x_{n+1} \oftype A_{n+1}(x_1,\ldots,x_n)],\] 
+\[\Gamma' = [ y_1 \oftype B_1,\ \ldots,\ y_{m} \oftype B_{m}(y_1,\ldots,y_{m-1})],\]
+and a map $f = [f_i(\vec y)]_{i \leq n} \colon \Gamma' \to \ft \Gamma$, the pullback $f^* \Gamma$ is the context
+\[  [ y_1 \oftype B_1,\ \ldots,\ y_{m} \oftype B_{m}(y_1,\ldots,y_{m-1}),\ y_{m+1} \oftype A_{n+1}(f_1(\vec y),\ldots,f_n(\vec y))], \]
+(for some fresh $y_{m+1}$) and $q(\Gamma,f) \colon f^*\Gamma \to \Gamma$ is the map
+\[ [ f_1,\ \ldots, f_n,\ y_{m+1} ]. \]
+\end{itemize}
+\end{example}
+
+Note that typed terms $\Gamma \types t : A$ of $\TT$ may be recovered from $\CC(\TT)$, up to definitional equality, as sections of the projection $p_{[\Gamma,\;x \oftype A]} \colon [\Gamma,\ x \oftype A] \to \Gamma$.  For this reason, when working with contextual categories, we will often write just “sections” to refer to sections of dependent projections.
+
+We will also use several other notations deserving of particular comment.  For a fixed contextual category $\CC$ and an object $\Gamma \in \ob_n \CC$, we write $(\Gamma,A)$ for any object in $\ob_{n+1} \CC$ with $\ft(\Gamma,A) = \Gamma$, shall such object exist, and $p_A$ for the dependent projection $p_{(\Gamma,A)}$. Similarly, we write $(\Gamma,A,B)$ for an arbitrary object in $\ob_{n+2} \CC$ with $\ft(\Gamma, A, B) = (\Gamma, A)$, and so on.  
+
+Given a morphism $f \colon \Delta \to \Gamma$ and an object $(\Gamma, A)$, we write $(\Delta, f^*A)$ for the canonical pullback $f^*(\Gamma, A)$ and similarly $(\Delta, f^*A, f^*B)$ for $f^*(\Gamma, A, B)$. We also extend the notation $f^*$ to apply not only to the canonical pullbacks of appropriate objects, but also the pullbacks of maps between them. \\
+
+As mentioned above, Definition~\ref{def:cxl-cat} alone corresponds precisely to the basic judgements and structural rules of dependent type theory.  Similarly, each logical rule or type- or term-constructor should correspond to certain extra structure on a contextual category.   We state this intended correspondence precisely in Conjecture~\ref{conj:initiality} below, once we have set up the appropriate definitions.
+
+\begin{definition}[cf.~{\cite[Sec.~4]{voevodsky:products-on-c-systems}}] \label{def:pi-type-structure}
+ A \emph{$\synPi$-type structure} on a contextual category $\CC$ consists of:
+ \begin{enumerate}
+  \item for each $(\Gamma, A, B) \in \ob_{n+2} \CC$, an object $(\Gamma, \synPi(A, B)) \in \ob_{n+1} \CC$;
+  \item for each such $(\Gamma, A, B)$ and section $b \colon (\Gamma, A) \to (\Gamma, A, B)$ (of the dependent projection $p_B)$, a section $\lambda(b) \colon \Gamma \to (\Gamma, \synPi(A, B))$ (of $p_{\synPi(A,B)}$);
+  \item for each $(\Gamma, A, B)$ and pair of sections $k \colon \Gamma \to (\Gamma, \synPi (A, B))$ and $a \colon \Gamma \to (\Gamma, A)$, a section $\app(k,a) \colon \Gamma \to (\Gamma, A, B)$ such that the following diagram commutes:
+      \[\xymatrix{ & (\Gamma, A, B) \ar[d]^{p_B} \\
+       & (\Gamma, A) \ar[d]^{p_A} \\
+       \Gamma \ar@/^/[ruu]^{\app(k,a)} \ar[ru]^{a} \ar@{=}[r] & \Gamma ;
+      }\]
+ \item such that for all such $(\Gamma, A, B)$, $a \colon \Gamma \to (\Gamma, A)$, and $b \colon (\Gamma, A) \to (\Gamma, A, B)$, we have $\app(\lambda(b),a) = b \cdot a$;
+ \item and moreover such that all the above operations are stable under substitution: for any morphism $f \colon \Delta \to \Gamma$, and suitable $(\Gamma,A,B)$, $a$, $b$, $k$, we have
+   \begin{gather*}
+     (\Delta, f^*\synPi(A, B)) = (\Delta, \synPi(f^*A, f^*B)), \\
+     \lambda({f^*b}) = f^*\lambda(b), \qquad \app(f^*k,f^*a) = f^*(\app(k,a)).
+   \end{gather*}
+ \end{enumerate}
+\end{definition}
+
+These are direct translations of the rules for $\synPi$-types given in Section~\ref{subsec:logical-rules}.%
+%
+\footnote{A partial exception is the stability axiom, which corresponds not to any explicitly given rule of the syntax, but rather to clauses for $\synPi$, $\lambda$, and $\app$ in the inductive \emph{definition} of substitution.}
+%
+Similarly, all the other logical rules of Appendix~\ref{app:type-theory} may be routinely translated into structure on a contextual category; see Appendix~\ref{app:cxl-structure} and \cite[3.3]{hofmann:syntax-and-semantics} for more details and discussion.
+
+\begin{example} If $\TT$ is a type theory with $\synPi$-types, then $\CC(\TT)$ carries an evident $\synPi$-type structure; similarly for $\synSigma$-types and the other constructors of Sections~\ref{subsec:logical-rules} and \ref{subsec:universe-rules}. \qedhere
+\end{example}
+
+\begin{remark}
+Note that all of these structures, like the definition of contextual categories themselves, are essentially algebraic in nature.
+\end{remark}
+
+\begin{definition}
+A map $F \colon \CC \to \DD$  of contextual categories, or \emph{contextual functor}, consists of a functor $\CC \to \DD$ between underlying categories, respecting the gradings, and preserving (on the nose) all the structure of a contextual category.
+
+Similarly, a map of contextual categories with $\synPi$-type structure, $\synSigma$-type structure, etc., is a contextual functor preserving the additional structure.
+\end{definition}
+
+\begin{remark}
+These are exactly the maps given by considering contextual categories as essentially algebraic structures.
+\end{remark}
+
+We are now equipped to state precisely the sense in which the structures defined above are expected to correspond to the appropriate syntactic rules:
+
+\begin{conjecture} \label{conj:initiality} % was: \label{thm:free-cxl-cat}
+Let $\TT$ be the type theory given by the structural rules of Section~\ref{subsec:structural-rules}, plus any combination of the logical rules of Sections~\ref{subsec:logical-rules}, \ref{subsec:universe-rules}.  Then $\CC(\TT)$ is initial among contextual categories with the correspondingly-named extra structure.
+\end{conjecture}
+
+In other words, if $\CC$ is a contextual category with structure corresponding to the logical rules of a type theory $\TT$, then there should be a unique homomorphism $\CC(\TT) \to \CC$, interpreting the syntax of $\TT$ in $\CC$.  As discussed at the beginning of this section, the Correctness Theorem of \cite[Ch.~III, p.~181]{streicher:book} gives an analogous fact for a rather smaller type theory, while the status of the present conjecture is debated, accepted by some but not all in the field as a straightforward extension of that theorem.
+
+Bearing this intended correspondence in mind, therefore, but avoiding relying on it, we take for the present paper the following definitions:
+
+\begin{definition} \label{def:uf-and-models}
+  By \emph{Martin-L\"of Type Theory plus the Univalence Axiom} ($\mathsf{MLTT}+\mathsf{UA}$ for short), we mean dependent type theory with $\synPi$-, $\synSigma$-, $\synId$-, $\synW$-, unit, zero, and sum types, along with one universe closed under all these type formers and satisfying the Univalence Axiom, as set out in Appendix~\ref{app:type-theory}.
+
+  By a \emph{model} of $\mathsf{MLTT}+\mathsf{UA}$, or more generally of dependent type theory with any selection of the logical rules of Appendix~\ref{app:type-theory}, we mean a contextual category equipped with the corresponding structure from Appendix~\ref{app:cxl-structure}.  By the \emph{contextual-category presentation} of such a type theory, we mean the essentially algebraic theory of such structures.
+\end{definition}
+
+Note that by definition as an essentially algebraic theory, it is immediate that any such type theory has an initial model.
+
+\begin{definition}
+  A dependent type theory of the form considered in Definition~\ref{def:uf-and-models} and including the empty type $\synZero$ is \emph{inconsistent} just if in the initial model, the map $p_{\synZero_\pt} : (\pt,\synZero_\pt) \to \pt$ admits a section, and is \emph{consistent} if it is not inconsistent.
+\end{definition}
+
+Assuming initiality, this corresponds to the usual type-theoretic sense of inconsistency: a closed term inhabiting the empty type.
+Readers who accept the initiality conjecture as true may therefore read Theorem~\ref{thm:simplicial-model-univalent} as providing an interpretation of the usual syntactic presentation of $\mathsf{MLTT}+\mathsf{UA}$, and Theorem~\ref{thm:uf-consistent} as its consistency in the usual type-theoretic sense.
+
+\subsection{Contextual categories from universes} \label{subsec:contextualization}
+
+The major difficulty in constructing models of type theories is the so-called \emph{coherence problem}: the requirement for pullback to be strictly functorial, and for the logical structure to commute strictly with it.  In most natural categorical situations, operations on objects commute with pullback only up to isomorphism, or even more weakly; and for constructors with weak universal properties, operations on maps (corresponding for example to the $\synId$-\elim\ rule) may also fail to commute with pullback.  Hofmann \cite{hofmann:on-the-interpretation} gives a construction which solves the issue for $\synPi$- and $\synSigma$-types, but $\synId$-types in particular remain problematic with this method.  Other methods exist for certain specific categories (\cite{hofmann-streicher}, \cite{warren:thesis}), but are not applicable to the present case.
+
+In order to obtain coherence for our model, we thus use a construction based on \emph{universes} (not necessarily the same as universes in the type-theoretic sense, though the two may sometimes coincide), studied in more detail in \cite{voevodsky:c-systems-from-universes}. 
+
+\begin{definition}[{\cite[Def.~2.1]{voevodsky:c-systems-from-universes}}]
+Let $\CC$ be a category.  A \emph{universe} in $\CC$ is an object $U$ together with a morphism $p \colon \tilde{U} \to U$, and for each map $f \colon X \to U$ a choice of pullback square
+\[ \xymatrix{(X;f) \ar[r]^{Q(f)}  \ar[d]_{P_{(X,f)}} \pb & \tilde{U} \ar[d]^p \\ X \ar[r]^f & U. } \]
+\end{definition} 
+
+The intuition here is that the map $p$ represents the generic family of types over the universe $U$.  
+ 
+By abuse of notation, we often refer to the universe simply as $U$, with $p$ and the chosen pullbacks understood.  
+
+Given a map $q \colon Y \to X$, we will often write $\name{q}$ (or $\name{Y}$, if $q$ is understood) for a map $X \to U$ such that $q \iso P_{(X,\name{q})}$ in $\CC/X$.  Also, for a sequence of maps $f_1 \colon X \to U$, $f_2 \colon (X;f_1) \to U$, etc., we write $(X;f_1,\ldots, f_n)$ for $((\ldots(X;f_1);\ldots); f_n)$.  (In particular, with $n=0$, $(X;\ ) = X$.)
+
+\begin{definition}[{\cite[Constr.~2.12]{voevodsky:c-systems-from-universes}}] \label{def:contextualisation}
+ Given a category $\CC$, together with a universe $U$ and a terminal object $\pt$, we define a contextual category $\CC_U$ as follows:
+\begin{itemize}
+\item $\ob_n \CC_U :=$ $\{\ (f_1, \ldots, f_n)  \in (\mathrm{Mor} \CC )^n \ |\ f_i \colon (\pt;f_1,\ldots,f_{i-1}) \to U\ (1 \leq i \leq n)\ \};$
+
+\item $\CC_U((f_1,\ldots,f_n),(g_1,\ldots,g_m)) :=$ $\CC((\pt;f_1,\ldots,f_n),(\pt;g_1,\ldots,g_n));$
+
+\item $\pt_{\CC_U} := ( )$, the empty sequence;
+
+\item $\ft (f_1,\ldots,f_{n+1}) := (f_1,\ldots,f_{n})$;
+
+\item the projection $p_{(f_1,\ldots,f_{n+1})}$ is the map $P_{(X,f_{n+1})}$ provided by the universe structure on $U$;
+
+\item given $(f_1,\ldots,f_{n+1})$ and a map $\alpha \colon (g_1, \ldots, g_m) \to (f_1, \ldots, f_{n})$ in $\CC_U$, the canonical pullback $\alpha^*(f_1,\ldots,f_{n+1})$ in $\CC_U$ is given by $(g_1, \ldots, g_{m},$ $f_{n+1} \cdot \alpha)$, with projection induced by $Q(f_{n+1}\cdot\alpha)$:
+\[ \xymatrix@C=1.5cm{
+(1; g_1, \ldots, g_m, f_{n+1} \cdot \alpha) \ar@/^1.2em/[rr]^-{Q(f_{n+1}\cdot\alpha)} \ar[r] \ar[d] \pb & (1; f_1, \ldots, f_{n+1}) \ar[d] \ar[r]_-{Q(f_{n+1})} \pb & \tilde{U} \ar[d]^p \\
+(1; g_1, \ldots, g_m) \ar[r]^\alpha & (1; f_1, \ldots, f_n) \ar[r]^-{f_{n+1}} & U
+} \]
+\end{itemize}
+\end{definition}
+
+\begin{proposition}[{\cite[Constr.~2.12, Ex.~4.9]{voevodsky:c-systems-from-universes}}]  \leavevmode
+\begin{enumerate}
+\item These data define a contextual category $\CC_U$.
+\item This contextual category is well-defined up to canonical isomorphism given just $\CC$ and $p \colon \tilde{U} \to U$, independently of the choice of pullbacks and terminal object.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+Routine computation.
+\end{proof}
+
+Justified by the second part of this proposition, we will not explicitly consider the choices of pullbacks and terminal object when we construct the universe in the category $\sSets$ of simplicial sets.
+
+As an aside, let us note that every small contextual category arises in this way:
+
+\begin{proposition}[{\cite[Constr.~5.2]{voevodsky:c-systems-from-universes}}]
+Let $\CC$ be a small contextual category.  Consider the universe $U$ in the presheaf category $[\CC^\op,\Sets]$ given by
+\begin{align*} U(X) &= \{ Y\ |\ \ft Y = X \} \\
+\tilde{U}(X) & = \{ (Y,s)\ |\ \ft Y = X,\ s\ \textnormal{a section of}\ p_Y\}, \end{align*}
+with the evident projection map, and any choice of pullbacks.
+
+Then $[\CC^\op,\Sets]_U$ is isomorphic, as a contextual category, to $\CC$.
+\end{proposition}
+
+\begin{proof}
+Straightforward, with liberal use of the Yoneda lemma.
+\end{proof}
+
+\subsection{Logical structure on universes} \label{subsec:logical-structure-on-universes}
+
+Given a universe $U$ in a category $\CC$, we want to know how to equip $\CC_U$ with various logical structure---$\synPi$-types, $\synSigma$-types, and so on.  For general $\CC$, this is rather fiddly; but when $\CC$ is locally cartesian closed (as in our case of interest), it is more straightforward, since local cartesian closedness allows us to construct and manipulate “objects of $U$-contexts”, and hence to construct objects representing the premises of each rule.
+
+In working with locally cartesian closed categories (LCCC’s), we will follow topos-theoretic convention and write $\toposSigma_f$ and $\toposPi_f$ respectively for the left and right adjoints to the pullback functor $f^*$ along a map $f \colon A \to B$: 
+\[ \xymatrix{
+\CC / A \ar@/^1.5em/[rr]^{\toposSigma_f} \ar@/_1.5em/[rr]_{\toposPi_f} \ar@{{}{ }{}}@/^0.9em/[rr]|{\bot}  \ar@{{}{ }{}}@/_0.9em/[rr]|{\bot} & & \CC/B \ar[ll]|{f^*}
+} \]
+Also, the intended map $A \to B$ is often clearly determined by the objects $A$ and $B$, as some sort of associated projection; in such a case, we will write $\toposSigma_{A\shortto B}$, $\toposPi_{A\shortto B}$ for the functors arising from this map.
+
+An alternative notation for locally cartesian closed categories is their internal logic, \emph{extensional} dependent type theory \cite{seely:lcccs}, \cite{hofmann:on-the-interpretation}.  While this language is convenient and powerful, we avoid it due to the difficulties of working clearly with two logical languages in parallel.  \\
+
+Returning to the question at hand, first consider $\synPi$-types.\footnote{The following construction is studied in considerable detail in \cite{voevodsky:products-from-universes}.}  We know that dependent products exist in $\CC$; so informally, we need only to ensure that $U$ (considered as a universe of types) is closed under such products.  Specifically, given a type $A$ in $U$ over some base $X$ (that is, a map $\name{A} \colon X \to U$), and a dependent family of types $B$ over $A$, again in $U$ (i.e.\ a map $\name{B} \colon A := (X;\name{A}) \to U$), the product $\toposPi_{A \shortto X} B$ of this family in the slice $\CC/X$ should again “live in $U$”; that is, there should be a map $\name{\Pi(A,B)} \colon X \to U$ such that $(X;\name{\Pi(A,B)}) \iso \toposPi_{A \shortto X} B$.  Moreover, we need this construction to be strictly natural in $X$.
+
+Due to the strict naturality requirement, we cannot simply provide this structure for each $X$ and $A, B$ individually.  Instead, we construct an object $U^{\synPi}$ representing such pairs $(A,B)$, and a generic such pair $(A_\gen, B_\gen)$ based on $U^{\synPi}$.  It is sufficient to define $\PiStrux$ in this generic case $X = U^{\synPi}$; the construction then extends to other $X$ by precomposition, and as such, is automatically strictly natural in $X$.  
+
+Precisely:
+
+\begin{definition}
+Given a universe $U$ in an lccc $\CC$, define
+\[ U^{\synPi} := \toposSigma_{\Utildestrut U\shortto 1} \toposPi_{\tilde{U} \shortto U} (\pi_2 \colon U \times \tilde{U} \shortto \tilde{U}). \]
+
+(This definition can be expressed in several ways, according to one’s preferred notation. In the internal language of $\CC$ as an LCCC, it can be written as $\interp{ A \oftype U,\, B \oftype [\tilde{U}_A,U] }$, showing it more explicitly as an internalisation of the premises of the $\synPi$-\form\ rule.  Using a more traditional internal-hom notation, it could alternatively be written as $\intHom_U(\tilde{U}, U \times U)$.)
+
+Pulling back $\tilde{U}$ along the projection $U^{\synPi} \to U$ induces an object $A_\gen = \tilde{U} \times_U U^{\synPi}$, along with a projection map $\alpha_\gen \colon A_\gen \to U^{\synPi}$.  Similarly, pulling back $\tilde{U}$ along the counit (the evaluation map of the internal hom)
+\[A_\gen = \tilde{U} \times_U \toposPi_{\tilde{U} \shortto U} (U \times \tilde{U}) \to U \times \tilde{U} \to U\]
+induces an object $(B_\gen,\beta_\gen)$ over $A_\gen$:
+\[ \begin{tikzpicture}[hole/.style={fill=white,inner sep=1pt},x=1.4cm,y=1.4cm]
+\node (UPi) at (0,0) {$U^{\synPi}$};
+\node (U) at (1,0) {$U$};
+\node (Ut) at (1,1) {$\tilde{U}$};
+\node (Agen) at (0,1) {$A_\gen$};
+\node (U2) at (1.6,1) {$U$};
+\node (Ut2) at (1.6,2) {$\tilde{U}$};
+\node (Bgen) at (0,2) {$B_\gen$};
+\draw[->,font=\scriptsize] (UPi) to (U);
+\draw[->,font=\scriptsize] (Agen) to (UPi);
+\draw[->,font=\scriptsize] (Ut) to (U);
+\draw[->,font=\scriptsize] (Agen) to (Ut);
+\draw[->,font=\scriptsize] (Agen) to [out=30,in=135] (U2);
+\draw[->,font=\scriptsize] (Bgen) to (Agen);
+\draw[->,font=\scriptsize] (Ut2) to (U2);
+\draw[->,font=\scriptsize] (Bgen) to (Ut2);
+\draw (0.15,0.65) -- (0.35,0.65) -- (0.35,0.85);
+\draw (0.15,1.65) -- (0.35,1.65) -- (0.35,1.85);
+\end{tikzpicture} \]
+
+Moreover, the universal properties of the LCCC structure ensure that for any sequence $B \to A \to \Gamma$ with maps $\Gamma \to U$, $A \to U$, $A \to \tilde{U}$, $B \to \tilde{U}$ exhibiting $A \to \Gamma$ and $B \to A$ as pullbacks of $\tilde{U} \to U$, there is a unique map $\name{(A,B)} \colon \Gamma \to U^{\synPi}$ which induces the given sequence via precomposition and pullback:
+\[ \begin{tikzpicture}[hole/.style={fill=white,inner sep=1pt},x=1.4cm,y=1.4cm]
+\node (Gamma) at (-1.3,0) {$\Gamma$};
+\node (A) at (-1.3,1) {$A$};
+\node (B) at (-1.3,2) {$B$};
+\node (UPi) at (0,0) {$U^{\synPi}$};
+\node (U) at (1,0) {$U$};
+\node (Ut) at (1,1) {$\tilde{U}$};
+\node (Agen) at (0,1) {$A_\gen$};
+\node (U2) at (1.6,1) {$U$};
+\node (Ut2) at (1.6,2) {$\tilde{U}$};
+\node (Bgen) at (0,2) {$B_\gen$};
+\draw[->,font=\scriptsize,auto] (Gamma) to node {$\name{(A,B)}$} (UPi);
+\draw[->,font=\scriptsize] (A) to (Gamma);
+\draw[->,font=\scriptsize] (A) to (Agen);
+\draw[->,font=\scriptsize] (B) to (A);
+\draw[->,font=\scriptsize] (B) to (Bgen);
+\draw[->,font=\scriptsize] (UPi) to (U);
+\draw[->,font=\scriptsize] (Agen) to (UPi);
+\draw[->,font=\scriptsize] (Ut) to (U);
+\draw[->,font=\scriptsize] (Agen) to (Ut);
+\draw[->,font=\scriptsize] (Agen) to [out=30,in=135] (U2);
+\draw[->,font=\scriptsize] (Bgen) to (Agen);
+\draw[->,font=\scriptsize] (Ut2) to (U2);
+\draw[->,font=\scriptsize] (Bgen) to (Ut2);
+\draw (-1.15,0.65) -- (-0.95,0.65) -- (-0.95,0.85);
+\draw (-1.15,1.65) -- (-0.95,1.65) -- (-0.95,1.85);
+\draw (0.15,0.65) -- (0.35,0.65) -- (0.35,0.85);
+\draw (0.15,1.65) -- (0.35,1.65) -- (0.35,1.85);
+\end{tikzpicture} \]
+\end{definition}
+So $B_\gen \to A_\gen \to U^{\synPi}$ is \emph{generic} among such sequences, and $U^{\synPi}$ \emph{represents} the inputs for a $\synPi$ operation (that is, the premises of the $\synPi\text{-}\form$ rule) on $\CC_U$.
+
+\begin{definition}[cf.~{\cite[Def.~4.1]{voevodsky:products-from-universes}}]
+A \emph{$\PiStrux$-structure} on a universe $U$ in a lccc $\CC$ consists of a map
+\[ \PiStrux \colon U^{\synPi} \to U. \]
+ whose realisation is a dependent product for the generic dependent family of types; that is, it is equipped with an isomorphism $ \PiStrux^* \tilde{U} \iso \toposPi_{\alpha_\gen} B_\gen$ over $U^\synPi$, or equivalently with a map $ \tilde{\PiStrux} \colon \toposSigma_{U^{\synPi} \shortto 1} \toposPi_{\USigstrut \alpha_\gen} B_\gen \to \tilde{U}$ making the square
+\[\xymatrix{ 
+  \toposSigma_{U^{\synPi} \shortto 1} \toposPi_{\USigstrut \alpha_\gen} B_\gen \ar[r]^-{\tilde{\PiStrux}} \ar[d] & \tilde{U} \ar[d] \\
+  U^{\synPi} \ar^-\PiStrux[r] & U   
+}\]
+a pullback.
+\end{definition}
+
+The approach used here gives a template which we follow for all the other constructors, with extra subtleties entering the picture just in the cases of $\synId$-types and (type-theoretic) universes, since these structures are not characterised by strict category-theoretic universal properties.
+ 
+\begin{definition}
+Take $U^{\synSigma}$ to be the object representing the premises of the $\synSigma$-\form\ rule:
+\[ U^{\synSigma} := \toposSigma_{\Utildestrut U \shortto 1} \toposPi_{\tilde{U} \shortto U} (U \times \tilde{U}) \]
+Since these are the same as the premises of the $\synPi$-\form\ rule, we have in this case that $U^{\synSigma} = U^{\synPi}$; and we have again the generic family of types $B_\gen \to A_\gen \to U^{\synSigma}$, as over $U^{\synPi}$.
+\end{definition}
+
+\begin{definition}
+A \emph{$\SigmaStrux$-structure} on a universe $U$ in a lccc $\CC$ consists of a map
+\[ \SigmaStrux \colon U^{\synSigma} \to U \]
+whose realisation is a dependent sum for the generic dependent family of types; that is, it is equipped with an isomorphism $ \SigmaStrux^* \tilde{U} \iso \toposSigma_{\alpha_\gen} B_\gen$ over $U^\synSigma$ (or again equivalently with a map $\tilde{\Sigma} \colon \toposSigma_{U^{\synSigma} \shortto 1} \toposSigma_{\USigstrut \alpha_\gen} B_\gen \to \tilde{U}$ making the appropriate square a pullback).
+\end{definition}
+
+$\IdStrux$-structure requires a few auxiliary definitions.\footnote{We should thank here Michael Warren and Steve Awodey, who both strongly influenced the current presentation of the definition.} Recall first the classical notion of weak orthogonality of maps:
+\begin{definition} \leavevmode 
+For maps $i \colon A \to B$, $f \colon Y \to X$ in a category $\CC$, say $i$ is \emph{(weakly) orthogonal} to $f$ if any commutative square from $i$ to $f$ has some diagonal filler:
+\[\xymatrix{ A \ar[r] \ar[d]_i &Y \ar[d]^f \\
+              B \ar[r] \ar@{.>}[ur] & X }\]
+or, in other words, if the function
+\begin{align*}
+\Hom (B,Y) & \to \Hom (A,Y) \times_{\Hom(A,X)} \Hom (B,X) \\
+g & \mapsto (g \cdot i, f \cdot g)
+\end{align*}
+has a section.
+
+Say $i$ is moreover \emph{stably orthogonal}  to $f$ if for every object $C$ of $\CC$, $C \times i$ is orthogonal to $f$.
+\end{definition}
+
+In a cartesian closed category, this notion has an internal analogue:
+\begin{definition}
+Given maps $i \colon A \to B$, $f \colon Y \to X$ in a cartesian closed category $\CC$, an \emph{internal lifting operation} for $i$ against $f$ is a section of the evident map
+$Y^B \to Y^A \times_{X^A} X^B$.  % In case a referee asks for more details: the map is (\lambda g.\, (g \cdot i, f \cdot g))
+\end{definition}
+
+The following proposition connects the classical and internal notions:
+\begin{proposition} \label{prop:lifting-op-iff-stably-orthog}
+Given $i,f$ as above, there exists an internal lifting operation for $i$ against $f$ if and only if $i$ is stably orthogonal to $f$.
+\end{proposition}
+
+\begin{proof}
+If $i$ is stably orthogonal to $f$, then an internal lifting operation may be obtained as (the exponential transpose of) a filler for the canonical square
+\[ \xymatrix@C=2cm{ A \times (Y^A \times_{X^A} X^B) \ar[r]^-{\ev_{A,Y} \cdot (A \times \pi_1)} \ar[d]_{i \times Y^A \times_{X^A} X^B} & Y \ar[d]^f \\
+              B \times (Y^A \times_{X^A} X^B) \ar[r]^-{\ev_{B,X} \cdot (B \times \pi_2)} & X. }\]
+Conversely, any square from $C \times i$ to $f$ induces a map $C \to Y^A \times_{X^A} X^B$; composing this with an internal lifting operation provides a map $C \to Y^B$, whose transpose is a filler for the square. 
+\end{proof}
+
+As shown in \cite{awodey-warren} and \cite{gambino-garner}, the rules for $\synId$-types can be understood roughly as follows.  In a model where dependent types are interpreted as fibrations, the identity type over a type $A$ (in any slice $\CC/\Gamma$) is a factorisation of the diagonal $\Delta_A \colon A \to A \times_\Gamma A$ as a stable trivial cofibration, followed by a fibration.  (Here, by a stable trivial cofibration, we mean a map which is stably orthogonal to fibrations, in $\CC/\Gamma$.)  Additionally, choices of all data (including liftings) must be given which commute with pullbacks in the base $\Gamma$.
+
+In our case, the “fibrations” are just the pullbacks of $p$; so it suffices to consider orthogonality between the first map of the factorisation and $p$ itself.  Moreover, as for $\Pi$- and $\Sigma$-structure above, we demand the structure just in the universal case where $A$ is $\tilde{U}$, in the slice $\CC/U$.  Finally, an internal lifting operation turns out to be exactly the structure required to give chosen lifts commuting with pullbacks. We therefore define:
+
+\begin{definition}
+An \emph{$\IdStrux$-structure} on a universe consists of maps 
+\[ \IdStrux \colon U^{\synId} := \tilde{U} \times_U \tilde{U} \to U,  \qquad \qquad r \colon \tilde{U} \to \IdStrux^* \tilde{U} \]
+such that the triangle
+\[  \xymatrix@C=0.1cm{ \tilde{U} \ar[rr]^r \ar[dr]_{\Delta_{\tilde{U}}} & & \IdStrux^* \tilde{U} \ar[dl]^{\IdStrux^* p} \\
+             & \tilde{U} \times_U \tilde{U} & } \]
+commutes, together with an internal lifting operation $J$ for $r$ against $p \times U$ in $\CC/U$.
+\end{definition}
+
+\begin{remark}By virtue of Proposition~\ref{prop:lifting-op-iff-stably-orthog}, we could instead simply stipulate that $r$ be stably orthogonal to $p \times U$. We choose the current version since it provides exactly the structure required for Theorem~\ref{thm:structure-on-U-to-CU}, without requiring any arbitrary choices. 
+
+Another alternative is described in \cite[Sec.\ 2.3]{voevodsky:identity-types-from-universes}.
+\end{remark}
+
+\begin{definition}
+A \emph{$\WStrux$-structure} on a universe consists of a map 
+\[ \WStrux \colon U^{\synW} := \toposSigma_{\Utildestrut U \shortto 1} \toposPi_{\tilde{U} \shortto U} (U \times \tilde{U}) \to U \]
+such that $\WStrux^* \tilde{U}$ is an initial algebra for the polynomial endofunctor of $\CC/{U^{\synW}}$ specified by $\beta_\gen \colon B_\gen \to A_\gen$, i.e.\ the endofunctor 
+\[ \xymatrix{
+\CC/U^{\synW} \ar[rr]^-{\beta_\gen^* \alpha_\gen^*} & & \CC/B_\gen \ar[r]^-{\toposPi_{\beta_\gen}} & \CC/A_\gen \ar[r]^-{\toposSigma_{\alpha_\gen}} & \CC/U^{\synW}
+}. \]
+(For details on polynomial endofunctors in logical settings, see \cite{moerdijk-palmgren}, \cite{gambino-hyland}.  Intuitively, their initial algebras may be seen as types of well-founded trees, or of syntax over algebraic signatures.)
+\end{definition}
+
+\begin{definition}
+A \emph{$\zeroStrux$-structure} on $U$ consists of a map $\zeroStrux \colon 1 \to U$ such that $\zeroStrux^*\tilde{U} \iso 0$.
+
+(By analogy with the preceding definitions, one might write $\zeroStrux \colon U^{\synZero}  \to U$ instead and similarly in the next two definitions.  However, since $U^{\synZero}$ is a terminal object, we choose not to do so simply for the sake of readability.)
+\end{definition}
+
+\begin{definition}
+A \emph{$\oneStrux$-structure} on $U$ consists of a map $\oneStrux \colon 1 \to U$ such that $\oneStrux^* \tilde{U} \iso 1$.
+\end{definition}
+
+\begin{definition}
+A \emph{$\plusStrux$-structure} on $U$ consists of a map $\plusStrux \colon U \times U \to U$, together with an isomorphism $\plusStrux^* \tilde{U} \iso \pi_1^* \tilde{U} + \pi_2^* \tilde{U}$ in $\CC/(U \times U)$.
+\end{definition}
+
+Finally, we consider the structure on $U$ needed to give a universe (in the type-theoretic sense) in $\CC_U$.  Here, for the first time, we need to consider a nested pair of universes, since the internal universe of $\CC_U$ must be some smaller universe $U_0$ in $\CC$.
+
+\begin{definition}
+An \emph{internal universe} $(U_0,i)$ in $U$ consists of arrows 
+\[ u_0 \colon \pt \to U \qquad \qquad i \colon U_0 := u_0^* \tilde{U} \to U. \]
+
+Given these, $i$ induces by pullback a universe structure $(p_0,\tilde{U}_0,\ldots)$ on $U_0$.  We say that $U_0$ is closed under $\synPi$-types in $U$ if $U_0$ carries a $\Pi$-structure $\PiStrux_0$, commuting with $i$ in the sense that the square
+\[ \xymatrix{ U_0^{\synPi} \ar[r]^{i^{\synPi}} \ar[d]_{\PiStrux_0} & U^{\synPi} \ar[d]^\PiStrux \\
+              U_0 \ar[r]^i & U } \]
+commutes (where the top map is induced by the evident functoriality of $U^{\synPi}$ in $U$).
+
+Similarly, we say that $U_0$ is closed under $\synSigma$-types (resp.\ $\synId$-types, etc.) if it carries a $\SigmaStrux$-structure $\SigmaStrux_0$ (resp.\ an $\IdStrux$-structure $(\IdStrux_0,r_0)$, etc.) commuting with $i$.
+\end{definition}
+
+With these structures defined, we can now prove that they are fit for purpose:
+
+\begin{theorem}[cf.~{\cite[Constr.~4.3]{voevodsky:products-from-universes}}, {\cite[Sec.\ 2.4]{voevodsky:identity-types-from-universes}}] \label{thm:structure-on-U-to-CU}
+A $\Pi$-structure (resp.\ $\Sigma$-structure, etc.)\ on a universe $U$ induces $\synPi$-type structure (resp.\ $\synSigma$-type structure, etc.)\ on $\CC_U$.
+
+Moreover, an internal universe $(U_0,i)$ in $U$ closed under any combination of $\synPi$\nbhyph types, $\synSigma$\nbhyph types, etc., induces a universe à la Tarski in $\CC_U$ closed under the corresponding constructors.
+\end{theorem}
+
+\begin{proof}
+This proof is esentially a routine verification; we give the case of $\synPi$-types in full, and leave the rest mostly to the reader.
+
+In a nutshell, the constructor $\synPi$ is induced by the map $\PiStrux$; and the constructors $\lambda$ and $\app$ are induced by the corresponding lccc structure in $\CC$.
+
+Precisely, we treat the rules of $\synPi$-types (corresponding to the components of the desired $\synPi$-type structure) one at a time.
+
+($\synPi$-\form): The premises
+\[ \Gamma \types A\ \type \qquad \Gamma,\ x \oftype A \types B\ \type \]
+in $\CC_U$ correspond to data in $\CC$ of the form
+\[\xymatrix{
+   A \ar[r] \ar[d] \pb & \tilde{U} \ar[d] \\
+  \Gamma \ar^{\name{A}}[r] & U }
+\qquad
+\xymatrix{
+ B \ar[r] \ar[d] \pb & \tilde{U} \ar[d] \\
+ A \ar^{\name{B}}[r] & U }
+\]
+and hence to a map 
+\[ (\name{A},\name{B}) \colon \Gamma \to U^{\synPi}. \]
+
+Then the composite $\PiStrux \cdot (\name{A},\name{B})$ gives a type $\Gamma \to U$ which we take as $\synPi(A,B)$.  By construction, this is stable under substitution along any map $f \colon \Delta \to \Gamma$, since substitution in $\CC_U$ is again just composition in $\CC$.
+
+($\synPi$-\intro): Besides $\Gamma$, $A$, $B$ as before, we have an additional premise
+\[ \Gamma,\ x \oftype A \types t : B(x). \]
+
+This is by definition a map $1_A \to B$ in $\CC/A$, corresponding by adjunction to a map $\hat{t} \colon 1_\Gamma \to \toposPi_{A \shortto \Gamma} B$ in $\CC/\Gamma$.  But 
+\begin{align*}
+  \toposPi_{A \shortto \Gamma} B \iso & (\name{A},\name{B})^* \toposPi_{A_\gen \shortto U^{\synPi}}B_\gen \\
+                       \iso & (\name{A},\name{B})^* \PiStrux^* \tilde{U} \\
+                       \iso & (\PiStrux \cdot (\name{A},\name{B}))^* \tilde{U} 
+\end{align*}
+so $\hat{t}$ corresponds to a section of $\synPi(A,B)$ over $\Gamma$, which we take as $\lambda(t)$.
+
+Stability under substitution follows by the uniqueness in the universal property of $\toposPi_{A \shortto \Gamma}B$.
+
+We could alternatively have defined $\lambda$ more analogously to $\synPi$, by representing the premises as a single map $(\name{A},\name{B},t) \colon \Gamma \to U^\lambda$ (where $U^\lambda := \toposSigma_{U^{\synPi} \shortto 1} \toposPi_{A_\gen \shortto U^{\synPi}} B_\gen$ represents the inputs of $\lambda$, i.e.\ the premises of $\synPi\text{-}\intro$); then taking the transpose of the generic term $t_\gen$ over $U^\lambda$; and then pulling this back along $(\name{A},\name{B},t)$.  In fact, thanks to the uniqueness in the universal property of $\toposPi_{A_\gen \shortto U^{\synPi}}B_\gen$, that would give the same result as the present, more straightforward, definitition.  However, the alternative definition has the advantage that its stability under substitution follows simply from properties of pullbacks; this becomes important for $\synId$-types, whose universal property lacks a uniqueness condition.
+
+($\synPi$-\appRule):  The premises now are
+\[ \Gamma \types A\ \type \qquad \Gamma,\ x \oftype A \types B\ \type \]
+\[ \Gamma \types f : \synPi (A,B) \qquad \Gamma \types a : A \]
+corresponding to $\Gamma$, $A$, $B$ as before, plus sections
+\[ \xymatrix{
+A \ar@/^/[dr] & & \synPi(A,B) \mathrlap{{} \iso \toposPi_{A \shortto \Gamma} B }\ar@/^/[dl] \\
+& \Gamma \ar@/^/[ul]^-a \ar@/^/[ur]^-f
+}
+\phantom{{} \iso \toposPi_{A \shortto \Gamma} B} \]
+
+Together, these give a section over $\Gamma$ of $\toposPi_{A \shortto \Gamma} B \times_\Gamma A$; so composing this with the evaluation map $\ev_{A,B}$ of $\toposPi_{A \shortto \Gamma} B$ gives a map $\Gamma \to B$ lifting $a$, which we take to be $\app(f,a)$.
+
+($\synPi$-\comp): here, we have premises $\Gamma, A, B, t$ as in $\synPi$-\intro, and $a$ as in $\synPi$-\appRule; and we have formed $\app(\lambda(t),a)$ as prescribed above.  So, unwinding the isomorphism $\synPi(A,B) \iso \toposPi_{A \shortto \Gamma} B$ used in each case, 
+\begin{align*}
+ \app(\lambda(t),a) & = \ev_{A,B} \cdot (\hat{t},a) \\
+                                    & = t \cdot a
+\end{align*}
+as desired, by the usual rules of LCCCs.
+
+This completes the proof for $\Pi$-structures.
+
+As indicated above, the remaining constructors are for the most part entirely analogous; the only subtlety is in the case for the $\synId$-\elim\ rule.   In this case, there are two ways that one could define the appropriate structure: one can either pull back to each specific context and then choose liftings, or choose a lifting in the universal context and then pull it back (as discussed following the $\synPi$-\intro\ case above).  The second of these is the correct choice: the first is not automatically stable under substitution.  (For other constructors, this distinction does not arise, since their strict categorical universal properties canonically determine the maps involved.)  And, in fact, the “universal lifting” required is precisely the internal lifting operation provided by the $\IdStrux$-structure on $U$.
+
+\end{proof}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "simplicial-model"
+%%% End: 
