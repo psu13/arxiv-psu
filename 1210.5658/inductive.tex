@@ -1,0 +1,230 @@
+
+\section{Some basic inductive types} 
+\label{sec:inductive}
+
+
+First we explain two important notions: induction
+and recursion, and how they relate to each other. As a warm up,
+we are going to explain them for the case of the natural numbers,
+but it is important to keep in mind that for us, the key inductive
+and recursive process will take place over more general objects
+than the natural numbers. But to understand those, first one
+must understand the simpler case of the natural numbers.
+
+
+\subsection{The inductive type of natural numbers}\label{sec:induction}
+
+Although it is possible to construct arbitrary inductive types in Coq,
+we will start by looking at one inductive type which is already
+defined in the Coq system.  This is the type \verb|nat| of
+natural numbers.  As an inductive type, \verb|nat| is generated
+by 
+\begin{itemize}
+\item the single generator ($0$-ary operation) \verb|0 : nat|; and
+\item the single generating function ($1$-ary operation) 
+  \verb| S : nat -> nat | (this is the usual \emph{successor function}).
+\end{itemize}
+In Coq, this inductive type is specified as follows:
+\begin{center}
+  \begin{coqcode}
+Inductive nat := 0 | S : nat -> nat.
+  \end{coqcode}
+\end{center}
+Here the internal Coq command \verb|Inductive| functions
+similarly to \verb|Definition| (as we will see below).  For now
+the crucial point is to observe that the generating operations of the
+inductive type appear on the right of \verb|:=| and are separated
+by the symbol $|$.
+
+One of the advantages of working with an inductive type such as the
+natural numbers is that functions with inductive domain can be defined
+by cases.  To see an example, consider the predecessor function:
+\begin{center}
+\begin{coqcode}
+Definition predecessor ( n : nat ) : nat := 
+ match n with
+   | 0 => 0
+   | S m => m
+ end.
+\end{coqcode}
+\end{center}
+This is the way of telling Coq that the predecessor function is the
+function $\text{predecessor}:\nat\to\nat$ given by case analysis as
+\begin{align*}
+  \text{predecessor}(n) & :=
+   \begin{cases}
+    0 & \text{ if }n=0,\text{ and}\\
+    m & \text{ if }n=(m+1).
+  \end{cases}
+\end{align*}
+Because we are using the type \verb|nat| which is predefined in
+the Coq system, Coq will recognize that ordinary numerals refer to the
+corresponding terms of type \verb|nat|.  So, for example, Coq
+knows that \verb|3| is the same as \verb|S ( S ( S 0 ) )|.
+Using this, we can play around with the computational abilities of
+Coq by entering, say,
+\begin{center}
+  \begin{coqcode}
+Eval compute in predecessor 26.
+  \end{coqcode}
+\end{center}
+Here \verb|Eval compute in| tells Coq that we would like it to
+compute the value of the subsequent expression (in this case
+\verb|predecessor 26|).  Coq correctly replies
+\begin{center}
+  \begin{coqcode}
+= 25 : nat
+  \end{coqcode}
+\end{center}
+as expected.
+
+The definition of the predecessor function given above using
+\verb|match| is a direct definition as described above in
+Section \ref{sec:direct_def}.  It is also possible to define the
+predecessor function via an indirect definition as follows:
+\begin{center}
+  \begin{coqcode}
+Definition indirect_predecessor ( n : nat ) : nat.
+Proof.
+  destruct n. exact 0. exact n.
+Defined.
+  \end{coqcode}
+\end{center}
+In the proof there are two new tactics.  The first,
+\verb|destruct n|, tells the Coq system that we will reason by
+cases on the structure of \verb|n| as a term of type
+\verb|nat|.  Coq knows that, as a natural number, there are two
+cases and in the first case there is no hypothesis necessary (see
+Figure \ref{figure:indirect_predecessor}) because \verb|n| is
+\verb|0| in this case.  At this stage, we know that we would like
+the output of the function to be \verb|0| and we tell Coq this
+using the \verb|exact| tactic.  In general, if we enter
+\verb|exact| $x$, this tells Coq that the term we are looking for
+is \emph{exactly} the term $x$.  Once we have entered
+ \verb|exact 0|, Coq moves on to the second possibility: the term is a successor.
+Note that in the list of hypotheses at this stage (see Figure
+\ref{figure:indirect_predecessor}) the term \verb|n : nat| is
+listed and so \emph{superficially} things are just as they were at the
+start of the proof.  However, because we earlier employed the
+\verb|destruct| tactic, Coq knows that we must now give the
+required output of the predecessor function when given the value
+\verb|S n|.  As such, we enter \verb|exact n|.  Comparing
+\verb|predecessor| and \verb|indirect_predecessor| using the
+\verb|Print| command reveals that they are indeed identical terms.
+\begin{figure}[H]
+  \begin{tikzpicture}
+    \node[smallcoqbox] (zero)  at (0,0) {%
+      \begin{minipage}{4.25cm}
+        \footnotesize
+        \noindent\verb|n : nat|
+        
+        \noindent\verb|============================|
+        
+        \noindent\verb| nat|
+      \end{minipage}
+    };
+    \node[anchor=north east, inner sep=2pt] (titlezero) at
+    (zero.north east) {\emph{Start of proof}};
+    \node[smallcoqbox] (one) at (5.25,0) {%
+      \begin{minipage}{4.25cm}
+        \footnotesize
+        \vphantom{\texttt|n : nat |}
+        
+        \noindent\verb|============================|
+        
+        \noindent\verb| nat|
+      \end{minipage}
+    };
+    \node[anchor=north east, inner sep=2pt] (titleone) at
+    (one.north east) {\emph{after} \verb|destruct n.|};
+    \node[smallcoqbox] (two) at (0,-2.5) {%
+      \begin{minipage}{4.25cm}
+        \footnotesize
+        \noindent\verb|n : nat|
+        
+        \noindent\verb|============================|
+        
+        \noindent\verb| nat|
+      \end{minipage}
+    };
+    \node[anchor=north east, inner sep=2pt] (titletwo) at
+    (two.north east) {\emph{after} \verb|exact 0.|};
+  \end{tikzpicture}
+  \label{figure:indirect_predecessor}
+  \caption{Coq output during indirect definition of the predecessor function.}
+\end{figure}
+We will now turn to several of the inductive types more closely
+related to the homotopy theoretic side of things.
+
+\subsection{Fibrations and the total space of a fibration} 
+
+Fibrations can be understood as a homotopy theoretic generalization of
+the more familiar notion of fiber bundle.  Similarly, they can be
+understood as a homotopy theoretic version of Grothendieck fibrations
+familiar from category theory and algebraic geometry.  In particular,
+for spaces, a fibration is a map
+\begin{align*}
+\pi \colon E \to B
+\end{align*}
+which possesses a certain homotopy-lifting property.  In this case we
+would refer to $B$ as the \emph{base space} and to $E$ as the
+\emph{total space} of the fibration.  Given a point $b$ in $B$, the
+\emph{fiber} over $b$, which we sometimes write as $E_{b}$, is just the preimage $\pi^{-1}(b)$ of $b$ under
+the map $\pi$.  As mentioned in Section \ref{sec:homotopy_interp}
+above, fibrations correspond to
+types which depend on parameters (so-called \emph{dependent types}).
+In Coq, the way of dealing with dependent types is somewhat different
+from the one sketched in Section \ref{sec:homotopy_interp}.  In
+particular, given an element \verb|B : UU| a fibration for us is
+a term
+\begin{center}
+  \begin{coqcode}
+E : B -> UU.
+  \end{coqcode}
+\end{center}
+The idea that a fibration over a base space $B$ is the same as a map
+from $B$ into a suitable universe is a classical idea, especially in
+category theory where it is a basic fact that Grothendieck fibrations
+over a category $B$ correspond to pseudo-functors from $B$ into the
+2-category of small categories.  (These ideas are ubiquitous in
+category theory and have been developed in great generality by the
+Australian school of category theorists.  A nice exposition of these
+ideas can be found in the first section of \cite{Street:1980da}.)
+
+The idea behind this correspondence is that a fibration can be completely recovered from its base space
+$B$ together with its fibers by gluing the fibers together in a
+coherent way in accordance with the structure of the base space.  The
+same can be accomplished in Coq by defining the total space of a
+fibration \verb|E : B -> UU| as an inductive type.
+\begin{center}
+  \begin{coqcode}
+Inductive total {B :UU} (E : B -> UU) : UU := 
+pair ( x : B ) ( y : E x ).
+  \end{coqcode}
+\end{center}
+Intuitively, \verb|total E| should be thought of as a space consisting of all
+pairs \verb|(b,e)|, where \verb|b| is a point of the base
+space \verb|B| and \verb|e| in a point of the fiber
+\verb|E b| over \verb|b|.
+
+Fiber bundles $E\to B$ are sometimes thought of as a ``twisted'' generalization
+of direct products $F\times B\to B$, and the fact that fibrations are
+a homotopical generalization of this notion reveals itself type
+theoretically by the fact that the total space
+construction \verb|total| is a generalization of the construction
+of direct products of spaces $A\times B$, which are given by
+\begin{center}
+  \begin{coqcode}
+Definition dirprod { A B : UU } : UU := 
+ total ( fun x : A => B ).
+  \end{coqcode}
+\end{center}
+Returning to \verb|total|, we define a projection map
+\verb|total E -> B| by 
+\begin{center}
+  \begin{coqcode}
+Definition pr1 { B : UU } { E : B -> UU } : total E -> B := fun z => match z with pair x y => x end.
+  \end{coqcode}
+\end{center}
+This map serves to exhibit \verb|E| as a fibration over
+\verb|B|.

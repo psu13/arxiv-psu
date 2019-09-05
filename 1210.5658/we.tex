@@ -1,0 +1,711 @@
+\section{Weak equivalences and homotopy equivalences} \label{sec:bh}
+
+In this section we introduce further basic homotopy theoretic notions
+including the crucial notion of \emph{weak equivalence}.  Classically,
+weak equivalences are those maps which induce isomorphisms on (all
+higher) homotopy groups.  Between sufficiently nice spaces weak
+equivalences turn out to coincide with homotopy equivalences and the
+main goal of this section is to prove this fact in Coq.  The Coq
+proofs in this section become increasingly sophisticated and
+accordingly we will begin to pass quickly over the more basic features
+of the proofs while at the same time giving their mathematical
+interpretations.
+
+\subsection{Contractibility}\label{sec:contr}
+
+A space $A$ is said to be \emph{contractible} when the canonical map
+$A\to 1$ to the one point space is a homotopy equivalence.  In Coq,
+the notion of contractibility is captured by the following definition:
+\begin{center}
+  \begin{coqcode}
+Definition iscontr ( A : UU ) := total ( fun center : A => forall b : A, paths center b ).
+  \end{coqcode}
+\end{center}
+That is, a term of type \verb|iscontr A| consists of the data
+required to prove that \verb|A| is contractible:
+\begin{itemize}
+\item a point \verb|center| of \verb|A|, which we will
+  sometimes refer to as the \emph{center of contraction}; and
+\item a continuous assignment of, to each \verb|b : A|, a path
+  from \verb|center| to \verb|b|.
+\end{itemize}
+There are various facts about contractible space (e.g., $1$ is
+contractible, contractible spaces satisfy the principle of ``proof
+irrelevance'', and so forth) which are ready consequences of this
+definition.  However, we will leave the investigation of such matters
+to the reader and merely include one important fact about contractible
+spaces: homotopy retracts of contractible spaces are contractible.  That is,
+given continuous functions $r : A \to B$ and $s: B\to A$ together with
+a homotopy $p$ as indicated in the following diagram:
+\begin{align}\label{eq:hretract}
+  \begin{minipage}{.25\linewidth}
+    \begin{tikzpicture}[auto]
+    \node (UL) at (0,1.5) {$B$};
+    \node (UR) at (3,1.5) {$A$};
+    \node (LC) at (1.5,0) {$B$};
+    \draw[->] (UL) to node[mylabel] {$s$} (UR);
+    \draw[->,bend left] (UR) to node[mylabel] {$r$} (LC);
+    \draw[->,bend right] (UL) to node[mylabel,swap] {$1_{B}$} (LC);
+    \node (ppp) at (1.5,.75) {$\Downarrow$}; 
+    \node (pp) at (1.75,.75) {\footnotesize $p$};
+  \end{tikzpicture}
+  \end{minipage}
+\end{align}
+if the space $A$ is contractible, then so is the space $B$.  Note that
+in the diagram (\ref{eq:hretract}) we employ the convention, familiar
+from higher-dimensional category theory, of indicating the homotopy $p$
+by a double arrow $\Rightarrow$.  In Coq:
+\begin{center}
+  \begin{coqcode}
+Lemma iscontrretract { A B : UU } { r : A -> B } { s : B -> A } (p : homot ( funcomp s r ) (idfun _)) (is : iscontr A) : iscontr B.
+Proof.
+  split with ( r ( pr1 is ) ).  intros b. 
+  change b with ( idfun B b ). rewrite <- ( p b ). unfold funcomp. 
+  apply maponpaths. apply ( pr2 is ).
+Defined.
+  \end{coqcode}
+\end{center}
+The output of Coq during the proof can be found in Figure
+\ref{fig:iscontrretract}.  First, we need to provide a center of contraction for \verb|B|.
+The center of contraction for \verb|A| is the term 
+\verb|pr1 is|. By entering 
+\verb|split with ( r (pr1 is ) )| we tell Coq to take
+the center of contraction of \verb|B| to be the term
+\verb|r ( pr1 is )|.  After this, the goal becomes
+\begin{center}
+  \begin{coqcode}
+forall b : B, paths (r (pr1 is)) b
+  \end{coqcode}
+\end{center}
+which is to say that we must prove that there is a path from
+\verb|r (pr1 is)| to any other point of \verb|B|.  Next,
+after using \verb|intros b|, we enter the command 
+\begin{center}
+  \begin{coqcode}
+change b with ( idfun B b )
+  \end{coqcode}
+\end{center}
+to replace the term \verb|b| in the goal with the \emph{equal}
+term
+\verb|idfun B b|.  Observe that the term \verb|p b| has type
+\begin{center}
+  \begin{coqcode}
+paths (funcomp s r b) (idfun B b).
+  \end{coqcode}
+\end{center}
+The tactic \verb|rewrite| allows us to replace each occurrence of
+a term in the goal by a term which is in the same path component.
+In this case, because \verb|p b| is a path from
+\verb|funcomp s r b| to \verb|idfun B b|, the result of
+rewriting with \verb|rewrite <- (p b)| is to replace each
+occurrence of \verb|idfun B b| in the goal by 
+\verb|funcomp s r b|.  Here the backward arrow \verb|<-|
+indicates that we are rewriting the path \verb|p b| from right to
+left.
+\begin{figure}[H]
+  \begin{tikzpicture}
+    \node[smallcoqbox] (zero)  at (0,0) {%
+      \begin{minipage}{5.25cm}
+        \footnotesize
+
+        \noindent\verb|A : UU|
+
+        \noindent\verb|B : UU|
+        
+        \noindent\verb|r : A -> B|
+
+        \noindent\verb|s : B -> A|
+
+        \noindent\verb|p : homot (funcomp s r) (idfun B)|
+        
+        \noindent\verb|is : iscontr A|
+
+        \noindent\verb|b : B|
+
+        \noindent\verb|============================|
+        
+        \noindent\verb| paths (r (pr1 is)) b|
+      \end{minipage}
+    };
+    \node[anchor=north east, inner sep=2pt] (titlezero) at
+    (zero.north east) {\emph{after \texttt{split with} and
+        \texttt{intros}}};
+    \node[smallcoqbox] (one) at (6.25,0) {%
+      \begin{minipage}{5.25cm}
+        \footnotesize
+
+        
+        \noindent\verb|A : UU|
+
+        \noindent\verb|B : UU|
+        
+        \noindent\verb|r : A -> B|
+
+        \noindent\verb|s : B -> A|
+
+        \noindent\verb|p : homot (funcomp s r) (idfun B)|
+        
+        \noindent\verb|is : iscontr A|
+
+        \noindent\verb|b : B|
+
+        \noindent\verb|============================|
+        
+        \noindent\verb| paths (r (pr1 is)) (idfun B b)|
+      \end{minipage}
+    };
+    \node[anchor=north east, inner sep=2pt] (titleone) at
+    (one.north east) {\emph{after} \verb|change b with |\ldots};
+    \node[smallcoqbox] (two) at (0,-4.65) {%
+      \begin{minipage}{5.25cm}
+        \footnotesize
+        
+        \noindent\verb|A : UU|
+
+        \noindent\verb|B : UU|
+        
+        \noindent\verb|r : A -> B|
+
+        \noindent\verb|s : B -> A|
+
+        \noindent\verb|p : homot (funcomp s r) (idfun B)|
+        
+        \noindent\verb|is : iscontr A|
+
+        \noindent\verb|b : B|
+
+        \noindent\verb|============================|
+        
+        \noindent\verb| paths (r (pr1 is)) (funcomp s r b)|
+      \end{minipage}
+    };
+    \node[anchor=north east, inner sep=2pt] (titletwo) at
+    (two.north east) {\emph{after} \verb|rewrite <- (p b)|};
+    \node[smallcoqbox] (three) at (6.25,-4.65) {%
+      \begin{minipage}{5.25cm}
+        \footnotesize
+        
+        \noindent\verb|A : UU|
+
+        \noindent\verb|B : UU|
+        
+        \noindent\verb|r : A -> B|
+
+        \noindent\verb|s : B -> A|
+
+        \noindent\verb|p : homot (funcomp s r) (idfun B)|
+        
+        \noindent\verb|is : iscontr A|
+
+        \noindent\verb|b : B|
+
+        \noindent\verb|============================|
+        
+        \noindent\verb| paths (r (pr1 is)) (r (s b))|
+      \end{minipage}
+    };
+    \node[anchor=north east, inner sep=2pt] (titlethree) at
+    (three.north east) {\emph{after} \verb|unfold funcomp |};
+    \node[smallcoqbox] (four) at (0,-9.3) {%
+      \begin{minipage}{5.25cm}
+        \footnotesize
+        
+        \noindent\verb|A : UU|
+
+        \noindent\verb|B : UU|
+        
+        \noindent\verb|r : A -> B|
+
+        \noindent\verb|s : B -> A|
+
+        \noindent\verb|p : homot (funcomp s r) (idfun B)|
+        
+        \noindent\verb|is : iscontr A|
+
+        \noindent\verb|b : B|
+
+        \noindent\verb|============================|
+        
+        \noindent\verb| paths (pr1 is) (s b)|
+      \end{minipage}
+    };
+    \node[anchor=north east, inner sep=2pt] (titlefour) at
+    (four.north east) {\emph{after} \verb|apply maponpaths|};
+  \end{tikzpicture}
+  \label{fig:iscontrretract}
+  \caption{Coq output during the proof of \texttt{iscontrretract}.}
+\end{figure}
+
+Next, we use \verb|unfold funcomp| to replace each occurrence of 
+\verb|funcomp| in the goal by its definition.  Then
+\verb|apply maponpaths| tells Coq that we will use 
+\verb|maponpaths| to construct the goal.  Because Coq recognizes
+that the hypotheses of \verb|maponpaths| require us to provide a
+path the effect of this is to remove both applications of the function
+\verb|r| on both the right and left.  Finally, the required path
+can be constructed using \verb|pr2 is|.
+
+It is an immediate consequence of \verb|iscontrretract| that
+spaces which are homotopy equivalent to contractible spaces are also
+contractible.  This fact is captured by the definitions
+\begin{center}
+  \begin{coqcode}
+Definition iscontrandheq { A B : UU } { f : A -> B } ( p : isheq f ) (is : iscontr A) : iscontr B := iscontrretract (pr1 (pr2 p)) is.
+  \end{coqcode}
+\end{center}
+and
+\begin{center}
+  \begin{coqcode}
+Definition iscontrandheqinv { A B : UU } { f : A -> B } ( p : isheq f ) ( is : iscontr B ) : iscontr A := iscontrretract ( pr2 ( pr2 p ) ) is. 
+  \end{coqcode}
+\end{center}
+
+\subsection{Homotopy fibers}
+
+Given a map \verb|f : A -> B| and a point \verb|b| of 
+\verb|B|, we define the \emph{homotopy fiber of \texttt{f}
+  over \texttt{b}} as follows:
+\begin{center}
+  \begin{coqcode}
+Definition hfiber { A B : UU } ( f : A -> B ) ( b : B ) : UU := 
+  total ( fun x : A => paths ( f x ) b ).
+  \end{coqcode}
+\end{center}
+The homotopy fiber of $f$ over $b$ is the homotopical analogue of the
+ordinary fiber $f^{-1}(b)$.  So, a typical point of the homotopy fiber
+is a pair consisting of a point $a$ of $A$ together with a path 
+\begin{align*}
+  \begin{tikzpicture}
+    \node (A) at (0,0) {$f(a)$};
+    \node (B) at (2,0) {$b$};
+    \draw[->-=.5] (A) to (B);
+  \end{tikzpicture}
+\end{align*}
+in $B$.
+
+There are various reasons for considering homotopy fibers.  Homotopy
+fibers play a role for fibrations analogous to that played by ordinary
+fibers for fiber bundles.  For us, the interest in homotopy fibers
+comes from their presence in the definition of weak equivalences given below.
+
+From the point of view of category theory, the homotopy fiber of $f$
+over $b$ is the $\infty$-groupoid version of the comma category
+$(f\downarrow b)$.  As in the categorical setting, there are actions
+of the operation of taking the homotopy fiber over a fixed point on
+maps over the base $B$.  That is, given
+continuous maps $f:A\to B$, $g:C\to B$ and $h:A\to C$ together with a
+homotopy $p$ from $g\circ h$ to $f$, there is an induced map 
+\begin{align*}
+  \texttt{hfiber}\;f\;b \to \texttt{hfiber}\;g\;b.
+\end{align*}
+In Coq, this map is defined as 
+\begin{center}
+  \begin{coqcode}
+Definition hfiberact { A B C : UU } { f : A -> B } { g : C -> B } ( h : A -> C ) ( p : homot ( funcomp h g ) f ) ( b : B ) : hfiber f b -> hfiber g b 
+:= fun a => pair (h ( pr1 a )) (pathscomp (p ( pr1 a )) ( pr2 a )).
+  \end{coqcode}
+\end{center}
+That is, \verb|hfiberact h p b| sends an element
+\begin{align*}
+  \begin{tikzpicture}[auto]
+    \node (A) at (0,0) {$f(a)$};
+    \node (B) at (2,0) {$b$};
+    \draw[->-=.5] (A) to node[mylabel] {$i$} (B);
+  \end{tikzpicture}
+\end{align*}
+of $\texttt{hfiber}\;f\;b$ to the point of $\texttt{hfiber}\;g\;b$
+given by the composite path
+\begin{align*}
+  \begin{tikzpicture}[auto]
+    \node (A) at (0,0) {$g\bigl(h(a)\bigr)$};
+    \node (B) at (2,0) {$f(a)$};
+    \node (C) at (4,0) {$b$.};
+    \draw[->-=.5] (A) to node[mylabel] {$p(a)$} (B);
+    \draw[->-=.5] (B) to node[mylabel] {$i$} (C);
+  \end{tikzpicture}
+\end{align*}
+As a special case of this construction, when we are given a continuous
+maps $f:A\to B$ and $g:B\to C$ together with a point $c$ of $C$, there
+is an induced map 
+\begin{align*}
+\texttt{hfiber}\;(g\circ f)\;c\to\texttt{hfiber}\;g\;c
+\end{align*}
+obtained by applying 
+\verb|hfiberact| with the identity homotopy $1_{g\circ f}$.
+In Coq, this is obtained as the following definition:
+\begin{center}
+  \begin{coqcode}
+Definition maponhfiber { A B C : UU } ( f : A -> B ) ( g : B -> C ) ( c : C ) : hfiber ( funcomp f g ) c -> hfiber g c := fun a => pair ( f ( pr1 a ) ) ( pr2 a ).
+  \end{coqcode}
+\end{center}
+In the case where we have a homotopy retract as in (\ref{eq:hretract})
+above, we obtain, a further map as follows:
+\begin{center}
+  \begin{coqcode}
+Definition secmaponhfiber { A B : UU } {r : A -> B} { s : B -> A } ( p : homot ( funcomp s r ) ( idfun _ ) ) ( a : A ) : hfiber s a -> hfiber ( funcomp r s ) a := fun b => pair (s ( pr1 b)) (pathscomp (s ` ( p ( pr1 b ) )) ( pr2 b )).
+  \end{coqcode}
+\end{center}
+That is, \verb|secmaponhfiber| sends
+\begin{align*}
+  \begin{tikzpicture}[auto]
+    \node (A) at (0,0) {$s(b)$};
+    \node (B) at (2,0) {$a$};
+    \draw[->-=.5] (A) to node[mylabel] {$i$} (B);
+  \end{tikzpicture}
+\end{align*}
+in $\texttt{hfiber}\;s\;a$ to the term in $\texttt{hfiber}\;(s\circ
+r)\;a$ given by the composite path
+\begin{align*}
+  \begin{tikzpicture}[auto]
+    \node (A) at (0,0) {$s\bigl(r(s(b))\bigr)$};
+    \node (B) at (3,0) {$s(b)$};
+    \node (C) at (5,0) {$a$.};
+    \draw[->-=.5] (A) to node[mylabel] {$s`p(b)$} (B);
+    \draw[->-=.5] (B) to node[mylabel] {$i$} (C);
+  \end{tikzpicture}
+\end{align*}
+It turns out that, in this situation, $\texttt{hfiber}\;s\;a$ is a
+homotopy retract of $\texttt{hfiber}\;(s\circ r)\;a$:
+\begin{align*}
+    \begin{tikzpicture}[auto]
+    \node (UL) at (0,1.5) {$\texttt{hfiber}\;s\;a$};
+    \node (UR) at (4.5,1.5) {$\texttt{hfiber}\;(s\circ r)\;a$};
+    \node (LC) at (1.5,0) {$\texttt{hfiber}\;s\;a$};
+    \draw[->] (UL) to node[mylabel] {$\texttt{secmaponhfiber}\;p\;a$} (UR);
+    \draw[->,bend left] (UR) to node[mylabel] {$\texttt{maponhfiber}\;r\;s\;a$} (LC);
+    \draw[->,bend right] (UL) to node[mylabel,swap] {$1_{\texttt{hfiber}\;s\;a}$} (LC);
+    \node (ppp) at (1.5,.75) {$\Downarrow$};
+  \end{tikzpicture}
+\end{align*}
+Here, as in (\ref{eq:hretract}), we indicate the existence of a
+homotopy in this diagram by a double arrow $\Rightarrow$.  In Coq,
+this fact is captured by the following lemma:
+\begin{center}
+  \begin{coqcode}
+Lemma secmaponhfiberissec {A B : UU} { r : A -> B } { s : B -> A } ( p : homot ( funcomp s r ) ( idfun _ ) ) ( a : A ) : homot (funcomp  ( secmaponhfiber p a ) ( maponhfiber r s a )) (idfun _).
+Proof.
+ intros b. destruct b as [ b i ]. unfold funcomp, idfun in *. simpl. 
+ apply (@pathintotalfiber _ _ (pair (r (s b)) _) (pair b i) (p b)).
+ rewrite transportfandhfiber. unfold secmaponhfiber. simpl.
+ rewrite <- isassocpathscomp. rewrite islinvpathsinv. apply idpath. 
+Defined.
+  \end{coqcode}
+\end{center}
+First, after the first application of the \verb|simpl| tactic we
+have simplified the goal and hypotheses to the extent that we are now
+in the following situation:
+\begin{center}
+  \begin{coqcode}
+  A : UU
+  B : UU
+  r : A -> B
+  s : B -> A
+  p : homot (fun x : B => r (s x)) (fun x : B => x)
+  a : A
+  b : B
+  i : paths (s b) a
+  ============================
+   paths (maponhfiber r s a (secmaponhfiber p a (pair b i))) 
+     (pair b i)
+  \end{coqcode}
+\end{center}
+Because we are asked to construct a path in a total space we will make
+use of \verb|pathintotalfiber|.  However, in order to help Coq
+understand exactly what we are trying to do we must provide some of
+the implicit arguments of \verb|pathintotalfiber| explicitly.
+This is accomplished here using the symbol \verb|@|.  The
+underscores are the arguments which we leave for Coq to guess and the
+other arguments are those we are explicitly providing for Coq.  That
+is, we are telling Coq that in order to achieve the current goal it
+suffices to construct using \verb|pathintotalfiber| a path from
+\verb|pair ( r ( s b ) ) _ | to \verb|pair b i| where the
+path from \verb|r ( s b )| to \verb|b| we use is 
+\verb|p b|.  After this, the goal becomes:
+\begin{center}
+  \begin{coqcode}
+paths
+ (transportf (fun x : B => paths (s x) a) (p b)
+   (pr2 (pair (r (s b)) (pr2 (secmaponhfiber p a (pair b i))))))
+ (pr2 (pair b i))
+  \end{coqcode}
+\end{center}
+Here, as is often the case, it is convenient to know that the result of applying forward
+transport can be decomposed in a specific way.  In this case, it turns
+out that, for \verb|j| a path from \verb|v| to \verb|w|
+in \verb|B| and a path \verb|k : paths ( s v ) a|,
+\begin{center}
+  \begin{coqcode}
+transportf ( fun x : B => paths ( s x ) a ) j k
+  \end{coqcode}
+\end{center}
+is homotopic (in the sense of path homotopy) to the following
+composite path:
+\begin{align*}
+  \begin{tikzpicture}[auto]
+    \node (UL) at (0,0) {$s w$};
+    \node (UR) at (2,0) {$s v$};
+    \node (RR) at (4,0) {$a$.};
+    \draw[->-=.5] (UL) to node[mylabel] {$(s ` j )^{-1}$} (UR);
+    \draw[->-=.5] (UR) to node[mylabel] {$k$} (RR);
+  \end{tikzpicture}
+\end{align*}
+This fact is captured by the lemma \verb|transportfandhfiber|
+which has a trivial proof that we omit.  Returning to the proof of \verb|secmaponhfiberissec|, we rewrite
+using \verb|transportfandhfiber| and then simplify using 
+\verb|unfold| and \verb|simpl| to arrive at the goal
+\begin{center}
+  \begin{coqcode}
+paths (pathscomp (pathsinv (s ` p b)) (pathscomp (s ` p b) i)) i
+  \end{coqcode}
+\end{center}
+which is an immediate consequence of associativity of path composition
+and the fact that \verb|pathsinv| is an inverse with respect to
+path composition.
+
+In addition to acting on maps via \verb|hfiberact|, there is also
+an action of the homotopy fiber operation on homotopies.  Namely, a
+homotopy from a map $f:A\to B$ to a map $g:A\to B$ induces, for $b :
+B$, a map $\texttt{hfiber}\;f\;b\to\texttt{hfiber}\;g\;b$ as follows:
+\begin{center}
+\begin{coqcode}
+Definition hfiberandhomot { A B : UU } { f g : A -> B } ( b : B ) ( p : homot f g ) : hfiber f b -> hfiber g b := fun a => pair (pr1 a) (pathscomp (pathsinv (p (pr1 a ))) (pr2 a)). 
+\end{coqcode}
+\end{center}
+Similarly, there is a corresponding map
+\begin{align*}
+  \texttt{hfiber}\;g\;b\to\texttt{hfiber}\;f\;b
+\end{align*}
+because the homotopy relation is symmetric.
+\begin{center}
+\begin{coqcode}
+Definition hfiberandhomotinv { A B : UU } { f g : A -> B } ( b : B ) ( p : homot f g ) : hfiber g b -> hfiber f b := fun a => pair ( pr1 a ) (pathscomp ( ( p ( pr1 a ) ) ) ( pr2 a )). 
+\end{coqcode}
+\end{center}
+Finally, these two maps constitute a homotopy equivalence of spaces as
+the following lemma confirms:
+\begin{center}
+\begin{coqcode}
+Lemma isheqhfiberandhomot { A B : UU } { f g : A -> B } ( b : B ) ( p : homot f g ) : isheq ( hfiberandhomot b p ).
+\end{coqcode}
+\end{center}
+We leave the proof of \verb|isheqhfiberandhomot| as an exercise
+for the reader (the proof can also be found in the accompanying Coq
+file). 
+
+\subsection{Weak equivalences}\label{section:weq_def}
+
+Classically, a map $f:A\to B$ is a \emph{weak equivalence} when it
+induces isomorphisms on homotopy groups.  However, we will give a
+definition, following Voevodsky \cite{Vo2012a}, which makes sense without referring
+to homotopy groups.  In Section \ref{section:gradth} below we will
+show that these weak equivalences coincide, for the ``nice spaces'' we
+are considering, with the homotopy equivalences (and therefore also with
+the classical weak equivalences).  We start with the definition:
+\begin{center}
+  \begin{coqcode}
+Definition isweq { A B : UU } ( f : A -> B ) := ( forall b : B, iscontr ( hfiber f b ) ).
+  \end{coqcode}
+\end{center}
+From the ``propositions as types'' point of view, the weak
+equivalences correspond to the bijections.  The space of weak
+equivalences from $A$ to $B$ is defined as follows:
+\begin{center}
+  \begin{coqcode}
+Definition weq ( A B : UU ) := total ( fun f : A -> B => isweq f ).
+  \end{coqcode}
+\end{center}
+That is, a typical term of type \verb|weq A B| is a pair
+consisting of a map \verb|f : A -> B| together with a term of
+type \verb|isweq f|.  The most basic example of a weak equivalence
+is the identity function \verb|idfun A : A -> A|.  It is
+straightforward to construct the required proof that this is a weak
+equivalence.  We denote by \verb|isweqidfun A| this term of type 
+\verb|isweq ( idfun A )| and we then adopt the following definition:
+\begin{center}
+  \begin{coqcode}
+Definition idweq ( A : UU ) := pair ( idfun A ) ( isweqidfun A ).
+  \end{coqcode}
+\end{center}
+That is, \verb|idweq A| is the representative of the identity
+function on \verb|A| as a weak equivalence.  
+
+Given a map \verb|f : A -> B| together with a proof 
+\verb|is : isweq f| that it is a weak equivalence, if 
+we are given a point \verb|b : B|, then there is a corresponding 
+center of contraction in the homotopy fiber of \verb|f| over 
+\verb|b| given explicitly by the term \verb|pr1 ( is b )|.
+Because it is often convenient to make use the actual term of type 
+\verb|A| corresponding to this center of contraction we introduce
+the following nomenclature:
+\begin{center}
+  \begin{coqcode}
+Definition weqpreimage { A B : UU } { f : A -> B } ( is : isweq f ) ( b : B ) : A := pr1 ( pr1 ( is b ) ).
+  \end{coqcode}
+\end{center}
+That is, \verb|weqpreimage is b| is the (homotopically) canonical
+element in the homotopy fiber of \verb|f| over \verb|b|.
+Similarly, we name the path from \verb|f ( weqpreimage is b )| to 
+\verb|b| as follows:
+\begin{center}
+  \begin{coqcode}
+Definition weqpreimageeq { A B : UU } { f : A -> B } ( is : isweq f ) ( b : B ) : paths ( f ( weqpreimage is b ) ) b := pr2 ( pr1 ( is b ) ).
+  \end{coqcode}
+\end{center}
+That is, we have:
+\begin{align*}
+   \begin{tikzpicture}[auto]
+    \node (A) at (0,0) {$f(\texttt{weqpreimage is }b)$};
+    \node (B) at (5,0) {$b$.};
+    \draw[->-=.5] (A) to node[mylabel] {\texttt{weqpreimageeq is }$b$} (B);
+  \end{tikzpicture}
+\end{align*}
+It is also clear from the definition of \verb|weqpreimage| that
+if we are given any point \verb|a : A| and path \verb|g|
+from \verb|f a| to \verb|b|, there exists a path
+\begin{align*}
+ \begin{tikzpicture}[auto]
+    \node (A) at (0,0) {$\texttt{weqpreimage is }b$};
+    \node (B) at (5,0) {$a$.};
+    \draw[->-=.5] (A) to node[mylabel] {\texttt{weqpreimageump1 is
+      }$b$ $g$} (B);
+  \end{tikzpicture}
+\end{align*}
+We leave the construction of the term \verb|weqpreimageump1| to
+the reader.  Finally, the operation of taking the preimage is
+injective in the sense that if there is a path
+\begin{align*}
+  \begin{tikzpicture}[auto]
+    \node (A) at (0,0) {$\texttt{weqpreimage is }b$};
+    \node (B) at (5,0) {$\texttt{weqpreimage is }b'$,};
+    \draw[->-=.5] (A) to node[mylabel] {$g$} (B);
+  \end{tikzpicture}
+\end{align*}
+then there exists an induced path \verb|weqpreimageump2 is g|
+from \verb|b| to \verb|b'|.
+
+\subsection{Weak equivalences and homotopy equivalences}\label{section:gradth}
+
+Given a weak equivalence \verb|f : A -> B|, we construct a
+homotopy inverse of \verb|f| as follows:
+\begin{center}
+  \begin{coqcode}
+Definition weqinv { A B : UU } ( f : weq A B ) : B -> A := fun x => weqpreimage ( pr2 f ) x.
+  \end{coqcode}
+\end{center}
+Using the observations from Section \ref{section:weq_def} it is
+straightforward to prove the following lemmas:
+\begin{center}
+  \begin{coqcode}
+Lemma weqinvislinv { A B : UU } ( f : weq A B ) : homot ( funcomp ( weqinv f ) ( pr1 f ) ) ( idfun _ ).
+  \end{coqcode}
+\end{center}
+and
+\begin{center}
+  \begin{coqcode}
+Lemma weqinvisrinv { A B : UU } ( f : weq A B ) : homot ( funcomp ( pr1 f ) ( weqinv f ) ) ( idfun _ ).
+  \end{coqcode}
+\end{center}
+which together constitute the proof of:
+\begin{center}
+  \begin{coqcode}
+Lemma weqtoheq { A B : UU } { f : A -> B } (is : isweq f) : isheq f.
+  \end{coqcode}
+\end{center}
+Classically it should be noted that the analogue of 
+\verb|weqtoheq| only applies in the case of reasonably nice
+spaces.  Interestingly, the proof of the converse of \verb|weqtoheq| is not
+entirely trivial.  (Categorically, the proof of the converse makes
+crucial use of the fact that categorical equivalences can be
+transformed into adjoint equivalences \cite{MacLane:1971tv}.)  
+
+The proof of the converse of \verb|weqtoheq| can nicely be broken
+up into two lemmas.  The first lemma states that, for a homotopy
+retract as in (\ref{eq:hretract}) above, if the homotopy fiber of the
+composite $s\circ r$ over a point $a$ of $A$ is contractible, then the
+homotopy fiber of $s$ over $a$ is also contractible:
+\begin{center}
+  \begin{coqcode}
+Lemma iscontrhfiberandhretract { A B : UU } { r : A -> B } { s : B -> A } (p : homot ( funcomp s r ) ( idfun _ )) ( a : A ) : iscontr ( hfiber ( funcomp r s ) a ) -> iscontr ( hfiber s a ).
+Proof.
+ intros is. 
+ apply ( @iscontrretract ( hfiber ( funcomp r s ) a ) ( hfiber s a ) 
+  ( maponhfiber _ _ _ ) ( secmaponhfiber p a ) ). 
+ apply secmaponhfiberissec. assumption. 
+Defined.    
+  \end{coqcode}
+\end{center}
+As the Coq code shows, the proof of this fact is an immediate
+consequence of \verb|iscontrretract| and
+\verb|secmaponhfiberissec|.
+
+The second lemma states that if there is a homotopy from $f:A\to B$ to
+$f':A\to B$
+and the homotopy fiber of $f'$ over a point $b : B$ is contractible,
+then the homotopy fiber of $f$ over $b$ is also contractible:
+\begin{center}
+  \begin{coqcode}
+Lemma iscontrhfiberandhomot { A B : UU } { f f' : A -> B } ( h : homot
+f f' ) ( b : B ) : iscontr ( hfiber f' b ) -> iscontr ( hfiber f b ).
+Proof.
+  intros is. apply ( iscontrandheqinv ( isheqhfiberandhomot b h ) ). 
+  assumption.
+Defined.
+  \end{coqcode}
+\end{center}
+In this case the proof is an immediate consequence of the fact 
+(\verb|iscontrandheqinv|) that being contractible is preserved by
+homotopy equivalences together with the fact
+(\verb|isheqhfiberandhomot|) that homotopies induce homotopy
+equivalences of homotopy fibers.
+
+Using these two lemmas we obtain the converse of \verb|weqtoheq|,
+called following Voevodsky the \emph{Grad Theorem}, as follows:
+\begin{center}
+\begin{coqcode}
+Theorem gradth { A B : UU } { f : A -> B } ( is : isheq f ) : isweq f.
+Proof.
+  intro b. destruct is as [ f' is ]. 
+  apply ( @iscontrhfiberandhretract B A f' f ( pr2 is ) ). 
+  apply (@iscontrhfiberandhomot B _ (funcomp f' f) (idfun B) (pr1 is)). 
+  apply isweqidfun.
+Defined.
+\end{coqcode}
+\end{center}
+After applying \verb|intro b| and \verb|destruct| we find
+ourselves in the following situation:
+\begin{center}
+  \begin{coqcode}
+  A : UU
+  B : UU
+  f : A -> B
+  f' : B -> A
+  is : dirprod (homot (funcomp f' f) (idfun B))
+         (homot (funcomp f f') (idfun A))
+  b : B
+  ============================
+   iscontr (hfiber f b)
+  \end{coqcode}
+\end{center}
+Because \verb|f'| is the homotopy inverse of \verb|f| it
+then suffices, by \verb|iscontrhfiberandhretract| to show that
+the composite $f\circ f'$ has a contractible homotopy fiber over $b$.
+This is the effect of the first \verb|apply|, after which the Coq
+output is
+\begin{center}
+  \begin{coqcode}
+  A : UU
+  B : UU
+  f : A -> B
+  f' : B -> A
+  is : dirprod (homot (funcomp f' f) (idfun B))
+         (homot (funcomp f f') (idfun A))
+  b : B
+  ============================
+   iscontr (hfiber (funcomp f' f) b)
+  \end{coqcode}
+\end{center}
+We now observe that there is a homotopy from $f\circ f'$ to the
+identity function on $B$ and therefore after applying
+\verb|iscontrhfiberandhomot| it remains only to prove that the
+identity on $B$ is a weak equivalences, which is precisely the content
+of \verb|isweqidfun|. 
