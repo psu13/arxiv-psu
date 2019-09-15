@@ -1,0 +1,282 @@
+\section{Denotational semantics}
+\label{sec:semantics}
+
+Our aim is to describe a denotational semantics which explains how programs in \eff are evaluated.
+%
+Since the implemented runtime has no type information, we give Curry-style semantics
+in which terms are interpreted without being typed.
+%
+See the exposition by John Reynolds~\cite{reynolds00themeaning} on how such semantics can
+be related to Church-style semantics in which types and typing judgements receive meanings.
+
+We give interpretations of expressions and computations in domains of \emph{values} $V$
+and \emph{results} $R$, respectively. We follow Reynolds by avoiding a particular choice
+of $V$ and $R$, and instead require properties of $V$ and $R$ that ensure the semantics
+works out. The requirements can be met in a number of ways, for example by solving
+suitable domain equations or by taking $V$ and $R$ to be sufficiently large universal
+domains.
+
+The domain $V$ has to contain integers, booleans, functions, etc.
+In particular, we require that $V$ contains the following retracts, where $\II$ is a 
+set of effect instances, and $\oplus$ is coalesced sum:
+%
+\begin{align*}
+  &\retract{\ZZ_\bot}{V}{\iota_{\intty}}{\rho_{\intty}}
+  &
+  &\retract{\set{0, 1}_\bot}{V}{\iota_{\boolty}}{\rho_{\boolty}}
+  &
+  &\retract{\set{\star}_\bot}{V}{\iota_{\unitty}}{\rho_{\unitty}}
+  \\
+  &\retract{\II_\bot}{V}{\iota_{\kord{effect}}}{\rho_{\kord{effect}}}
+  &
+  &\retract{V \times V}{V}{\iota_{\times}}{\rho_{\times}}
+  &
+  &\retract{V \oplus V}{V}{\iota_{+}}{\rho_{+}}
+  \\
+  &\retract{R^V}{V}{\iota_{\to}}{\rho_{\to}}
+  &
+  &\retract{R^R}{V}{\iota_{\hto}}{\rho_{\hto}}
+\end{align*}
+%
+As expressions are terminating, the bottom element of $V$ is never used to denote
+divergence, but we do use it to indicate ill-formed values and runtime errors.
+
+\newcommand{\operationDomain}{\II \times \OO \times V \times R^V}
+
+The domain
+%
+\begin{equation}
+  \label{eq:resultDomain}
+  (V + \operationDomain)_\bot
+\end{equation}
+%
+embodies the idea that a terminating computation is either a value or an operation applied to a parameter and a continuation. There are canonical retractions from~\eqref{eq:resultDomain} onto the two summands,
+%
+\begin{equation}
+  \label{eq:resultDomain-retraction}
+  \xymatrix{
+     *!R{V\;} \ar@<0.25em>[rr]^(0.3){\iota_{\kord{val}}}
+     & &
+     {(V + \operationDomain)_\bot}
+     \ar@<0.25em>[ll]^(0.7){\rho_{\kord{val}}}
+     \ar@<-0.25em>[r]_(0.7){\rho_{\kord{oper}}}
+     &
+     *!L{\;(\operationDomain)_\bot}
+     \ar@<-0.25em>[l]_(0.3){\iota_\kord{oper}}
+  }
+\end{equation}
+%
+A typical element of~\eqref{eq:resultDomain} is either $\bot$, of the form $\iota_{\kord{val}}(v)$ for a unique $v \in V$, or of the form $\iota_{\kord{oper}}(n, \op, v, \kappa)$ for unique $n \in \II$, $\op \in \OO$, $v \in V$, and $\kappa \in R^V$. We require that $R$ contains~\eqref{eq:resultDomain} as a retract:
+%
+\begin{equation}
+  \label{eq:resultDomain-in-R}
+  \retract{(V + \operationDomain)_\bot}{R}{\iota_{\kord{res}}}{\rho_{\kord{res}}}.
+\end{equation}
+%
+We may define a strict map from~\eqref{eq:resultDomain} by cases, with one case specifying how to map $\iota_{\kord{val}}(v)$ and the other how to map $\iota_{\kord{oper}}(n, \op, v, \kappa)$. For example, given a map $f : V \to R$, there is a unique strict map $\lift{f} : (V + \operationDomain)_\bot \to R$, called the \emph{lifting} of~$f$, which depends on $f$ continuously and satisfies the recursive equations
+%
+\begin{align*}
+  \lift{f}(\iota_{\kord{val}}(v)) &= f(v),
+  \\
+  \lift{f}(\iota_{\kord{oper}}(n,\op,v,\kappa)) &=
+  \iota_{\kord{oper}}(n, \op, v, \lift{f} \circ \rho_{\kord{res}} \circ \kappa).
+\end{align*}
+
+An \emph{environment $\eta$} is a map from variable names to values. We denote by
+$\extend{\eta}{x}{v}$ the environment which assigns $v$ to $x$ and otherwise behaves as
+$\eta$. An expression is interpreted as a map from environments to values. The standard
+cases are as follows:
+%
+\begin{align*}
+  \sem{x}{\eta} &= \eta(x)
+  \\
+  \sem{n}{\eta} &= \iota_\intty(\overline{n})
+  \\
+  \sem{\fls}{\eta} &= \iota_\boolty(0)
+  \\
+  \sem{\tru}{\eta} &= \iota_\boolty(1)
+  \\
+  \sem{\unt}{\eta} &= \iota_\unitty(\star)
+  \\
+  \sem{\pair{e_1, e_2}}{\eta} &= \iota_{\times}(\sem{e_1}{\eta}, \sem{e_2}{\eta})
+  \\
+  \sem{\Left e}{\eta} &= \iota_{+}(\iota_0(\sem{e}{\eta}))
+  \\
+  \sem{\Right e}{\eta} &= \iota_{+}(\iota_1(\sem{e}{\eta}))
+  \\
+  \sem{\fun{x \T A} c}{\eta} &= \iota_{\to}(\lambda v : V \,.\, \sem{c}{\extend{\eta}{x}{v}})  
+\end{align*}
+%
+Of course, we need to provide the semantics of other built-in constants, too.
+The interpretation of $\hash{e}{\op}$ make sense only when $e$ evaluates to an instance, so we define
+% 
+\begin{equation*}
+  \sem{\hash{e}{\op}}{\eta} = 
+  \begin{cases}
+    \iota_\to(\lambda v : V \,.\,
+       \iota_{\kord{res}}(\iota_{\kord{oper}}(n, \op, v, \iota_\kord{res} \circ \iota_\kord{val}))) &
+    \text{if $\rho_{\kord{effect}}(\sem{e}{\eta}) = n \in \II$,}\\
+    \iota_\to(\lambda v : V \,.\, \bot) &
+    \text{if $\rho_{\kord{effect}}(\sem{e}{\eta}) = \bot$.}
+  \end{cases}
+\end{equation*}
+%
+The interpretation of a handler is
+%
+\begin{multline*}
+  \sem{
+    \handler
+    (\hash{e_i}{\op_i} \, x \, k \mapsto c_i)_i \case
+    \val x \mapsto c_v \case
+    \fin x \mapsto c_f}{\eta} = \\ 
+  \iota_\hto(\lift{f} \circ \rho_{\kord{res}} \circ  h \circ \rho_{\kord{res}})
+\end{multline*}
+%
+where $f : V \to R$ is $f(v) = \sem{c_f}{\extend{\eta}{x}{v}}$ and $h : (V + \operationDomain)_\bot \to R$ is characterized as follows:
+%
+if one of the $\rho_{\kord{effect}}(\sem{e_i}{\eta})$ is $\bot$ we set $h = \lambda x
+\,.\, \bot$, otherwise $\rho_{\kord{effect}}(\sem{e_i}{\eta}) = n_i \in \II$ for all $i$
+and then we take the $h$ defined by cases as
+%
+\begin{align*}
+  h(\iota_\kord{val}(v)) &= \sem{c_v}{\extend{\eta}{x}{v}}
+  \\
+  h(\iota_{\kord{oper}}(n_i, \op_i, v, \kappa)) &=
+  \sem{c_i}{\extends{\eta}{x \sto v, k \sto \kappa}} \qquad \text{for all $i$,}
+  \\
+  h(\iota_{\kord{oper}}(n, \op, v, \kappa)) &=
+  \begin{aligned}[t]
+  &\iota_{\kord{res}}(\iota_{\kord{oper}}(n, \op, v, h \circ \rho_{\kord{res}} \circ \kappa))\\
+  &\qquad \text{if $(n, \op) \neq (n_i, \op_i)$ for all $i$.}
+  \end{aligned}
+\end{align*}
+
+We proceed to the meaning of computations, which are interpreted as maps from
+environments to results. Promotion of expressions is interpreted in the obvious way as
+%
+\begin{equation*}
+  \sem{\val e}{\eta} = \iota_{\kord{res}}(\iota_\kord{val}(\sem{e}{\eta}))
+\end{equation*}
+%
+The $\kord{let}$ statement corresponds to monadic-style binding:
+%
+\begin{equation*}
+  \sem{\letin{x = c_1}{c_2}}{\eta} =
+  \lift{(\lambda v : V \,.\, \sem{c_2}{\extend{\eta}{x}{v}})}
+  (\rho_{\kord{res}}(\sem{c_1}{\eta})),
+\end{equation*}
+%
+A recursive function definition is interpreted as
+%
+\begin{equation*}
+  \sem{\letrecin{f \, x = c_1} c_2}{\eta} = \sem{c_2}{\extend{\eta}{f}{\iota_\to(t)}}
+\end{equation*}
+%
+where $t : V \to R$ is the least fixed point of the map
+%
+\begin{equation*}
+  t \mapsto (\lambda v : V \,.\, \sem{c_1}{\extends{\eta}{f \sto \iota_\to(t), x \sto v}}).
+\end{equation*}
+%
+The elimination forms are interpreted in the usual way as:
+\begin{align*}
+  \sem{\ifthenelse{e}{c_1}{c_2}}{\eta} &=
+  \begin{cases}
+    \sem{c_1}{\eta} & \text{if $\rho_{\boolty}{\sem{e}{\eta}} = 1$} \\
+    \sem{c_2}{\eta} & \text{if $\rho_{\boolty}{\sem{e}{\eta}} = 0$} \\
+    \bot & \text{otherwise}
+  \end{cases}
+  \\
+  \sem{\absurd e}{\eta} &= \bot
+  \\
+  \sem{\matchpair{e}{x,y}{c}}{\eta} &=
+  \begin{aligned}[t]
+  &\sem{c}{\extends{\eta}{x \sto v_0, y \sto v_1}} \\
+  &\qquad \text{where $(v_0, v_1) = \rho_\times (\sem{e}{\eta})$}
+  \end{aligned}
+  \\
+  \sem{\matchsum{e}{x}{c_1}{y}{c_2}}{\eta} &=
+  \begin{cases}
+    \sem{c_1}{\extend{\eta}{x}{v}} & \text{if $\rho_{+}(\sem{e}{\eta}) = \iota_0(v)$} \\
+    \sem{c_2}{\extend{\eta}{y}{v}} & \text{if $\rho_{+}(\sem{e}{\eta}) = \iota_1(v)$} \\
+    \bot & \text{otherwise}
+  \end{cases}
+  \\
+  \sem{e_1 \, e_2}{\eta} &= \rho_\to(\sem{e_1}{\eta}) (\sem{e_2}{\eta})
+\end{align*}  
+%
+For the interpretation of $\kord{new}$ we need a way of generating fresh names so that we
+may sensibly interpret
+%
+\begin{equation*}
+  \sem{\new E}{\eta} = \iota_{\kord{res}}(\iota_\kord{val}(\iota_{\kord{effect}}(n)))
+  \quad \text{where $n \in \II$ is fresh.}
+\end{equation*}
+%
+The implementation simply uses a local counter, but a satisfactory semantic solution needs
+a model of names, such as the permutation models of Pitts and
+Gabbay~\cite{gabbay01a-new-approach}, with $\II$ then being the set of atoms.
+
+Finally, the handling construct is just an application
+%
+\begin{equation*}
+  \sem{\handle{c}{e}}{\eta} = \rho_{\hto}(\sem{e}{\eta}) (\sem{c}{\eta}).
+\end{equation*}
+
+
+\subsection{Semantics of resources}
+\label{sec:semantics-resources}
+
+To model resources, the denotational semantics has to support the mutable nature of resource state, for example by explicitly threading it through the evaluation.
+But we prefer not to burden ourselves and the readers with the ensuing technicalities.
+Instead, we assume a mutable store $\sigma$ indexed by effect instances which supports the lookup and update operations.
+That is, $\lookup{\sigma}{n}$ gives the current contents at location $n \in \II$, while
+$\change{\sigma}{n}{v}{x}$ sets the contents at location $n$ to $v \in V$ and yields $x$.
+
+A resource describes the behaviour of operations, i.e., it is a map $\OO \times V \times V \to V \times V$ which computes a value and the new state from a given operation symbol, parameter, and the current state. Thus an effect instance is not just an element of $\II$ anymore, but an element of $\JJ = \II \times (V \times V)^{\OO \times V \times V}$. Consequently in the semantics we replace $\II$ with $\JJ$ throughout and adapt the semantics of $\kord{new}$ so that it sets the initial resource state and gives an element of $\JJ$:
+%
+\begin{multline*}
+  \sem{\newwith{E}{e}{(\kpre{operation} \op_i \, x \, @ \, y \mapsto c_i)_i}}{\eta} = \\
+    \change{\sigma}{n}{\sem{e}{\eta}}
+           {\iota_\kord{res}(\iota_\kord{val}(\iota_\kord{effect}(n,r)))}
+    \quad \text{where $n \in \II$ is fresh}
+\end{multline*}
+%
+where $r : \OO \times V \times V \to V \times V$ is defined by
+%
+\begin{equation*}
+  r(\op, v, s) =
+  \begin{cases}
+    \rho_{\times}(\rho_{\kord{val}}(\rho_\kord{res}(\sem{c_i}{\extends{\eta}{x \sto v, y \sto s}}))) &
+      \text{if $\op = \op_i$ for some $i$,} \\
+    \bot & \text{otherwise.}
+  \end{cases}
+\end{equation*}
+%
+If no resource is provided, we use a trivial one:
+%
+\begin{equation*}
+  \sem{\new E}{\eta} =
+  \iota_\kord{res}(\iota_\kord{val}(\iota_\kord{effect}(n, \bot)))
+  \quad \quad \text{where $n \in \II$ is fresh.}
+\end{equation*}
+
+Finally, to model evaluation at the toplevel, we define $\Evalsym : (V + \operationDomain)_\bot \to V$ by cases:
+%
+\begin{align*}
+  \Eval{\iota_{\val}(v)} &= v \\
+  \Eval{\iota_{\kord{oper}}((n, r), \op, v, \kappa)} &=
+  \begin{aligned}[t]
+  &\change{\sigma}{n}{s}{\Eval{\rho_\kord{res}(\kappa \, v')}} \\
+  &\qquad \text{where $(v', s) = r(\op, v, \lookup{\sigma}{n})$}.
+  \end{aligned}
+\end{align*}
+%
+The meaning of a computation $c$ at the toplevel in the environment $\eta$ (and an
+implicit resource state $\sigma$) is $\Eval{\rho_\kord{res}(\sem{c}{\eta})}$.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "eff"
+%%% End:

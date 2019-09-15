@@ -1,0 +1,628 @@
+\section{Examples}
+\label{sec:examples}
+
+In this section we consider a number of examples that demonstrate the possibilities offered by first-class effects and handlers. Functional programmers will notice similarities with the monadic programming style, and continuations aficionados will recognize their favourite tricks as well. The point we are making though is that even though monads and continuations can be simulated in \eff, it is usually more natural to use effects and handlers directly.
+
+\subsection{Choice}
+\label{sec:choice}
+
+We start with an example that is infrequently met in practice but is a favourite of theoreticians, namely \emph{(nondeterministic) choice}. A binary choice operation which picks a boolean value is described by an effect type with a single operation \inline{decide}:
+%
+\begin{source}
+type choice = effect
+  operation decide : unit -> bool
+end
+\end{source}
+%
+Let \inline{c} be an effect instance of type \inline{choice}:
+%
+\begin{source}
+let c = new choice
+\end{source}
+%
+The computation
+%
+\begin{source}
+let x = (if c#decide () then 10 else 20) in
+let y = (if c#decide () then 0 else 5) in
+  x - y
+\end{source}
+%
+expresses the fact that \inline{x} receives either the value \inline{10} or \inline{20}, and \inline{y} the value \inline{0} or \inline{5}. If we ran the above computation we would just get a message about an uncaught operation \inline{c#decide}. For the computation to actually do something we need to wrap it in a handler. For example, if we want \inline{c#decide} to always choose \inline{true}, we handle the operation by passing \inline{true} to the continuation \inline{k}:
+%
+\begin{source}
+handle
+  let x = (if c#decide () then 10 else 20) in
+  let y = (if c#decide () then 0 else 5) in
+    x - y
+with
+| c#decide () k -> k true
+\end{source}
+%
+The result of course is \inline{10}. A more interesting handler is one that collects all possible results. Because we are going to use it several times, we define a handler (the operator \inline{@} is list concatenation):
+%
+\begin{source}
+let choose_all d = handler
+  | d#decide () k -> k true @ k false
+  | val x -> [x]
+\end{source}
+%
+Notice that the handler calls the continuation \inline{k} twice, once for each choice, and it concatenates the two lists so obtained. It also transforms a value to a singleton list. When we run
+%
+\begin{source}
+with choose_all c handle
+  let x = (if c#decide () then 10 else 20) in
+  let y = (if c#decide () then 0 else 5) in
+    x - y
+\end{source}
+%
+the result is the list \inline{[10;5;20;15]}.
+%
+Let us see what happens if we use two instances of \inline{choice} with two handlers:
+%
+\begin{source}
+let c1 = new choice in
+let c2 = new choice in
+  with choose_all c1 handle
+  with choose_all c2 handle
+    let x = (if c1#decide () then 10 else 20) in
+    let y = (if c2#decide () then 0 else 5) in
+      x - y
+\end{source}
+%
+Now the answer is \inline{[[10;5];[20;15]]} because the outer handler runs the inner one twice, and the inner one produces a list of two possible results each time. If we switch the order of handlers \emph{and} of operations,
+%
+\begin{source}
+let c1 = new choice in
+let c2 = new choice in
+  with choose_all c2 handle
+  with choose_all c1 handle
+    let y = (if c2#decide () then 0 else 5) in
+    let x = (if c1#decide () then 10 else 20) in
+      x - y
+\end{source}
+%
+the answer is \inline{[[10;20];[5;15]]}. For a true understanding of what is going on, the reader should figure out why we get a list of \emph{four} lists, each containing two numbers, if we switch only the order of handlers but not of operations.
+
+\subsection{Exceptions}
+\label{sec:exceptions}
+
+An exception is an effect with a single operation \inline{raise} with an empty result type:
+%
+\begin{source}
+type 'a exception = effect
+  operation raise : 'a -> empty
+end
+\end{source}
+%
+The parameter of \inline{raise} carries additional data that can be used by an exception handler. The empty result type indicates that an exception, once raised, never yields the control back to the continuation. Indeed, as there are no expressions of the empty type (but there are of course computations of the empty type), a handler cannot restart the continuation of \inline{raise}, which matches the standard behaviour of exception handlers.
+
+In practice, most exception handlers are one-off and are written using the inline syntax discussed in Section~\ref{sec:implementation}. There are also convenient general exceptions handlers, for example,
+%
+\begin{source}
+let optionalize e = handler
+  | e#raise _ _ -> None
+  | val x -> Some x
+\end{source}
+%
+converts a computation that possibly raises the given exception \inline{e} to one that yields an optional result. We can use it as follows:
+%
+\begin{source}
+with optionalize e handle
+  /@computation@/
+\end{source}
+%
+In ML-style languages exceptions can be raised anywhere because \inline{raise} is polymorphic, whereas in \eff we cannot use $\hash{e}{\kord{raise}} \; e'$ freely because its type is empty, not polymorphic. This is rectified with the convenience function
+%
+\begin{source}
+let raise e x = match (e#raise x) with
+\end{source}
+%
+of type $\alpha \kpost{exception} \to \alpha \to \beta$ which eliminates the empty type, so we may use $\kord{raise} \; e \; e'$ anywhere.
+
+Another difference between ML-style exceptions and those in \eff is that the former are like a single instance of the latter, i.e., if we were to mimic ML exceptions in \eff we would need a (dynamically extensible) datatype of exceptions \inline{exc} and a single instance \inline{e} of type $\kord{exc} \kpost{exception}$. The definition of \inline{raise} would be
+%
+\begin{source}
+let raise x = match (e#raise x) with
+\end{source}
+%
+and exception handling would be done as usual.
+One consequence of this is that in ML it is possible to catch \emph{all} exceptions at once, whereas in \eff locally created exception instances are unreachable, just as local references are in ML. Which brings us to the next example.
+
+
+\subsection{State}
+\label{sec:state}
+
+In \eff state is represented by a computational effect with operations for looking up and updating a value:
+%
+\begin{source}
+type 'a ref = effect
+  operation lookup: unit -> 'a
+  operation update: 'a -> unit
+end
+\end{source}
+%
+We refer to instances of type \inline{ref} as \emph{references}. To get the same behaviour as in ML, we handle them with
+%
+\begin{source}
+let state r x = handler
+  | val y -> (fun s -> y)
+  | r#lookup () k -> (fun s -> k s s)
+  | r#update s' k -> (fun s -> k () s')
+  | finally f -> f x
+\end{source}
+%
+The handler passes the state around by converting computations to functions that accept the state. For example, lookup takes the state \inline{s} and passes it to the continuation \inline{k}. Because $\kord{k}\,\kord{s}$ is handled too, it is again a function accepting state, so we pass \inline{s} to $\kord{k}\,\kord{s}$ again, which explains why we wrote $\kord{k}\,\kord{s}\,\kord{s}$. Values and updates are handled in a similar fashion. The \inline{finally} clause applies the function so obtained to the initial state~\inline{x}.
+
+The above handler is impractical because for every use of a reference we have to repeat the idiom
+%
+\begin{source}
+let r = new ref in
+  with state r x handle
+    /@ computation @/
+\end{source}
+%
+An even bigger problem is that the reference may propagate outside the scope of its handler where its behaviour is undefined, for instance encapsulated in a $\lambda$-abstraction.
+The perfect solution to both problems is to use resources as follows:
+%
+\begin{source}
+let ref x =
+  new ref @ x with
+    operation lookup () @ s -> (s, s)
+    operation update s' @ _ -> ((), s')
+  end
+\end{source}
+%
+With this definition a reference carries a current state which is initially set to \inline{x}, lookup returns the current state without changing it, while update returns the unit and changes the state. With the definition of the operators
+%
+\begin{source}
+let (!) r = r#lookup ()
+let (:=) r v = r#update v
+\end{source}
+%
+we get \emph{exactly} the ML syntax and behaviour. Of course, a particular reference may still be handled by a custom handler, for example to fetch its initial value from an external persistent storage and save the final value back into it. 
+
+\subsection{Transactions}
+
+% WE NEVER ROLL BACK ANYTHING
+% We may combine state and exceptions so that raising an exception rolls back the state.
+We may handle lookup and update so that the state remains unchanged in case an exception occurs. 
+The handler which accomplishes this for a given reference \inline{r} is
+%
+\begin{source}
+let transaction r = handler
+  | r#lookup () k -> (fun s -> k s s)
+  | r#update s' k -> (fun s -> k () s')
+  | val x -> (fun s -> r := s; x)
+  | finally f -> f !r
+\end{source}
+%
+The handler passes around temporary state \inline{s}, just like the \inline{state} handler in Section~\ref{sec:state}, and only commits it to \inline{r} when the handled computation terminates with a value. Thus the computation
+%
+\begin{source}
+with transaction r handle
+  r := 23;
+  raise e (3 * !r);
+  r := 34
+\end{source}
+%
+raises the exception \inline{e} with parameter \inline{69}, but does not change the value of \inline{r}.
+
+\subsection{Deferred computations}
+
+There are many variations on store, of which we mention just one that can be implemented with resources, namely \emph{lazy} or \emph{deferred computations}. Such a computation is given by a thunk, i.e., a function whose domain is $\unitty$. If and when its value is needed, the thunk is \emph{forced} by application to \inline{()}, and the result is stored so that it can be given immediately upon subsequent forcing. This idea is embodied in the effect type
+%
+\begin{source}
+type 'a lazy = effect
+  operation force: unit -> 'a
+end 
+\end{source}
+%
+together with functions for creating and forcing deferred expressions:
+%
+\begin{source}
+type 'a deferred = Value of 'a | Thunk of (unit -> 'a)
+
+let lazy t =
+  new lazy @ (Thunk t) with
+    operation force () @ v ->
+      (match v with
+        | Value v -> (v, Value v)
+        | Thunk t -> let v = t () in (v, Value v))
+  end
+
+let force d = d#force ()
+\end{source}
+%
+The function \inline{lazy} takes a thunk \inline{t} and creates a new instance whose initial state is \inline{Thunk t}. The first time the instance is forced, the thunk is evaluated to a value \inline{v}, and the state changes to \inline{Value v}. Thereafter the stored value is returned immediately.
+
+If the thunk triggers an operation, \eff reports a runtime error because it does not allow operations in resources. While this may be seen as an obstacle, it also promotes good programming habits, for one should not defer effects to an unpredictable future time. It would be even better if deferred effectful computations were prevented by a typing discipline, but for that we would need an effect system.
+
+\subsection{Input and output}
+
+A program worth running has to connect with the real-world environment in some way. In
+\eff this is done cleanly through built-in effect instances that provide an interface to
+the operating system. For input and output \eff has a predefined effect type
+%
+\begin{source}
+type channel = effect
+  operation read : unit -> string
+  operation write : string -> unit
+end
+\end{source}
+%
+and a \inline{channel} instance \inline{std} which actually writes to standard output and reads from standard input. Of course, we may handle \inline{std} just like any other instance, for example the handler
+%
+\begin{source}
+handler std#write _ k -> k ()
+\end{source}
+%
+erases all output, while
+%
+\begin{source}
+let accumulate = handler
+  | std#write x k -> let (v, xs) = k () in (v, x :: xs)
+  | val v -> (v, [])
+\end{source}
+%
+intercepts output and accumulates it in a list so that
+%
+\begin{source}
+with accumulate handle
+  std#write "hello"; std#write "world"; 3 * 14
+\end{source}
+%
+prints nothing and evaluates to \inline{(42, ["hello"; "world"])}. Similarly, one could
+feed the input from a list with the handler
+%
+\begin{source}
+let read_from_list lst = handler
+  | std#read () k -> (fun (s::lst') -> k s lst')
+  | val x -> (fun _ -> x)
+  | finally f -> f lst
+\end{source}
+%
+Both handlers can be quite useful for unit testing of interactive programs.
+
+
+\subsection{Ambivalent choice and backtracking}
+\label{sec:amb-backtrack}
+
+We continue with variations of choice from Section~\ref{sec:choice}. Recall that \emph{ambivalent} choice is an operation which selects among several options in such a way that the overall computation succeeds. We first define the relevant types:
+%
+\begin{source}
+type 'a result = Failure | Success of 'a
+
+type 'a selection = effect
+  operation select : 'a list -> 'a
+end
+\end{source}
+%
+The handler which makes \inline{select} ambivalent is
+%
+\begin{source}
+let amb s = handler
+  | s#select lst k ->
+    let rec try = function
+      | [] -> Failure
+      | x::xs -> (match k x with
+                    | Failure -> try xs
+                    | Success y -> Success y)
+    in
+      try lst
+\end{source}
+%
+Given a list of choices \inline{lst}, the handler passes each one to the continuation \inline{k} in turn until it finds one that succeeds. The net effect is a depth-first search with which we may solve traditional problems, such as the 8 queens problem:
+%
+\begin{source}
+let no_attack (x,y) (x',y') =
+  x <> x' && y <> y' && abs (x - x') <> abs (y - y')
+
+let available x qs =
+  filter (fun y -> forall (no_attack (x,y)) qs)
+         [1;2;3;4;5;6;7;8]
+
+let s = new selection in
+with amb s handle
+  let rec place x qs =
+    if x = 9 then Success qs else
+      let y = s#select (available x qs) in
+      place (x+1) ((x,y) :: qs)
+  in place 1 []
+\end{source}
+%
+% OUTPUT:  Success [(8, 4); (7, 2); (6, 7); (5, 3); (4, 6); (3, 8); (2, 5); (1, 1)]
+%
+The function \inline{filter} computes the sublist of those elements in a list that satisfy the given criterion.
+%
+The auxiliary function \inline{available} computes a list of available rows in column \inline{x} if queens \inline{qs} have been placed onto the board so far.
+%
+As usual, the program places the queens onto the board by increasing column numbers: given a column \inline{x} and the list \inline{qs} of the queens placed so far, an available row \inline{y} is selected for the next queen.
+%
+Because the backtracking logic is contained entirely in the handler, we may easily switch from a depth-first search to a breadth-first search by replacing \emph{only} the \inline{amb} handler with
+%
+\begin{source}
+let bfs s =
+  let q = ref [] in
+  handler
+    | s#select lst k ->
+      (q := !q @ (map (fun x -> (k,x)) lst) ;
+       match !q with
+        | [] -> Failure
+        | (k,x) :: lst -> q := lst ; k x)
+\end{source}
+%
+The \inline{bfs} handler maintains a stateful queue \inline{q} of choice points \inline{(k,x)} where \inline{k} is a continuation and \inline{x} an argument to be passed to it. The \inline{select} operation enqueues new choice points, dequeues a choice point, and activates it.
+
+The fact that \inline{bfs} seamlessly combines a stateful queue with multiple activations of continuations may lure one into writing an imperative solution to the 8 queens problem such as
+%
+\begin{source}
+let s = new selection in
+with amb s handle
+  let qs = ref [] in
+  for x = 1 to 8 do
+    let y = s#select (available x !qs) in
+    qs := (x,y) :: !qs
+  done ;
+  Success !qs
+\end{source}
+%
+However, because \inline{qs} is handled with a resource \emph{outside} the scope of \inline{amb} a queen once placed onto the board is never taken off, so the search fails. To make sure that \inline{amb} restores the state when it backtracks, the state has to be handled \emph{inside} its scope:
+%
+\begin{source}
+let s = new selection in
+with amb s handle
+  let qs = new ref in
+  with state qs [] handle
+    for x = 1 to 8 do
+      let y = s#select (available x !qs) in
+      qs := (x,y) :: !qs
+    done ;
+    Success !qs
+\end{source}
+%
+The program finds the same solution as the first version. The moral of the story is that even though effects combine easily, their combinations are not always easily understood.
+
+\subsection{Selection functionals}
+\label{sec:select-funct}
+
+The \inline{amb} handler finds an answer if there is one, but provides no information on
+the choices it made. If we care about the choices that lead to a particular answer we proceed as follows. First we adapt the \inline{select} operation so that it accepts a \emph{choice point} as well as a list of values to choose from:
+%
+\begin{source}
+type ('a, 'b) selection = effect
+  operation select: 'a * 'b list -> 'b
+end
+\end{source}
+%
+The idea is that we would like to record which value was selected at each choice point. Also, multiple invocations of the same choice point should all lead to the same selection.
+The handler which performs such a task is
+%
+\begin{source}
+let select s v = handler
+  | s#select (x,ys) k -> (fun cs ->
+    (match assoc x cs with
+     | Some y -> k y cs
+     | None ->
+         let rec try = function
+           | [] -> Failure
+           | y::ys ->
+               (match k y ((x,y)::cs) with
+                  | Success lst -> Success lst
+                  | Failure -> try ys)
+         in try ys))
+  | val u -> (fun cs ->
+      if u = v then Success cs else Failure)
+  | finally f -> f [] ;;
+\end{source}
+%
+The function \inline{assoc} performs lookup in an associative list.
+%
+The handler keeps a list \inline{cs} of choices made so far. It handles \inline{select} by reusing a choice that was previously recorded in \inline{cs}, if there is one, or else by
+trying in turn the choices \inline{ys} until one succeeds. A value is handled as success if it is the desired one, and as a failure otherwise.
+
+A simple illustration of the handler is a program which looks for a Pythagorean triple:
+%
+\begin{source}
+let s = new selection in
+with select s true handle
+  let a = s#select ("a", [5;6;7;8]) in
+  let b = s#select ("b", [9;10;11;12]) in
+  let c = s#select ("c", [13;14;15;16]) in
+    a*a + b*b = c*c
+\end{source}
+%
+It evaluates to \inline{Success [("c", 13); ("b", 12); ("a", 5)]}.
+
+Mart{\'\i}n Escard{\'o}'s ``impossible'' selection functional~\cite{escardo10selection} may be implemented with our selection handler. Recall that the selection functional $\epsilon$ accepts a propositional function $p : 2^\mathbb{N} \to 2$ and outputs $x \in 2^\mathbb{N}$ such that $p(x) = 1$ if, and only if, there exists $y \in 2^\mathbb{N}$ such that $p(y) = 1$. Such an $x$ can be found by passing to $p$ an infinite sequence of choice points, each selecting either \inline{false} or \inline{true}, as follows:
+%
+\begin{source}
+let epsilon p =
+  let s = new selection in
+  let r = (with select s true handle
+             p (fun n -> s#select (n, [false; true])))
+  in
+    match r with
+      | Failure -> (fun _ -> false)
+      | Success lst ->
+        (fun n -> match assoc n lst with
+                  | None -> false | Some b -> b)
+\end{source}
+%
+The \inline{select} handler either fails, in which case it does not matter what we return, or succeeds by computing a list of choices for which \inline{p} evaluates to \inline{true}. In other words, \inline{r} is a basic open neighbourhood on which \inline{p} evaluates to \inline{true}, and we simply return one particular function in the neighbourhood.
+
+There are several differences between our implementation and Escard{\'o}'s Haskell implementation. First, our implementation is \emph{not} recursive, or to be more precise, it only employs structural recursion and whatever recursion is contained in \inline{p}. Second, we compute a basic neighbourhood on which \inline{p} evaluates to \inline{true} and then pick a witness in it, whereas the Haskell implementation directly computes the witness. Third, and most important, we heavily use the intensional features of \eff to direct the search, i.e., we pass a specially crafted argument to \inline{p} which allows us to discover how \inline{p} uses its argument. The result is a more efficient implementation of \inline{epsilon}, which however is not extensional. A Haskell implementation must necessarily be extensional, because all total functionals in Haskell are.
+
+\subsection{Probabilistic choice}
+
+Probabilistic choice is a form of nondeterminism in which choices are made according to a probability distribution. For example, we might define an operation which picks an element from a list according to the given probabilities:
+%
+\begin{source}
+type 'a random = effect
+  operation pick : ('a * float) list -> 'a
+end
+\end{source}
+%
+The operation \inline{pick} accepts a finite probability distribution, represented as a list of pairs whose second components are nonnegative numbers that add up to~$1$. The handler which computes the expected value of a computation of type \inline{float} is fairly simple
+%
+\begin{source}
+let expectation r = handler
+  | val v -> v
+  | r#pick lst k ->
+      fold_right (fun (x,p) e -> e +. p *. k x) lst 0.0
+\end{source}
+%
+Here \inline{fold_right} is the list folding operation, e.g., \inline{fold_right f [a;b;c] x} evaluates as \inline{f a (f b (f c x))}.
+
+Computing the distribution of results of a computation is not much more complicated:
+%
+\begin{source}
+let combine =
+  let scale p xs = map (fun (i, x) -> (i, p *. x)) xs in
+  let rec add (i,x) = function
+    | [] -> [(i,x)]
+    | (j,y)::lst ->
+      if i = j then (j,x+.y)::lst else (j,y)::add(i,x) lst
+  in
+    fold_left
+      (fun e (d,p) -> fold_right add (scale p d) e) []
+
+let distribution r = handler
+  | val v -> [(v, 1.0)]
+  | r#pick lst k ->
+      combine (map (fun (x,p) -> (k x, p)) lst)
+\end{source}
+%
+Here, \inline{combine} is the multiplication for the distribution monad that combines a distribution of distributions into a single distribution. The function \inline{map} is the familiar one, while \inline{fold_left} is the left-handed counterpart of \inline{fold_right}.
+
+As an example, let us consider the distribution of positions in a random walk of length $5$, where we start at the origin, and step to the left, stay put, or step to the right with probabilities $2/10$, $3/10$ and $5/10$, respectively. The distribution is computed by
+%
+\begin{source}
+let r = new random in
+let x = new ref in
+with distribution r handle
+with state x 0 handle
+  for i = 1 to 5 do
+    x := !x + r#pick [(-1,0.2); (0,0.3); (1,0.5)]
+  done ;
+  !x
+\end{source}
+%
+Just like in the 8 queen example from Section~\ref{sec:amb-backtrack} the handler for state must be enclosed by the distribution handler. We were surprised to see that the ``wrong'' order still works:
+%
+\begin{source}
+let r = new random in
+let x = new ref in
+with state x 0 handle
+with distribution r handle
+  for i = 1 to 5 do
+    x := !x + r#pick [(-1,0.2); (0,0.3); (1,0.5)]
+  done ;
+  !x
+\end{source}
+%
+How can this be? The answer is hinted at by \eff which issues a warning about arbitrary sequencing of effects in the assignment to \inline{x}. If we write the program with less syntactic sugar, we must decide whether to write the body of the loop as
+%
+\begin{source}
+let a = !x in
+let b = r#pick [(-1,0.2); (0,0.3); (1,0.5)] in
+  x := a + b
+\end{source}
+%
+or as
+%
+\begin{source}
+let b = r#pick [(-1,0.2); (0,0.3); (1,0.5)] in
+let a = !x in
+  x := a + b
+\end{source}
+%
+In the first case \inline{a} holds the value of \inline{x} as it is \emph{before}
+probabilistic choice happens, so update correctly reinstates the value of \inline{x}, whereas in the second case it fails to do so. Indeed, we get the wrong answer if we swap the summands in the assignment to \inline{x} and handle state on the outside. On one hand we should not be surprised that the order in which effects happen matters, but on the other it is unsatisfactory that a simple change in the order of addition matters so much. Perhaps the sequencing warnings should be errors after all.
+
+\subsection{Cooperative multithreading}
+\label{sec:cooperative-multithreading}
+
+Cooperative multithreading is a model for parallel programming in which several threads run in parallel, but only one at a time. A new thread is created with a \inline{fork} operation, a running thread relinquishes control with a \inline{yield} operation, and a scheduler decides which thread runs next. As is well known, cooperative multithreading can be implemented in languages with first-class continuations.
+
+To get cooperative multithreadding in \eff we first define an effect type with the desired operations:
+%
+\begin{source}
+type coop = effect
+  operation yield : unit -> unit
+  operation fork : (unit -> unit) -> unit
+end
+\end{source}
+%
+Next we define a scheduler, in our case one that uses a round-robin strategy, as a handler:
+%
+\begin{source}
+let round_robin c =
+  let threads = ref [] in
+  let enqueue t = threads := !threads @ [t] in
+  let dequeue () =
+    match !threads with
+    | [] -> ()
+    | t :: ts -> threads := ts ; t ()
+  in
+  let rec scheduler () = handler
+    | c#yield () k -> enqueue k ; dequeue ()
+    | c#fork t k ->
+        enqueue k ; with scheduler () handle t ()
+    | val () -> dequeue ()
+  in
+    scheduler ()
+\end{source}
+%
+The handler keeps a queue of inactive threads, represented as thunks. Note that dequeuing automatically activates the dequeued thunk. Yield enqueues the current thread, i.e., the continuation, and activates the first thread in the queue. Fork enqueues the current thread and activates the new one (an alternative would enqueue the new thread and resume the current one). The handler must not just activate the newly forked thread but also wrap itself around it, lest \inline{yield} and \inline{fork} triggered by the new thread go unhandled. Thus the definition of the handler is recursive. The \inline{val} clause makes sure that the threads in the queue get a chance to run when the current thread terminates. 
+
+Nothing prevents us from combining threads with other effects: threads may use common or private state, they may raise exceptions, inside a thread we can have another level of multithreading, etc.
+
+\subsection{Delimited control}
+\label{sec:delim-cont}
+
+Our last example shows how to implement standard delimited continuations in \eff. As a result we can transcribe code that uses continuations directly into \eff, although we have found that transcriptions are typically cleaner and easier to understand if we modify them to use operations and handlers directly.
+
+We consider the static variant of delimited control that uses \inline{reset} and \inline{shift}~\cite{danvy92representing}. The first operation delimits the scope of the continuation and the second one applies a function to it, from which it follows that one acts as a handler and the other as an operation. Indeed, the \eff implementation is as follows:
+%
+\begin{source}
+type ('a, 'b) delimited =
+effect
+  operation shift : (('a -> 'b) -> 'b) -> 'a
+end
+
+let rec reset d = handler
+  | d#shift f k -> with reset d handle (f k)
+\end{source}
+%
+Since \inline{f} itself may call \inline{shift}, the handler wraps itself around \inline{f k}.
+%
+The standard useless example of delimited control is
+%
+\begin{source}
+let d = new delimited in
+with reset d handle
+  d#shift (fun k -> k (k (k 7))) * 2 + 1
+\end{source}
+%
+The captured continuation \inline{k} multiplies the result by two and adds one, thus the
+result is $2 \times (2 \times (2 \times 7 + 1) + 1) + 1 = 63$. In Scheme the obligatory example of (undelimited) continuations is the ``yin yang puzzle'', whose translation in \eff is
+%
+\begin{source}
+let y = new delimited in
+with reset y handle
+  let yin  =
+    (fun k -> std#write "@" ; k) (y#shift (fun k -> k k))
+  and yang =
+    (fun k -> std#write "*" ; k) (y#shift (fun k -> k k))
+  in
+    yin yang
+\end{source}
+%
+The self-application \inline{k k} is suspect, and \eff indeed complains that it cannot solve the recursive type equation $\alpha = \alpha \to \beta$. We have not implemented unrestricted recursive types, but we can turn off type checking, after which the puzzle
+prints out the same answer as the original one in Scheme.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "eff"
+%%% End:

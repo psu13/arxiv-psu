@@ -1,0 +1,377 @@
+\section{Syntax}
+\label{sec:syntax}
+
+\Eff is a statically typed language with parametric polymorphism and type
+inference. Its types include products, sums, records, and recursive type
+definitions. To keep to the point, we focus on a core language with
+monomorphic types and type checking. The concrete syntax follows that of OCaml~\cite{OCaml}, and except for new constructs, we discuss it only briefly.
+
+\subsection{Types}
+\label{sec:types}
+
+Apart from the standard types, \eff has \emph{effect types $E$} and \emph{handler
+  types $A \hto B$}:
+%
+\begin{align*}
+  \tag{type}
+  A, B, C \bnfis {}
+    &\intty \bnfor
+    \boolty \bnfor
+    \unitty \bnfor
+    \emptyty \bnfor
+    \\
+    &A \times B \bnfor
+    A + B \bnfor
+    A \to B \bnfor
+    E \bnfor
+    A \hto B,\\
+  \tag{effect type}
+  E \bnfis {}
+    &\kpre{effect} (\kpre{operation} \op_i \T A_i \to B_i)_i \kpost{end}.
+\end{align*}
+%
+In the rule for effect types and elsewhere below $(\cdots)_i$ indicates that
+$\cdots$ may be repeated a finite number of times. We include the empty type
+as we need it to describe exceptions, see Section~\ref{sec:exceptions}.
+%
+An effect type describes a collection of related operation symbols, for example those for
+writing to and reading from a communication channel. We write $\op \T A \to B \in E$ or
+just $\op \in E$ to indicate that the effect type $E$ contains an operation $\op$ with parameters of
+type $A$ and results of type $B$.
+%
+The handler type $A \hto B$ should be understood as the type of handlers acting on
+computations of type~$A$ and yielding computations of type~$B$.
+
+\subsection{Expressions and computations}
+
+\Eff distinguishes between \emph{expressions} and \emph{computations}, which are
+similar to values and producers of fine-grain call-by-value~\cite{levy03modelling}. The former are inert and free from computational
+effects, including divergence, while the latter may diverge or cause
+computational effects. As discussed in Section~\ref{sec:implementation}, the
+concrete syntax of \eff hides the distinction and allows the programmer to
+freely mix expressions and computations.
+
+Beware that we use two kinds of vertical bars below: the tall~$\bnfor$ separates
+grammatical alternatives, and the short~$\case$ separates cases in handlers and
+match statements. The expressions are
+%
+\begin{align*}
+  \tag{expression}
+  e \bnfis {}
+    &x \bnfor
+    n \bnfor
+    c \bnfor
+    \tru \bnfor
+    \fls \bnfor
+    \unt \bnfor
+    \pair{e_1, e_2} \bnfor \\
+    &\Left{e} \bnfor \Right{e} \bnfor
+    \fun{x \T A} c \bnfor
+    \hash{e}{\op} \bnfor
+    h, \\
+  \tag{handler}
+  h \bnfis {}
+    &\handler
+    (\hash{e_i}{\op_i} \, x \, k \mapsto c_i)_i \case
+    \val x \mapsto c_v \case
+    \fin x \mapsto c_f,
+\end{align*}
+%
+where $x$ signifies a variable, $n$ an integer constant, and $c$ other built-in constants.
+The expressions $\unt$, $\pair{e_1, e_2}$, $\Left{e}$, $\Right{e}$, and $\fun{x \T A} c$
+are introduction forms for the unit, product, sum, and function types, respectively.
+Operations $\hash{e}{\op}$ and handlers $h$ are discussed in
+Section~\ref{sec:eff-specific}.
+
+The computations are
+%
+\begin{align*}
+  \tag{computation}
+  c \bnfis {}
+    &\val e \bnfor
+    \letin{x = c_1} c_2 \bnfor
+    \letrecin{f \, x = c_1} c_2 \bnfor \\
+    &\ifthenelse{e}{c_1}{c_2} \bnfor
+    \absurd{e} \bnfor
+    \matchpair{e}{x, y}{c} \bnfor \\
+    &\matchsum{e}{x}{c_1}{y}{c_2} \bnfor
+    e_1 \, e_2 \bnfor \\
+    &\new E \bnfor 
+    \newwith{E}{e}{
+      (\kpre{operation} \op_i \, x \, @ \, y \mapsto c_i)_i
+    } \bnfor \\
+    &\handle{c}{e}.
+\end{align*}
+%
+An expression $e$ is promoted to a computation with $\val e$, but in the concrete syntax
+$\kord{val}$ is omitted, as there is no distinction between expressions and computations.
+%
+The statement $\letin{x = c_1}{c_2}$ binds $x$ in $c_2$, and $\letrecin{f \, x =
+  c_1}{c_2}$ defines a recursive function $f$ in $c_2$. The conditional statement and the
+variations of $\kord{match}$ are elimination forms for booleans, the empty type, products,
+and sums, respectively. Instance creation and the handling construct are discussed in Section~\ref{sec:eff-specific}.
+
+Arithmetical expressions such as $e_1 + e_2$ count as computations because the arithmetical
+operators are defined as built-in constants, so that $e_1 + e_2$ is parsed as a double
+application. This allows us to uniformly treat all operations, irrespective
+of whether they are pure or effectful (division by zero).
+
+\section{Constructs specific to \eff}
+\label{sec:eff-specific}
+
+We explain the intuitive meaning of notions that are specific to \eff, namely
+instances, operations, handlers, and resources.
+We allow ourselves some slack in distinguishing syntax from semantics, which is treated in detail in Section~\ref{sec:semantics}.
+It is helpful to think of a terminating computation as evaluating either to a value or an operation applied to a parameter.
+
+\subsection{Instances and operations}
+\label{sec:instances-operations}
+
+The computation $\new E$ generates a fresh \emph{effect instance} of effect type~$E$.
+For example, $\new \effect{ref}$ generates a new reference, $\new \effect{channel}$ a new communication channel, etc.
+%
+The extended form of $\kord{new}$ creates an effect instance with an associated \emph{resource},
+which determines the default behaviour of operations and is explained separately in
+Section~\ref{sec:resources}.
+
+For each effect instance $e$ of effect type $E$ and an operation symbol $\op \in E$ there
+is an \emph{operation} $\hash{e}{\op}$, also known as a \emph{generic
+  effect}~\cite{plotkin03algebraic}. By itself, an operation is a value, and hence
+effect-free, but an applied operation $\hash{e}{\op}\,e'$ is a computational effect
+whose ramifications are determined by enveloping handlers and the resource associated with~$e$.
+
+\subsection{Handlers}
+\label{sec:handlers}
+
+A handler
+%
+\begin{equation*}
+ h =
+ \handler
+ (\hash{e_i}{\op_i} \, x \, k \mapsto c_i)_i \case \val x \mapsto c_v \case \fin x \mapsto c_f
+\end{equation*}
+%
+may be applied to a computation $c$ with the handling construct
+%
+\begin{equation}
+  \label{eq:handling}
+   \handle{c}{h},
+\end{equation}
+%
+which works as follows (we ignore the $\fin$ clause for the moment):
+%
+\begin{enumerate}
+\item If $c$ evaluates to $\val e$, \eqref{eq:handling} evaluates to $c_v$ with $x$ bound to $e$.
+\item If the evaluation of $c$ encounters an operation $\hash{e_i}{\op_i} \, e$,
+  \eqref{eq:handling} evaluates to $c_i$ with $x$ bound to $e$ and $k$ bound to the
+  continuation of $\hash{e_i}{\op_i} \, e$, i.e., whatever remains to be computed after the
+  operation. The continuation is delimited by~\eqref{eq:handling} and is handled by~$h$ as
+  well.
+\end{enumerate}
+%
+The $\kord{finally}$ clause can be thought of as an outer wrapper which performs an
+additional transformation, so that \eqref{eq:handling} is equivalent to
+%
+\begin{equation*}
+  \letin{x = (\handle{c}{h'})}{c_f}  
+\end{equation*}
+%
+where $h'$ is like $h$ without the $\kord{finally}$ clause. Such a wrapper is useful
+because we often perform the same transformation every time a given handler is applied.
+For example, the handler for state handles a computation by transforming it to a function
+accepting the state, and $\kord{finally}$ applies the function to the initial state, see
+Section~\ref{sec:state}.
+
+If the evaluation of $c$ encounters an operation $\hash{e}{\op} \, e'$ that is not listed
+in $h$, the control propagates to outer handling constructs, and eventually to the
+toplevel, where the behaviour is determined by the resource associated with $e$.
+
+\subsection{Resources}
+\label{sec:resources}
+
+The construct
+%
+\begin{equation*}
+  \newwith{E}{e}{(\kpre{operation} \op_i \, x \, @ \, y \mapsto c_i)_i}
+\end{equation*}
+%
+creates an instance $n$ with an associated \emph{resource}, inspired by coalgebraic
+semantics of computational
+effects~\cite{power04from,plotkin08:_tensor_comod_model_operat_seman}. A resource carries
+a state and prescribes the default behaviour of the operations $\hash{n}{\op_i}$.
+%
+The paradigmatic case of resources is the definition of ML-style references, see Section~\ref{sec:state}.
+
+The initial resource state for $n$ is set to $e$.
+When the toplevel evaluation encounters an operation
+$\hash{n}{\op_i} \, e'$, it evaluates $c_i$ with $x$ bound to $e'$
+and $y$ bound to the current resource state. The result must be a pair of values, the first of
+which is passed to the continuation, and the second of which is the new resource state.
+%
+If $c_i$ evaluates to an operation rather than a pair of values, a runtime error is
+reported, as there is no reasonable way of handling it.
+
+In \eff the interaction with the real world is accomplished through built-in resources.
+For example, there is a predefined channel instance $\kord{std}$ with operations
+$\hash{\kord{std}}{\kord{read}}$ and $\hash{\kord{std}}{\kord{write}}$ whose associated
+resource performs actual interaction with the standard input and the standard output.
+
+\section{Type checking}
+\label{sec:type-checking}
+
+Types in \eff are like those of ML~\cite{milner97the-definition} in the sense that they do not capture any
+information about computational effects.
+%
+There are two typing judgements, $\ctx \ente e \T A$ states that expression $e$ has type
+$A$ in context $\ctx$, and $\ctx \entc c \T A$ does so for a computation~$c$.
+As usual, a context $\Gamma$ is a list of
+distinct variables with associated types. The standard typing rules for expressions are:
+%%
+\begin{mathpar}
+  \infer
+    {x \T A \in \ctx}
+    {\ctx \ente x \T A}
+
+  \infer
+    {}
+    {\ctx \ente n \T \intty}
+
+  \infer
+    {}
+    {\ctx \ente \tru \T \boolty}
+
+  \infer
+    {}
+    {\ctx \ente \fls \T \boolty}
+
+  \infer
+    {}
+    {\ctx \ente \unt \T \unitty}
+
+  \infer
+    {\Gamma \ente e_1 : A \\
+     \Gamma \ente e_2 : B}
+    {\ctx \ente \pair{e_1, e_2} \T A \times B}
+
+  \infer
+    {\Gamma \ente e : A}
+    {\Gamma \ente \Left{e} : A + B}
+
+  \infer
+    {\Gamma \ente e : B}
+    {\Gamma \ente \Right{e} : A + B}
+
+  \infer
+    {\ctx, x \T A \entc c \T B}
+    {\ctx \ente \fun{x \T A} c \T A \to B}
+\end{mathpar}
+%
+We also have to include judgements that assign types to other built-in constants.
+An operation receives a function type
+%
+\begin{mathpar}
+  \infer
+  {\ctx \ente e \T E \\
+    \op \T A \to B \in E}
+  {\ctx \ente \hash{e}{\op} \T A \to B}
+\end{mathpar}
+%
+while a handler is typed by the somewhat complicated rule
+%
+\begin{equation*}
+  \infer
+  {\infer{\ctx \ente e_i \T E_i \\
+    \op_i \T A_i \to B_i \in E_i \\\\
+    \ctx, x \T A_i, k \T B_i \to B \entc c_i \T B}{} \\
+     \ctx, x \T A \entc c_v \T B \\
+     \ctx, x \T B \entc c_f \T C}
+   {\ctx \ente (\handler
+     (\hash{e_i}{\op_i} \, x \, k \mapsto c_i)_i \mid
+     \val x \mapsto c_v \mid
+     \fin x \mapsto c_f) \T A \hto C}
+\end{equation*}
+%
+which states that a handler first handles a computation of type $A$ into
+a computation of type $B$ according to the $\kord{val}$ and operation clauses,
+after which the $\kord{finally}$ clause transforms it further into a computation of type $C$.
+
+The typing rules for computations are familiar or expected. Promotions of expressions and $\kord{let}$ statements are typed by
+%
+\begin{mathpar}
+  \infer
+    {\ctx \ente e \T A}
+    {\ctx \entc \val e \T A}
+
+  \infer
+    {\ctx \entc c_1 \T A \\
+     \ctx, x \T A \entc c_2 \T B}
+    {\ctx \entc \letin{x = c_1} c_2 \T B}
+
+  \infer
+    {\ctx, f \T A \to B, x \T A \entc c_1 \T B \\
+     \ctx, f \T A \to B \entc c_2 \T C}
+    {\ctx \entc \letrecin{f\,x = c_1} c_2 \T C}
+\end{mathpar}
+%
+and various elimination forms are typed by
+%
+\begin{mathpar}
+  \infer
+    {\ctx \ente e \T \boolty \\
+     \ctx \entc c_1 \T A \\
+     \ctx \entc c_2 \T A}
+    {\ctx \entc \ifthenelse{e}{c_1}{c_2} \T A}
+
+  \infer
+    {\ctx \ente e \T \emptyty}
+    {\ctx \entc \absurd{e} \T A}
+      
+  \infer
+    {\ctx \ente e \T A \times B \\
+     \ctx, x \T A, y \T B \entc c \T C}
+    {\ctx \entc \matchpair{e}{x,y}{c} \T C}
+
+  \infer
+    {\ctx \ente e \T A + B \\
+     \ctx, x \T A \entc c_1 \T C \\
+     \ctx, y \T B \entc c_2 \T C}
+    {\ctx \entc \matchsum{e}{x}{c_1}{y}{c_2} \T C}
+
+  \infer
+    {\ctx \ente e_1 \T A \to B \\
+     \ctx \ente e_2 \T A}
+    {\ctx \entc e_1 \, e_2 \T B}
+\end{mathpar}
+%
+The instance creation is typed by the rules
+%
+\begin{mathpar}
+  \infer
+    {}
+    {\ctx \entc \new E \T E}
+
+  \infer
+    {\ctx \ente e : C \\
+     \op_i \T A_i \to B_i \in E \\
+     \ctx, x \T A_i, y : C \entc c_i : B_i \times C}
+    {\ctx \entc \newwith{E}{e}{(\kpre{operation} \op_i \, x \, @ \, y \mapsto c_i)_i} \T E}
+\end{mathpar}
+%
+The rule for the simple form is obvious, while the one for the extended form checks that
+the initial state $e$ has type $C$ and that, for each operation $\op_i \T A_i \to B_i \in
+E$, the corresponding computation $c_i$ evaluates to a pair of type $B_i \times C$.
+
+Finally, the rule for handling expresses the fact that handlers are like functions:
+%
+\begin{mathpar}
+    \infer
+    {\ctx \entc c \T A \\
+     \ctx \ente e \T A \hto B}
+    {\ctx \entc \handle{c}{e} \T B}
+\end{mathpar}
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "eff"
+%%% End:

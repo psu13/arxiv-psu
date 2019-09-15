@@ -1,0 +1,88 @@
+\section{Implementation}
+\label{sec:implementation}
+
+To experiment with \eff we implemented a prototype interpreter whose main evaluation loop
+is essentially the same as the denotational semantics described in
+Section~\ref{sec:semantics}. Apart from inessential improvements, such as recursive type
+definitions, inclusion of $\kord{for}$ and $\kord{while}$ loops, and pattern matching, the
+implemented language differs from the one presented here in two ways that make it usable:
+we implemented Hindley-Milner style type inference with parametric
+polymorphism~\cite{milner78atheory}, and in the concrete syntax we hid the distinction
+between expressions and computations. We briefly discuss each.
+
+There are no surprises in the passage from monomorphic type checking to parametric
+polymorphism and type inference. The infamous value
+restriction~\cite{wright95simpleimperative} is straightforward because the distinction
+between expressions and computations corresponds exactly to the distinction between
+nonexpansive and expansive terms. In fact, it may be worth investing in an effect system
+that would relax the value restriction on those computations
+that can safely be presumed pure. Because $\new E$ is a computation, effect instances are
+\emph{not} polymorphic, which is in agreement with ML-style references being
+non-polymorphic.
+%, see Section~\ref{sec:state}.
+% There is nothing in this section about value restriction
+
+A syntactic division between pure expressions and possibly effectful computations is
+annoying because even something as simple as $f \, x \, y$ has to be written as
+$\letin{g = f\, x} g \, y$, and having to insert $\kord{val}$ in the right places is no
+fun either. Therefore, the concrete syntax allows the programmer to arbitrarily mix expressions
+and computations, and a desugaring phase appropriately separates the two.
+
+The desugaring process is fairly simple. It inserts a $\kord{val}$ when an expression
+stands where a computation is expected. And if a computation stands where an expression is expected, the computation is hoisted to an enclosing $\kord{let}$
+statement. Because several computations may be hoisted from a single expression, the
+question arises how to order the corresponding $\kord{let}$ statements. For example, $(f\, x, g\, y)$ can be desugared as
+%
+\begin{equation*}
+  \begin{aligned}
+    &\letin{a = f \, x} \\ &\quad \letin{b = g \, y} (a, b)
+  \end{aligned}
+  \qquad\text{or}\qquad
+  \begin{aligned}
+    &\letin{b = g \, y} \\ &\quad \letin{a = f \, x} (a, b)
+  \end{aligned}
+\end{equation*}
+%
+The order of $f \, x$ and $g \, y$ matters when both computations cause computational
+effects. The desugaring phase avoids making a decision by using the \emph{simultaneous}
+$\kord{let}$ statement
+%
+\begin{equation*}
+  \kpre{let} a = f \, x \kop{and} b = g \, y \kop{in} (a, b)
+\end{equation*}
+%
+which leaves open the possibility of various compiler optimizations. The prototype simply
+evaluates simultaneous bindings in the order they are given, and a command-line
+option enables sequencing warnings about possible unexpected order of effects.
+%
+It could be argued that the warnings should actually be errors, but we allow some slack until
+we have an effect system that can detects harmless instances of simultaneous binding.
+
+For one-off handlers, \eff provides an inline syntax so that one can write
+
+\begin{center}
+\begin{tabular}{ccc}
+\begin{source}
+handle
+  $c$
+with
+  $\cdots$
+\end{source}&
+\quad instead of \quad \hbox{}&
+\begin{source}
+with
+  handler
+    $\cdots$
+handle
+  $c$
+\end{source}
+\end{tabular}
+\end{center}
+%
+Additionally, the \inline{val} and \inline{finally} clauses may be omitted, in which case
+they are assumed to be the identities.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "eff"
+%%% End: 
