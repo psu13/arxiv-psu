@@ -386,6 +386,8 @@
 \newbox\els@boxa
 \newbox\els@boxb
 
+\xdef\jtype{9}
+
 \ifpreprint
   \def\maketitle{\pprintMaketitle}
   \else
