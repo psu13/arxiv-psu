@@ -70,7 +70,7 @@
 		\let\iiiint\relax
 		\let\idotsint\relax
 		\let\openbox\relax}}{}}
-\ExecuteOptions{a4paper,10pt,oneside,onecolumn,number,preprint}
+\ExecuteOptions{a4paper,10pt,oneside,onecolumn,number}
 \DeclareOption*{\PassOptionsToClass{\CurrentOption}{article}}
 \ProcessOptions
 \LoadClass{article}
@@ -397,9 +397,7 @@
 \def\ps@pprintTitle{%
      \let\@oddhead\@empty
      \let\@evenhead\@empty
-     \def\@oddfoot{\footnotesize\itshape
-       Preprint submitted to \ifx\@journal\@empty Elsevier
-       \else\@journal\fi\hfill\today}%
+     \def\@oddfoot{}%
      \let\@evenfoot\@oddfoot}
 
 
@@ -701,5 +699,5 @@
    \def\@filecolor{blue}
    \def\@urlcolor{blue}
    \def\@menucolor{blue}
-   \def\@pagecolor{blue}
+   \def\@pagecolor{blue} \preprintfalse
 }{}}
