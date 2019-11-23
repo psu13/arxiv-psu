@@ -26,8 +26,8 @@
 \newif\if@addchapnum
 %
 %
-\hoffset=0.15in
-\voffset=0.65in
+%\hoffset=0.15in
+%\voffset=0.65in
 %
 \DeclareOption{master}{\@wsmastertrue}  %rvs
 \DeclareOption{bcrhead}{\@bcrheadtrue}
