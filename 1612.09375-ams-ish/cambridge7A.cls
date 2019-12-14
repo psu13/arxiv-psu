@@ -755,7 +755,7 @@
   \chapterauthor{\relax}%
 }
 
-\def\@makeschapterhead#1{\normalsize
+\def\@makeschapterhead#1{{\normalsize
   \parindent 0\p@
   \vspace*{-0.5\baselineskip}
   \raisebox{0.5\baselineskip}[0\p@][0\p@]{\mbox{\hspace*{\AJW@indent}}%
@@ -2376,10 +2376,10 @@
                   \leftmark \hfill}
   \fi
  \else
-  \def\@oddhead {\listsize
-                 \hfil \itshape \rightmark \hfil \makebox[\z@][r]{\rm \thepage}}
-  \def\@evenhead{\listsize
-                 \makebox[\z@][l]{\rm \thepage}\hfil \itshape \leftmark \hfil}
+  \def\@oddhead {\normalsize
+                 \hfil \scshape \MakeLowercase{\rightmark} \hfil \makebox[\z@][r]{\rm \thepage}}
+  \def\@evenhead{\normalsize
+                 \makebox[\z@][l]{\rm \thepage}\hfil \scshape \MakeLowercase{\leftmark} \hfil}
  \fi
  \ifAJW@confsty
   \def\chaptermark##1{}
@@ -2387,7 +2387,7 @@
  \else
   \def\chaptermark##1{\markboth{##1}{##1}}
   \def\sectionmark##1{\markright{\ifnum \c@secnumdepth >\z@
-   \thesection\hspace{0.5em}\fi ##1}}%
+   \thesection.\hspace{0.5em}\fi ##1}}%
  \fi
 }
 %
