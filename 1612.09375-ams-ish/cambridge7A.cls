@@ -2387,7 +2387,7 @@
  \else
   \def\chaptermark##1{\markboth{##1}{##1}}
   \def\sectionmark##1{\markright{\ifnum \c@secnumdepth >\z@
-   \thesection.\hspace{0.5em}\fi ##1}}%
+   \thesection\hspace{0.5em}\fi ##1}}%
  \fi
 }
 %
