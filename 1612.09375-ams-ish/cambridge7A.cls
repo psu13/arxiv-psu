@@ -2362,8 +2362,8 @@
 %
 \def\ps@headings{%
  \let\@mkboth=\markboth
- \def\@oddfoot {}
- \def\@evenfoot{}
+ \def\@oddfoot {\hfil \sc \thepage \hfil}
+ \def\@evenfoot{\hfil \sc \thepage \hfil}
  \ifAJW@indentsty
   \ifdim\AJW@indent=\z@
    \def\@oddhead {\listsize\itshape \rightmark \hfill \rm \thepage}
@@ -2376,10 +2376,8 @@
                   \leftmark \hfill}
   \fi
  \else
-  \def\@oddhead {\normalsize
-                 \hfil \scshape \MakeLowercase{\rightmark} \hfil \makebox[\z@][r]{\rm \thepage}}
-  \def\@evenhead{\normalsize
-                 \makebox[\z@][l]{\rm \thepage}\hfil \scshape \MakeLowercase{\leftmark} \hfil}
+  \def\@oddhead {}
+  \def\@evenhead{}
  \fi
  \ifAJW@confsty
   \def\chaptermark##1{}
