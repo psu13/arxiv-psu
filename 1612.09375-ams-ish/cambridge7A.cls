@@ -561,7 +561,7 @@
   \setlength\headheight{13\p@}
 %%  \setlength\footheight{13\p@}
   \setlength\footskip{26\p@}
-  \setlength\topskip{10\p@}
+  \setlength\topskip{14\p@}
 %\fi
   \setlength\headsep{11\p@}
 %
@@ -779,7 +779,7 @@
     \@ch@pterauthor
    \end{minipage}}
   \par \nobreak
-  \vskip 10.5\baselineskip % 2.5 less than the first line of text
+  \vskip 8.5\baselineskip % 2.5 less than the first line of text
   }\chapterauthor{\relax}%
 }
 %
