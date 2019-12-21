@@ -33,7 +33,7 @@
 \DeclareOption{sharealike}{\sharealiketrue}
 \ProcessOptions\relax
 
-\LoadClass[letterpaper,11pt,twoside]{article}
+\LoadClass[letterpaper,12pt,twoside]{article}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%   On US letter paper the margins (left-top-right-bottom) are       %%
