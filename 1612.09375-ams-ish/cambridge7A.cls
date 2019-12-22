@@ -696,7 +696,7 @@
          \ifAJW@confsty% remove chapter number from [conferencestyle] option
            {\huge\bfseries \vphantom{\thechapter}}
          \else
-           {\huge\bfseries \thechapter}
+           {\huge \thechapter}
         \fi
        \fi
      \fi
