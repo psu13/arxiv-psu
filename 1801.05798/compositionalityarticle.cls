@@ -282,8 +282,8 @@ class for Compositionality - the open journal for the mathematics of composition
 \@blacklistpackage{titlesec}
 
 \ifbool{@twocolumn}
-	{\RequirePackage[margin=2cm,bottom=3cm]{geometry}}
-	{\RequirePackage[margin=3cm,bottom=3cm]{geometry}}
+	{\RequirePackage[margin=1cm,bottom=2cm]{geometry}}
+	{\RequirePackage[margin=1cm,bottom=2cm,top=2cm]{geometry}}
 
 \@blacklistpackage{geometry}
 \setlength\lineskip{1\p@}
