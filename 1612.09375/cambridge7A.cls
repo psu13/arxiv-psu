@@ -755,7 +755,7 @@
   \chapterauthor{\relax}%
 }
 
-\def\@makeschapterhead#1{\normalsize
+\def\@makeschapterhead#1{{\normalsize
   \parindent 0\p@
   \vspace*{-0.5\baselineskip}
   \raisebox{0.5\baselineskip}[0\p@][0\p@]{\mbox{\hspace*{\AJW@indent}}%
