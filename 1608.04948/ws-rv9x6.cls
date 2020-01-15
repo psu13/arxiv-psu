@@ -1337,7 +1337,7 @@
 \RequirePackage{amsfonts,amssymb,amsmath}
 \RequirePackage{boxedminipage}
 \RequirePackage{makeidx}
-\RequirePackage{ws-crop9x6}
+%\RequirePackage{ws-crop9x6}
 \RequirePackage{url}
 \AtBeginDocument{\@ifpackageloaded{hyperref}
 {\hypersetup{pdfpagelabels=false,breaklinks,linktocpage}
