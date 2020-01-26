@@ -33,7 +33,7 @@
 %
 \DeclareOption{final}{\setlength\overfullrule{0pt}}
 %
-\ExecuteOptions{a4paper,10pt,twoside,onecolumn,final}
+\ExecuteOptions{a4paper,12pt,twoside,onecolumn,final}
 \ProcessOptions
 %
 \newcommand\appendixname{Appendix}
@@ -74,7 +74,7 @@
 \let\affiliationfont\rhfont
 \def\datefont{\footnotesize}
 \def\sectionfont{\bfseries\boldmath\rightskip2pc plus1fill{}}
-\def\subsectionfont{\bfseries\boldmath\itshape\rightskip2pc plus1fill{}}
+\def\subsectionfont{\bfseries\boldmath\rightskip2pc plus1fill{}}
 \def\subsubsectionfont{\itshape\rightskip2pc plus1fill{}}
 \def\paragraphfont{\bfseries\boldmath}
 \def\subparagraphfont{\itshape}
@@ -977,7 +977,7 @@
       \hbox to \textwidth{\vrule width\draftrule \hfill\vrule height\tempdimen width\draftrule}%
            \hrule height\draftrule}}}%%
 %
-\let\trimmarks\cropmarks
+\let\trimmarks\relax
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ss %%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% Output Routine %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1049,7 +1049,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%% Process Options %%%%%%%%%%%%%%%%%%%%%%%%
 
-\pagestyle{headings}
+%\pagestyle{headings}
 \pagenumbering{arabic} 
 \onecolumn
 \frenchspacing
@@ -1060,7 +1060,7 @@
 \usepackage[figuresright]{rotating}  
 \usepackage{amsfonts}
 \usepackage{amssymb,amsmath}
-\flushbottom
+%\flushbottom
 \endinput
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%End of file%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
