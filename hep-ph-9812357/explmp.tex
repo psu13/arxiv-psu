@@ -1,0 +1,183 @@
+
+\subsubsection{\label{subsubexplmp}{\tt EXP} and {\tt LMP}}
+%
+The programs {\tt EXP} and {\tt LMP} are computer-technical realizations
+of the prescriptions for the asymptotic expansion of Feynman
+diagrams described in Section~\ref{subasymp}.
+They both work at the graphical level, i.e.~they are not
+dealing with the analytic expressions corresponding to the Feynman
+diagrams but rather with the diagrams themselves. 
+
+Given an arbitrary diagram with a single external momentum (not counting
+momenta that can be gotten rid of by a simple Taylor expansion), {\tt EXP}
+and {\tt LMP} generate all possible subdiagrams by successively removing
+any combination of lines (propagators). For those subdiagrams matching
+the conditions of the large-momentum, respectively, the hard-mass
+procedure, the programs determine the momentum distribution. In
+particular, they determine which lines should be Taylor expanded in
+which momenta, and how the momenta of the hard subgraph are related to
+the ones of the co-subgraph. Thus, every diagram is split into
+several subdiagrams, all of them being products of single-scale
+integrals as discussed in Section~\ref{subasymp}.
+
+As it was already mentioned in Section~\ref{subgensd}, {\tt LMP} is
+written in {\tt PERL} and is only concerned with the large-momentum
+procedure. {\tt EXP}, being in some sense its successor, is a {\tt
+  FORTRAN~90} program\footnote{A forthcoming version will be written in
+  {\tt C}.} and deals also with the hard-mass procedure. In addition, if
+several scales are involved, it repeatedly applies both methods in
+combination, thus reducing an arbitrary three-loop self-energy diagram
+to single-scale integrals (see Section~\ref{sec::zbb}).
+
+To be specific, let us consider the example for the double-bubble diagram
+of Section~\ref{subsubexa} where the outer line is massless and the inner one
+carries mass $m$. The input file for {\tt LMP} looks as follows:
+\begin{verbatim}
+*--#[ GLOBAL :
+#define POWER "12"
+*--#] GLOBAL :
+
+*--#[ TREAT :
+multiply, (-d_(mu,nu) + q(mu)*q(nu)/q.q)*deno(3,-2);
+*--#] TREAT :
+
+*--#[ db :
+    *S(mu,p1,ro,p2,nu,p3,si,p4)
+    *SS(tau,p6m,al,-p7m)
+    *Dg(tau,ro,p8)
+    *Dg(si,al,p5)
+    ;
+    #define TOPOLOGY "O1"
+*--#] db :
+\end{verbatim}
+where the fold construct of {\tt FORM} is used not only to encode the
+diagram itself but also the projectors ({\tt TREAT}-fold) and possible
+options ({\tt GLOBAL}-fold). The projector is again on the transverse
+part of the diagram (see Section~\ref{sec::matmin}).  The external
+momentum is denoted by $q$ this time.  The only option here is {\tt
+  POWER}, denoting the required depth for the expansion in the mass $m$.
+
+The diagram is contained in the fold named {\tt db} (for ``double
+bubble''). The encoding is based on {\tt MINCER/MATAD} notation (see
+Section~\ref{sec::matmin}). In particular, the momentum distribution
+is in accordance with the corrsponding topology
+defined in these programs.
+
+{\tt LMP} reads the content of the {\tt db}-fold, translates it to an
+internal graph-based notation and applies the large-momentum procedure.
+There are two main output files; the first one is called {\tt db.dia}
+and contains the relevant subdiagrams:
+\begin{verbatim}
+*--#[ db_1 :
+    *S(mu,+p1,ro,+p2,nu,+p3,si,+p4)
+    *SS(tau,+p6mexp,al,-p7mexp)
+    *Dg(tau,ro,+p5)
+    *Dg(si,al,+p5)
+    ;
+#define DIANUM "1"
+#define TOPOLOGY "arb"
+#define INT1 "inpo1"
+#define MASS1 "0"
+*--#] db_1 :
+
+[...]
+\end{verbatim}
+\begin{verbatim}
+*--#[ db_5 :
+    *S(mu,+p11,ro,+p12,nu,+p13,si,+p14)
+    *SS(tau,p1m,al,+aexp,-p15mexp)
+    *Dg(tau,ro,+p15)
+    *Dg(si,al,+p15)
+    ;
+#define DIANUM "5"
+#define TOPOLOGY "arb"
+#define INT1 "topL1"
+#define MASS1 "M"
+#define INT2 "inpt1"
+#define MASS2 "0"
+*--#] db_5 :
+
+[...]
+\end{verbatim}
+Only two out of six contributing subdiagrams are displayed here, the
+remaining ones being represented by {\tt [...]}.  The information on the
+topology of the diagrams is now split according to the factorization of
+loops. It is contained in the pre-processor variables {\tt INT1}, {\tt
+  INT2}, etc. The variable {\tt TOPOLOGY} is set to the dummy value {\tt
+  arb}.
+
+The first subdiagram, {\tt db\_1}, corresponds to the naive
+Taylor expansion of the integrand with respect to $m$. This can be seen
+from the fact that the momentum distribution is the same as in the
+original diagram, and that the massive lines are denoted by {\tt
+  p}$i${\tt mexp} instead of {\tt p}$i${\tt m}. In this way {\tt MATAD}
+is advised to perform a Taylor expansion in $m$.  The second subdiagram
+displayed above, {\tt db\_5}, corresponds to the second one on the
+right-hand side of Fig.~\ref{figdblmp} (note that there is a
+topologically identical one, indicated by the factor 2 in
+Fig.~\ref{figdblmp}; {\tt LMP}, however, generates both of them as
+separate diagrams).  The co-subgraph is a one-loop tadpole-diagram
+carrying the momentum $p_1$. It must not be expanded in the mass,
+therefore its propagator is simply denoted by {\tt p1m} above. The hard
+subgraph is a two-loop diagram of the topology shown in
+Fig.~\ref{figtriangle}.  Its momenta $p_i$ ($i=1,\ldots,5$) are denoted
+by {\tt p1}$i$, where the additional ``{\tt 1}'' is introduced to
+distinguish them from the momenta (here it is only one momentum,
+actually) of the co-subgraph. One propagator carries the momentum $p_1 -
+p_{15}$ which is indicated by the notation {\tt +aexp,-p15mexp}. Note
+that this propagator also has to be expanded w.r.t. $m$. Here, $p_1$ is
+denoted by {\tt aexp} to let {\tt MATAD} know that it has to expand with
+respect to $p_1$. After expansion, {\tt aexp} is identified with {\tt
+  p1}. This is one of the main contents of the second output file of
+{\tt LMP}, called {\tt treat.db}. It again splits into folds, one for
+each subdiagram.  The fold corresponding to the subdiagram {\tt db\_5}
+above, for example, contains the line
+\begin{verbatim}
+id aexp = + p1;
+\end{verbatim}
+which does the identification of momenta mentioned above.  Most of the
+remaining statements of the {\tt treat.db}-file are concerned with the
+proper ``power-counting'', i.e., to take care that the Taylor expansions
+are performed such that not too few and not too many terms are
+generated.  (Expanding up to unnecessarily high power may drastically
+slow down the computation.)  
+
+To compute the second example of Section~\ref{subsubexa},
+the one concerned with
+the hard-mass procedure, one has to use {\tt EXP}. The input file,
+however, is almost identical to the one shown above. The only difference
+is the {\tt GLOBAL}-fold, since in the case of {\tt EXP} also the hierarchy
+of scales has to be fixed (for {\tt LMP}, only $q^2\gg
+m_1^2,m_2^2,\ldots$ is allowed):
+\begin{verbatim}
+*--#[ GLOBAL :
+#define POWERM "6"
+#define SCALES "M,q"
+*--#] GLOBAL :
+\end{verbatim}
+This means to assume $m^2\gg q^2$ and to expand up to $(q^2/m^2)^3$. For
+multi-scale problems, this fold may look like
+\begin{verbatim}
+*--#[ GLOBAL :
+#define POWERMa "4"
+#define POWERMc "2"
+#define POWERQ "8"
+#define SCALES "Ma,q,Mc,Mb"
+*--#] GLOBAL :
+\end{verbatim}
+indicating the hierarchy $m_a^2\gg q^2\gg m_c^2\gg m_b^2$ and an
+expansion up to the corresponding degrees.  The output files of {\tt
+  EXP} are very similar to the ones above, although the power-counting
+statements are obviously much more involved than for {\tt LMP}.
+
+In addition, {\tt LMP} and {\tt EXP} produce the whole set of
+administrative files, namely {\tt FORM} files which control the running of
+{\tt MINCER}/{\tt MATAD}, and {\tt make} files concerned with program
+calls and the reduction of loss caused by system crashes.
+
+The only task to be done by the user is to feed in the input file shown
+above, call {\tt LMP} or {\tt EXP}, and finally to type ``{\tt make}''
+in order to start the very computation of the diagrams. The output is
+exactly a result like the one quoted in Eq.~(\ref{eqdblmpres}) and
+(\ref{eqdbhmpres}), respectively.
+

@@ -1,0 +1,166 @@
+%----------------------------------------------------------------------
+\subsection{\label{secalgprg}Algebraic Programs}
+%----------------------------------------------------------------------
+%
+Automatic computation of Feynman diagrams would not be possible without
+the development of powerful algebraic programming systems. While these
+systems themselves are based on conventional languages like {\tt C} or
+{\tt LISP}, in turn they constitute the breeding ground for all the
+application software which is our main concern in this review.
+Therefore, before discussing concrete packages that often are
+exclusively designed for Feynman diagram calculations, it may be helpful
+to briefly introduce four of the most frequently used algebraic
+programming languages, with emphasis on their different strategies and
+philosophy.
+
+%----------------------------------------------------------------------
+\subsubsection{{\tt Mathematica} and {\tt MAPLE}}
+%----------------------------------------------------------------------
+%
+{\tt Mathematica} certainly is the program with the largest bandwidth of
+possible applications. Apart from the algebraic operations, {\tt
+  Mathematica} performs analytical and numerical integrations for quite
+huge classes of integrals, it can do finite and infinite sums,
+differentiation, matrix operations, it provides graphic routines etc.
+%{\it Man kann auch kompilierte FORTRAN oder C-Routinen einbinden, ohne
+%  dass der User das merkt.}
+
+{\tt MAPLE} is very similar to {\tt Mathematica} and often it is only a
+question of taste which one to use. There certainly are fields where one
+of them is superior to the other, and in extreme cases one may use them
+in combination to find the result of a calculation.
+
+The advantage of writing applications in {\tt Mathematica}
+or {\tt MAPLE} is that a lot of algorithms are built in and, of course,
+the whole environment --- the interactive platform constituting an
+important piece in this respect --- is available for the user to operate
+on the input and output. For example, one may perform numerical studies
+by inserting numbers for the parameters in the symbolic result.
+Meanwhile, a lot of users provide additional packages for
+very different purposes.
+
+One of the disadvantages of this generality is, of course, the rather
+big requirements of disk and memory space. Furthermore, the improper use
+of some very general commands ({\tt Integrate[]}, {\tt Simplify[]},
+etc.) may lead to inadequately long operational times or even hang-ups, a
+problem mainly occurring with unexperienced users.
+
+%----------------------------------------------------------------------
+\subsubsection{{\tt FORM}}
+%----------------------------------------------------------------------
+%
+The power of {\tt FORM} lies in its capability of manipulating huge
+algebraic expressions, the only limit in size being essentially the
+amount of free disk space. While for {\tt Mathematica} or {\tt MAPLE}
+operating on expressions of a few mega-bytes becomes rather
+inconvenient, {\tt FORM} may easily deal with several hundred mega-bytes
+and even giga-bytes. However, it is very restricted in its available
+operations.  But after some experience one will be surprised how
+powerful the so-called {\tt id}-statement is which replaces one
+quantity by an in general more complicated expression.
+
+The operational philosophy of {\tt FORM} is completely different to the
+ones of {\tt Mathematica} and {\tt MAPLE}, and so far {\tt FORM} is
+clearly optimized for algebraic operations in high energy physics.
+The concept is mainly to bring any expression to a unique form by
+fully expanding it into monomials (``terms''). Consider, for example, the
+following screen-shot of a {\tt Mathematica}-session:
+\begin{verbatim}
+In[1]:= f1 = (a+b)^2
+
+               2
+Out[1]= (a + b)
+
+In[2]:= f2 = a^2 + 2*a*b + b^2
+
+         2            2
+Out[2]= a  + 2 a b + b
+
+In[3]:= diff = f1 - f2
+
+          2            2          2
+Out[3]= -a  - 2 a b - b  + (a + b)
+
+In[4]:= Expand[diff]
+
+Out[4]= 0
+\end{verbatim}
+This clearly demonstrates that the internal representations of {\tt f1}
+and {\tt f2} inside {\tt Mathematica} are not the same.
+{\tt FORM}, in contrast, will instantly expand the bracket in {\tt f1},
+i.e., the input file
+\begin{verbatim}
+    Symbol a,b;
+    NWrite statistics;
+
+    L f1 = (a + b)^2;
+    L f2 = a^2 + 2*a*b + b^2;
+
+    L diff = f1 - f2;
+
+    print;
+    .end
+\end{verbatim}
+leads to the following output:
+\begin{verbatim}
+   f1 =
+      2*a*b + a^2 + b^2;
+
+   f2 =
+      2*a*b + a^2 + b^2;
+
+   diff = 0;
+\end{verbatim}
+All further operations on {\tt f1} or {\tt f2} will be {\it term-wise},
+i.e., an {\tt id}-statement
+\begin{verbatim}
+id a = b + c;
+.sort
+\end{verbatim}
+will first replace {\tt a} by {\tt b + c} in each of the three terms of
+{\tt f1} and expand them again into monomials. The {\tt .sort} means to
+collect all terms that only differ in their numerical coefficient and to
+bring the new expression for {\tt f1} to a unique form again.  This
+term-wise operation is the reason for {\tt FORM}'s capability of
+dealing with such huge expressions: Only a single term is treated in
+each operational step, all the others can be put on disk or wherever
+{\tt FORM} considers it convenient.
+
+In addition, identification of certain terms (``pattern matching'') is
+more transparent
+than in {\tt Mathematica}. For example, the user must be aware
+of the fact that in order to nullify the mixed term in {\tt f1},
+the function {\tt Expand[]} has to be applied before. 
+To be concrete, in {\tt Mathematica}:
+\begin{verbatim}
+In[2]:= f1 /. a*b -> 0
+
+               2
+Out[2]= (a + b)
+
+In[3]:= Expand[ f1 ] /. a*b -> 0
+
+         2    2
+Out[3]= a  + b
+\end{verbatim}
+
+
+It should be clear that the discussion above is not meant to judge if
+{\tt FORM}'s or {\tt Mathematica}'s concept is the better one.  Each one
+of them has its pros and cons, although the number of operations in {\tt
+  FORM} is much more restricted than in {\tt Mathematica}.
+
+%----------------------------------------------------------------------
+\subsubsection{{\tt REDUCE}}
+%----------------------------------------------------------------------
+%
+{\tt REDUCE}~\cite{reduce} is an algebra program that also was created
+for particle physics. It is not so general like {\tt Mathematica}, but
+for specific problems especially in high energy physics it may be more
+efficient. In contrast to {\tt FORM} it has an interactive mode and many
+more built-in functions, but again its capability of dealing with huge
+expressions is more limited.
+
+%
+% end of algebraic.tex
+%

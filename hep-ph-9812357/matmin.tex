@@ -1,0 +1,98 @@
+%
+\subsubsection{\label{sec::matmin}{\tt MATAD} and {\tt MINCER}}
+%
+Let us examine the three-loop ladder diagram (see Fig.~\ref{figladder})
+in order to see in detail how the programs {\tt MATAD} and {\tt MINCER}
+work.  We will focus on the case where the external momentum, $q_1$, is
+much smaller than the mass of the fermions, $m$.  Application of the
+rules for the hard-mass procedure (Section~\ref{subasymp}) shows that it
+suffices to perform a Taylor expansion of the integrand in order to
+arrive at an expansion in $q_1^2/m^2$.  The resulting integrals to be
+evaluated are of the tadpole type, and the calculation can completely be
+passed to {\tt MATAD}.  In the opposite limit, $q_1^2\gg m^2$, in
+addition to the naive Taylor expansion of the integrand in $m^2/q_1^2$,
+the large-momentum procedure generates non-trivial subgraphs.
+In general their evaluation requires to use {\tt MATAD} and
+{\tt MINCER} in combination.
+%
+\begin{figure}[hb]
+  \begin{center}
+    \begin{tabular}{c}
+      \epsfxsize=4cm
+      \epsffile[131 278 481 514]{dia11rho.ps}
+      \smallskip
+    \end{tabular}
+    \parbox{\captionwidth}{
+      \caption[]{\label{figladder}\sloppy 
+        Ladder-type diagram contributing to the
+        photon propagator. The solid, wavy and curly lines represent
+        quarks, photons and gluons, respectively.  }}
+  \end{center}
+\end{figure}
+%
+
+The input for the Feynman graph is written to a file using the fold
+construct of {\tt FORM}~\cite{form}:
+\begin{verbatim}
+*--#[ ladder:
+        ((-1)
+        *Dg(nu1,nu2,p7)
+        *Dg(nu3,nu4,p8)
+        *S(mu1,q1,p3m,nu3,q1,p2m,nu1,q1,p1m,mu2,p6m,nu2,p5m,nu4,p4m)
+        );
+
+        #define TOPOLOGY "LA"
+*--#] ladder:
+\end{verbatim}
+Some words concerning the notation are in order: The function
+\verb/S(...)/ represents the fermion string and contains momenta
+(\verb/p1/ $\widehat = \,p_1$, \ldots) and Lorentz indices (\verb/mu1/
+$\widehat = \,\mu_1$, \ldots) as its arguments. The momenta are labeled
+in accordance with the {\tt MINCER} conventions for the specific
+topology which is \verb/LA/ here, meaning ``ladder''. Note that it
+is more convenient to express the input in terms of eight momenta and to
+use momentum conservation at a later stage than to impose it already in
+the input.  The ending \verb/m/ indicates that massive fermions should be
+considered.  A small {\tt FORM} program transforms each Lorentz index to
+the corresponding $\gamma$ matrix and the momenta to fermion
+propagators.  The expansion in the external momentum, \verb/q1/, is
+indicated by the consecutive appearance of \verb/q1/ together with an
+integration momentum. The depth of the expansion, which is encoded
+as a pre-processor variable in {\tt FORM}, must be defined at program
+call. \verb/Dg(...)/ represents the gluon propagator.  After reading the
+diagram these functions are replaced according to the Feynman rules.
+Then {\tt MATAD} evaluates the fermion trace and expands the
+denominators with respect to \verb/q1/.  At this point the user may
+influence the procedure by providing an additional file, the so-called
+``special {\tt treat}-file''. For the matter in hand, this file contains
+a projector on the transverse part
+of the diagram:
+%
+\begin{verbatim}
+multiply, (-d_(mu1,mu2)+q1(mu1)*q1(mu2)/q1.q1)*deno(3,-2);
+\end{verbatim}
+%
+where \verb/deno(3,-2)/ means $1/(3-2\varepsilon)$.  In this way one
+obtains a scalar expression where \verb/q1/ is absent in the
+denominators of the propagators. However, it may still appear in scalar
+products with integration momenta.  Application of d'Alembertian
+operators performs an averaging in the numerator, i.e. terms like
+$(q_1\cdot p)^2$ are replaced by $p^2 q_1^2/D$. This projects out the
+coefficients of $(q_1^2)^n$ which have no dependence on the external
+momenta any more.  After that it is possible to decompose the numerators
+in terms of the denominators.  At this stage the expression may already
+have split into millions of different integrals.  Recurrence relations
+derived with the integration-by-parts technique reduce them to a small
+set of tabulated master integrals which have been evaluated once and for
+all.  In the case of the photon propagator, for example, all three-loop
+integrals reduce to only three massive three-loop master integrals.  The
+same is true for the massless case with non-vanishing external momentum,
+which is where {\tt MINCER} applies.
+
+In intermediate steps, when the recurrence relations are applied, it may
+happen that the expression blows up and disk space up to several
+Gigabytes is needed. But the final result is rather compact and fills
+only of the order of one output screen (depending, of course, on the
+depth of the expansion).
+
+

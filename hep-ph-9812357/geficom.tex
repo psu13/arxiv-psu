@@ -1,0 +1,172 @@
+%
+\subsubsection{\label{subgeficom}{\tt GEFICOM}}
+%
+This section investigates in more detail how to use {\tt GEFICOM} to
+evaluate a whole set of Feynman diagrams.  Fig.~\ref{figfchart} gives a
+schematic overview of {\tt GEFICOM} and the possible interactions from
+outside. It unifies several packages described above and thus allows to
+automatically compute a specified class of diagrams in analytic form as
+long as a certain hierarchy among the involved mass scales is justified.
+The strategy then is to apply asymptotic expansions in order to split
+all integrals into massless propagator-type diagrams and massive
+tadpoles.
+
+\begin{figure}[ht]
+  \begin{center}
+    \leavevmode
+    \epsfxsize=8cm
+    \epsffile[77 200 420 780]{fchart.ps}\\
+    \parbox{\captionwidth}{
+      \caption[]{\label{figfchart}The structure of {\tt GEFICOM}.
+        }}
+  \end{center}
+\end{figure}
+
+
+As an example let us consider corrections to the gluon propagator from
+which follows, for example, the gluon wave function renormalization constant.
+{\tt GEFICOM} needs a name for each problem, and we will choose ``{\tt
+  gg}'' for it.  A more sophisticated example involving up to four
+different dimensional parameters is considered in Section~\ref{sec::zbb}.
+
+In a first step the user sets up a file containing the
+Lagrangian, or rather its topological content, i.e., the plain
+vertices and propagators without the corresponding analytical expressions.
+In our example it is called {\tt gg.lag} and looks as follows:
+\begin{verbatim}
+*  propagators 
+  [g,g;3+t]
+  [c,C;1-]
+  [q,Q;2-]
+  [sigma,sigma;1+t]
+*  vertices
+  [Q,q,g]
+  [C,c,g]
+  [g,g,g]
+  [g,g,sigma]
+\end{verbatim}
+This file serves as input for {\tt QGRAF}\footnote{The notation of the
+  {\tt QGRAF} version 1.3 has been adopted.}  and the notation is
+adopted from this program.  In the first part the propagators are
+defined for gluons (\verb/g/), ghosts (\verb/c/) and quarks (\verb/q/).
+The auxiliary particle $\sigma$ (\verb/sigma/) is introduced to split
+the four-gluon vertex into three-linear vertices which are much easier
+to deal with.  In addition to the spin multiplicity one also has to
+specify if the particle is a boson (``$+$'') or fermion (``$-$''). The
+optional parameter \verb/t/ guarantees that no diagrams with tadpoles of
+the corresponding particle are generated.  The notation for the vertices
+in the second part is rather obvious.
+
+A second file, called {\tt gg.def}, contains the underlying process,
+accompanied by additional options:
+\begin{verbatim}
+*** MINCER
+
+* gauge 1
+* scheme 2
+* power 0
+
+      list = symbolic ;
+      lagfile = 'q.lag' ;
+      in = g[q];
+      out = g[q]; 
+      nloop = ;
+      options = ;
+      true = bridge[ g,c,q, 0,0 ]; 
+\end{verbatim}
+The first line determines that the output of the generation procedure
+should be transformed into {\tt MINCER} notation.  The next two
+statements fix the gauge and the regularization scheme, and the variable
+\verb/power/ defines the depth of the expansion in small masses and
+momenta.  Since in our case all particles are taken to be massless, only
+one scale is left, namely the external momentum. Thus, an expansion is
+not needed and the variable \verb/power/ may be assigned the value zero.
+The remaining part again uses {\tt QGRAF} notation and specifies the
+diagrams to be generated.  For example, ``\verb/in/'' and ``\verb/out/''
+denote in- and outgoing states, and the last line excludes diagrams that
+are one-particle reducible w.r.t.\ gluons, ghosts or quarks.  {\tt
+  options} is left empty, and {\tt nloop}, the number of loops, will be
+defined via a command line option later.
+
+Like in Section~\ref{sec::matmin}, the user again may provide ``special
+{\tt treat}-files'' --- in the case of the gluon propagator two of them.
+The first one, called
+{\tt treat.gg.1}, again contains the projector on the transverse
+structure of the correlator:
+\begin{eqnarray}
+\frac{1}{D-1}\left(-g^{\mu_1\mu_2}+\frac{q^{\mu_1}q^{\mu_2}}{q^2}\right)
+\,.
+\end{eqnarray}
+
+Besides the consideration in momentum space 
+{\tt GEFICOM} also takes care about the colour factor which is why in
+general one should supply a projector also in colour space.
+For the gluon propagator with the colour indices $a(1)$ and $a(2)$ it is
+given by
+\begin{eqnarray}
+\frac{\delta^{a(1)a(2)}}{n_g}
+\,,
+\end{eqnarray}
+where $n_g=N_c^2-1$ is the number of gluons. The corresponding {\tt
+  FORM} file, called {\tt treatcol.gg.1}, looks as follows:
+\begin{verbatim}
+multiply, prop(a(1),a(2))/ng;
+\end{verbatim}
+
+After providing these simple input files,
+{\tt GEFICOM} may be called by executing the shell-script
+command:
+\begin{verbatim}
+> doq2f -p <prb> -l <loops>
+\end{verbatim}
+where \verb/<prb>/ gives the name of the problem ({\tt gg} here) and
+\verb/<loops>/ is the number of loops. {\tt GEFICOM} calls {\tt QGRAF}
+and transforms the output to {\tt Mathematica} format. Unfortunately {\tt
+  QGRAF} does not provide the topology of the generated diagrams.
+While for a human being it is very simple
+to figure out this information by just looking at the diagram, for a
+computer this is a non-trivial task, especially if the number of
+loops exceeds two.  One of the core parts of {\tt GEFICOM} indeed is a
+{\tt Mathematica} program precisely concerned with this problem. 
+
+Once the topology is available, the notation for the diagrams is
+translated to a format which is suitable for the {\tt FORM} packages
+{\tt MINCER} and {\tt MATAD}. In addition, a set of administrative files
+controlling the calculation and ensuring minimal loss in the case of
+computer breakdowns is generated.  For the case of the gluon propagator
+considered in this section, at three-loop level 494~diagrams are
+generated, and it takes roughly 12 hours of CPU time on a DEC-Alpha
+machine with 600~MHz for the complete evaluation. A sample diagram for
+the three-loop gluon propagator is shown in Fig.~\ref{fig::gg}.
+
+%
+\begin{figure}[ht]
+  \begin{center}
+    \leavevmode
+    \epsfxsize=6.cm
+    \epsffile[130 260 450 460]{LAgg.ps}
+    \hfill
+    \parbox{\captionwidth}{
+    \caption[]{\label{fig::gg}\sloppy
+      Sample diagram contributing to the gluon propagator at three loops.
+      }}
+  \end{center}
+\end{figure}
+%
+
+
+In analogy to the momentum-space diagram also a {\tt FORM} version of the
+``colour diagram'' is generated which is evaluated with the help of
+a small {\tt FORM} program.
+
+The computation of the diagrams is not initiated automatically.
+Instead, {\tt GEFICOM} generates a shell-script, \verb/do<prb>/
+(\verb/dogg/ in our case) that allows, for example, only a subset of
+diagrams, or even only a single diagram, to be computed via command line
+options.  The advantage of this strategy is that different computers may
+be used in parallel for different subsets, or that a part of the
+diagrams may even be evaluated before the generation is finished.  After
+the results of all diagrams are available they are summed up, taking
+into account the correct colour (and other) factors and the
+(unrenormalized) result is at hand.
+
