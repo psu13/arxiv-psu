@@ -169,6 +169,6 @@
 \RequirePackage{cernunits}
 
 %%% Text font : Times Roman
-\renewcommand{\rmdefault}{ptm}
+%\renewcommand{\rmdefault}{ptm}
  
 \endinput
