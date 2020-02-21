@@ -1,0 +1,269 @@
+% Взято из AMS
+%\def\nonbreakingspace{\unskip\nobreak\;\ignorespaces}
+%\def~{\protect\nonbreakingspace}
+% Работает только вся пара \def; все, что определено в форматах
+% не трогается, проверял...
+% Неразрывный и (мое - !нерастяжимый!) пробел ширины как \;
+\def~{\unskip\nobreak\kern0.2778em\ignorespaces}% работает удвоение ~~
+
+% \tmspace - аббревиатура для text/math space
+% ! \tmspace - это AMS' команда, ее нет в стандартном LaTeX2е
+% см. D:\Program Files\MiKTeX\tex\latex\amsmath\amsmath.sty
+% она у меня не используется. Это корректировка стандартной команды \,
+% \DeclareRobustCommand{\tmspace}[3]{\ifmmode\mskip#1#2\else\kern#1#3\fi\relax}
+% \renewcommand{\,}{\tmspace+\thinmuskip{.1667em}}
+% Кнутовская команда \def\,{\kern 0.16667em} некорректно масштабируется
+% в мат. моде при \displaystyle -> \scriptstyle
+
+% встроенные значения \delimiterfactor=901 \delimitershortfall=5pt
+% дают оптимальное... проверялось; улучшить не удалось
+
+% Следующие новые "шпации" \, \! не зависят ни от каких классов/пакетов
+% и не влияют на них, если там используются \thinmuskip, \thinspace
+% но не используются \, и \!
+% Важно! Не переопределяй стандартные \thinmuskip и \thinspace
+
+% Старые (работающие) версии; без расширений типа\,[N]
+%\def\,{\ifmmode\mskip+1.5mu\else\kern+.08333em\fi\relax}
+%\def\!{\ifmmode\mskip-1.5mu\else\kern-.08333em\fi\relax}
+% определения \, и \! не срабатывают в sty-файле при revtex4, 4-1
+\renewcommand{\,}[1][1]{% 1/3 от стандарта \, = \mskip3mu = \thinspace
+\ifmmode\mkern#1mu\else\kern#1\dimexpr0.05556em\fi\relax}% 1em = 18mu
+\renewcommand{\!}[1][1]{\,[-#1]}
+
+% Нужен babel: перенос составных слов; не зависит от опций russian/english
+\initiate@active@char{"} % сделать активный символ "
+\defineshorthand{"=}{\nobreak-\hskip0pt}
+\defineshorthand{""}{\hskip0pt}
+\useshorthands{"} % инициировать сокращения "" и "=
+\def\russian{\selectlanguage{russian}}
+\def\english{\selectlanguage{english}\useshorthands{"}}
+
+% Мои настройки перечней. Львовский, стр.314; КЧ, стр.122
+\providecommand{\@listI}{}
+\renewcommand{\@listI}{% настоять на своей версии \@listI
+\leftmargin=2.5em%
+\rightmargin=2em%
+\listparindent=1em%
+\topsep=6pt plus 2pt minus 3pt}
+% в amsart.sty оформление descrition с дурацким двоеточием :
+\def\descriptionlabel#1{\itshape\sffamily#1}
+
+\newenvironment{Align}[1][{11}]% 11 колонок без пробелов между ними
+{\csname alignat\endcsname{#1}}{\csname endalignat\endcsname}
+\newenvironment{Align*}[1][{11}]%
+{\csname alignat*\endcsname{#1}}{\csname endalignat*\endcsname}
+% Примеры использования:
+% \begin{Align}  ... \end{Align}
+% \begin{Align*} ... \end{Align*}
+% \begin{Align*}[21] ... \end{Align*}% если не хватает 11 колонок
+
+\RequirePackage{amsmath}
+\allowdisplaybreaks[4]% разрывать стр. на многострочных формулах
+
+% Вертикальное расстояние в align, gather ... КЧ: стр.156
+%\AtBeginDocument{\jot=1.3ex} % так не срабатывает
+% Коррекция \jot из amsart.sty работает только через \adjustvert..
+\def\@adjustvertspacing{%
+ \bigskipamount.7\baselineskip plus.7\baselineskip
+ \medskipamount\bigskipamount\divide\medskipamount\tw@
+ \smallskipamount\medskipamount\divide\smallskipamount\tw@
+ \abovedisplayskip\medskipamount
+ \belowdisplayskip\abovedisplayskip
+ \abovedisplayshortskip\abovedisplayskip
+ \advance\abovedisplayshortskip-1\abovedisplayskip
+ \belowdisplayshortskip\abovedisplayshortskip
+ \advance\belowdisplayshortskip 1\smallskipamount
+%\jot\baselineskip \divide\jot by 4 % было
+ \jot=1.3ex%
+\relax}
+% убрать дурацкую точку после даты в amsart.cls
+\def\@setdate{\datename\ \@date\@addpunct}
+
+\ifx\pdfoutput\undefined\else % DVI или PDF
+% Прежний default-порядок поиска графических файлов: png, pdf, jpg
+\RequirePackage{graphicx}%
+\DeclareGraphicsExtensions{.pdf,.png,.jpg}%
+\pdfcompresslevel=0% 0 быстрее 9 на 20%, хотя размер файла больше
+\let\WriteBookmarks\relax % не писать out-файл; берется из оглавления
+\fi
+
+\RequirePackage{relsize} % relscale/smaller/larger
+\def\RSsmallest{4pt} % равномерное уменьшение при 10/11/12pt:
+%       10/9/8/7/6/5|pt = \relscale{1.0/0.9/0.8./0.7/ 0.6/0.5}
+%    11/10/9/8/7/6/5|pt = \relscale{1.0/0.9/0.8./0.7/ 0.6/0.5/0.4}
+% 12/11/10/9/8/7/6/5|pt = \relscale{1.0/0.9/0.8./0.75/0.7/0.6/???/0.4}
+% ! В следующих двух командах нельзя менять \hbox -> \text
+% \text - очень затратная команда; тормозит компиляцию ... в 3-4 раза!
+\newcommand{\Larger}[2][1]{\hbox{\larger[#1]$#2$}}% relsize Ok
+\newcommand{\Smaller}[2][1]{\hbox{\relscale{0.% Ok для 10/11pt
+\ifcase#1 99\or9\or8\or7\or6\or5\else4\fi}$#2$}}
+
+\def\ds {\displaystyle}
+\def\ts {\textstyle}
+\def\scs{\scriptstyle}
+\def\sss{\scriptscriptstyle}
+\def\bb {\mathbb}
+\def\bo {\boldsymbol}
+\def\cal{\mathcal}
+\def\mbf{\mathbf}
+\def\msf{\mathsf}
+\def\scr{\mathscr}
+\def\itsf#1{\textit{\textsf{#1}}}
+\def\itbf#1{\textit{\textbf{#1}}}
+\def\embf#1{\emph  {\textbf{#1}}}
+\def\frak{\mathfrak} % чтобы не было AMS-сообщения: obsolete \frak
+
+\def\bbC {{\mathbb C}}
+\def\bbQ {{\mathbb Q}}
+\def\bbR {{\mathbb R}}
+\def\bbH {{\mathbb H}}
+\def\ellK{{\mathsf K}}
+\def\ellE{{\mathsf E}}
+\def\eps {\varepsilon}
+\def\sp{{\vcenter{\hbox{$\sss+$}}}}
+\def\sm{{\vcenter{\hbox{$\sss-$}}}}
+\def\re{{\mathrm e}}
+\def\ri{{\mathrm i}}
+\def\const{\mathrm{const}}
+\def\Hp{\mathbb{H}^\sp}
+\def\DEF{\mathrel{\vcenter{\hbox{$:$}}{=}}}
+\def\FED{\mathrel{{=}\vcenter{\hbox{$:$}}}}
+% команды ниже страбатывают на \tsf, \ttt, \tbf, \tsc, \emph
+\def\qm {{\smaller[1]\iflanguage{russian}{КМ} {QM}}}
+\def\ode{{\smaller[1]\iflanguage{russian}{ОДУ}{ODE}}}
+\def\lvs{{\smaller[1]\iflanguage{russian}{ЛВП}{LVS}}}
+\def\qft{{\smaller[1]\iflanguage{russian}{КТП}{QFT}}}
+
+\def\=={\mathrel{\phantom{=}}}
+% Размеры: \cdot < \bo\cdot < \bdot < \bullet
+%\def\cdot {не переделывается}
+\def\bdot  {\mathbin{\hbox{$\vcenter{\hbox{$\sss\bullet$}}$}}}
+\def\circ  {\mathbin{\hbox{$\vcenter{\hbox{$\sss\mathchar"220E$}}$}}}
+\def\Circ  {\mathbin{\mathchar"220E}}
+\def\odot  {\mathbin{\hbox{$\vcenter{\hbox{$\scs\mathchar"220C$}}$}}}
+\def\Odot  {\mathbin{\mathchar"220C}}
+\def\oplus {\mathbin{\hbox{$\vcenter{\hbox{$\scs\mathchar"2208$}}$}}}
+\def\Oplus {\mathbin{\mathchar"2208}}
+\def\ominus{\mathbin{\hbox{$\vcenter{\hbox{$\scs\mathchar"2209$}}$}}}
+\def\Ominus{\mathbin{\mathchar"2209}}
+\def\times {\mathbin{\hbox{$\vcenter{\hbox{$\scs\mathchar"0202$}}$}}}
+\def\Times {\mathbin{\mathchar"0202}}
+\def\otimes{\mathbin{\hbox{$\vcenter{\hbox{$\scs\mathchar"220A$}}$}}}
+\def\Otimes{\mathbin{\mathchar"220A}}
+\def\wedge {\mathbin{\hbox{$\vcenter{\hbox{$\scs\mathchar"225E$}}$}}}
+\def\Wedge {\mathbin{\mathchar"225E}}
+\def\vee   {\mathbin{\hbox{$\vcenter{\hbox{$\scs\mathchar"225F$}}$}}}
+\def\Vee   {\mathbin{\mathchar"225F}}
+
+\def\ie{\iflanguage{russian}{т.\kern0.1667em е.\ }{i.\kern0.1667em e.}}
+\def\etc{\iflanguage{russian}{и~т.\kern0.1667em д}{etc}}
+\def\eg{e.\kern0.1667em g.}
+
+\def\maple{\textsc{Maple}}
+\def\Partial#1#2{\frac{\partial #1}{\partial #2}}
+\def\MPartial#1#2{\Mfrac{\partial #1}{\partial #2}}
+\def\mPartial#1#2{\mfrac{\partial #1}{\partial #2}}
+\def\point#1{\mathchoice{{\Smaller[1]{\mathcal#1}}}%
+	{{\Smaller[1]{\mathcal#1}}}{{\mathcal#1}}{{\mathcal#1}}}
+
+\newcommand{\oper}[2][0]{ % улучшенная ^ \hat; чуть пошире
+ \setbox1=\hbox{$\m@th#2$} \dimen0=0.6\wd1
+ \setbox2=\hbox{$\m@th\scs\skew{#1}\widehat{\vbox to1.06\ht1{}}$}
+ \advance\dimen0 0.6\wd2 {}\kern\dimen0 \box2\kern-\dimen0{}#2}
+%%
+\newcommand{\goto}[1][2]%
+{\mathrel{\REPEAT{\mathchar"439}{#1}\mathchar"044B}}
+\def\hhence{%
+ \mathrel{\hbox{\scalebox{1.3}[1]{\hbox%
+	{$\Leftarrow\mkern-13mu\Rightarrow$}}}}}
+\newcommand{\hence}[1][1.3]{%
+ \mathrel{\hbox{\scalebox{#1}[1]{\hbox{$\Rightarrow$}}}}}
+\newcommand{\mutual}[1][1.5]{%
+ \mathrel{\hbox{\scalebox{#1}[1]{\hbox{$\rightleftarrows$}}}}}
+
+% расстояния до рамки в \fbox, \boxed, ...
+\def\fboxsep{2.5\dimen36} % ~1.5ex; в 2.5 раза больше default
+
+% Переделка, улучшение и корректировка \dot-точек над символами
+% более жирная точка над символами
+\def \dot#1{\mathbf{\mathaccent"705F\mathnormal{#1}}}
+\def\ddot#1{\mathbf{\mathaccent"707F\mathnormal{#1}}}
+% На случай, если \@ptsize не определена; напр., slides
+\providecommand\@ptsize{2} % default = 2 (12pt)
+% \dddot центрируeтся не всегда хорошо; корректируй
+\ifnum\@ptsize=0      % для 10pt
+ \def\dddot#1{{\mathop{{}#1}\limits^{\vbox to-1.4\ex@{\kern-\tw@\ex@
+ \hbox{\relscale{1.4}$\m@th\mkern0.2mu.\mkern-2.4mu.\mkern-2.4mu.$}\vss}}}}
+\else\ifnum\@ptsize=1 % для 11pt
+ \def\dddot#1{{\mathop{{}#1}\limits^{\vbox to-1.3\ex@{\kern-\tw@\ex@
+ \hbox{\relscale{1.4}$\m@th\mkern0.2mu.\mkern-2.4mu.\mkern-2.4mu.$}\vss}}}}
+\else\ifnum\@ptsize=2 % для 12pt
+ \def\dddot#1{{\mathop{{}#1}\limits^{\vbox to-1.27\ex@{\kern-\tw@\ex@
+ \hbox{\relscale{1.3}$\m@th\mkern0.2mu.\mkern-2.3mu.\mkern-2.3mu.$}\vss}}}}
+\fi\fi\fi
+
+% Дроби : \dfrac > \Mfrac > \mfrac > \tfrac; Работает при 10, 11, 12pt
+% Не центрируются в footnotes, только в тексте!
+% Доделать: модифицировать версии для \mathchoice .........
+\def\FRAC#1#2#3{\hbox{\relscale{0.#1}$\ds\frac{#2}{#3}$}}
+\ifnum\@ptsize=0      % для 10pt
+ \def\Mfrac#1#2{\raise0.058ex\FRAC9{#1}{#2}}
+ \def\mfrac#1#2{\raise0.175ex\FRAC7{#1}{#2}}
+\else\ifnum\@ptsize=1 % для 11pt
+ \def\Mfrac#1#2{\raise0.050ex\FRAC9{#1}{#2}}
+ \def\mfrac#1#2{\raise0.157ex\FRAC7{#1}{#2}}
+\else\ifnum\@ptsize=2 % для 12pt
+ \def\Mfrac#1#2{\raise0.050ex\FRAC9{#1}{#2}}
+ \def\mfrac#1#2{\raise0.145ex\FRAC7{#1}{#2}}
+\else
+ \def\Mfrac#1#2{\text{\red undefined \texttt{Mfrac}}}
+ \def\mfrac#1#2{\text{\red undefined \texttt{mfrac}}}
+\fi\fi\fi
+
+% \newdimen - глобальные переменные
+\newdimen{\upp} \newdimen{\Dim} \newdimen{\DDim}
+
+\newcommand{\pow}[4][\displaystyle]{
+\settowidth{\upp}{\hbox{$\m@th#1 {}^{#4}$}}%
+\settowidth{\Dim}{\hbox{$\m@th#1{#2}$}}%
+\settowidth{\DDim}{\hbox{$\m@th#1{#2}_{#3}$}}%
+\addtolength{\DDim}{-\Dim} {#1{#2}_{#3}\kern-\DDim {}^{#4}}
+\addtolength{\DDim}{-\upp}\ifdim\DDim>0pt \kern+\DDim \fi\relax}
+
+%%%%%% ВСПОМОГАТЕЛЬНЫЕ КОМАНДЫ %%%%%%%%
+
+% \show не показывает некоторые; \show\tt; но \show\s .....
+\def\showw#1{{\let\protect\show#1}}
+
+% {\s}[2][4]: 2 - число аргументов, 4 - default-значение 1-го аргумента
+\newcommand{\s}[2][4]{\vcenter{\Smaller[#1]{#2}}}
+				% не слишком мелко + центровка по вертикали; напр. скобки
+				% работает default при 10,11pt, при 12pt используй \s[5]{..}
+%%%%%%%%%%%%%%%%%%%%%%
+
+\def\black  {\color{black}}
+\def\white  {\color{white}}
+\def\red    {\color[rgb]{1,0,0}}
+\def\brown  {\color[rgb]{0.75,0.2,0.1}}
+\def\green  {\color[rgb]{0,0.6,0}} %{0,1,0) слишком блеклый
+\def\blue   {\color[rgb]{0,0,1}}
+\def\yellow {\color[rgb]{1,1,0}}
+\def\cyan   {\color[rgb]{0,1,1}}%  стандартный cyan=[cmyk]{1,0,0,0}
+\RequirePackage{color}
+\definecolor{magenta}{rgb}{1,0,1}% стандартная magenta=[cmyk]{0,1,0,0}
+\def\magenta{\color[rgb]{1,0,1}}%  слишком красноватая в pdf
+\def\textblue{\textcolor[rgb]{0,0,1}}
+\def\textcyan{\textcolor[rgb]{0,1,1}}
+\newcommand{\gray}[1][9]{\color[gray]{0.#1}} % 0 - черный, 99 - белый
+
+\newcommand{\Width}[2][\displaystyle]
+{\settowidth\Dim{\hbox{$#1#2$}}\texttt{\tiny\blue$($\the\Dim$)$}}
+\newcommand{\Height}[2][\displaystyle]
+{\settoheight\Dim{\hbox{$#1#2$}}\texttt{\tiny\blue$($\the\Dim$)$}}
+\newcommand{\Depth}[2][\displaystyle]
+{\settodepth\Dim{\hbox{$#1#2$}}\texttt{\tiny\blue$($\the\Dim$)$}}
+
+% Если сделать "улучшение" как
+% \def\sin{\mathop{\makebox[0.93\width][l]{$\operator@font sin$}}\nolimits}
+% то $\sin x...$ лучше, но хуже $\sin(...$
