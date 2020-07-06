@@ -1,0 +1,468 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{url}
+\usepackage{mathtools, nccmath}
+\usepackage[font={sf}]{caption}
+\usepackage{tikz}
+\usepackage{tikzit}
+\usepackage{fontawesome}
+\usepackage{stmaryrd}
+\usepackage[margin=1.2in]{geometry}
+\usepackage{authblk}
+
+\title{Categories of Semantic Concepts}
+%\titlerunning{Categories of Semantic Concepts}
+%\addauthor{IFCoLog}{International Federation of Computational Logic}
+\author[1]{James Hefford}
+\author[1]{Vincent Wang}
+\author[1,2]{Matthew Wilson}
+\affil[1]{University of Oxford, Department of Computer Science, Quantum Group}
+\affil[2]{HKU-Oxford Joint Laboratory for Quantum Information and Computation}
+%\authorrunning{J. Hefford, V. Wang, M. Wilson}
+
+%%%-------Tikz Options-------%
+\input{tikzstyles}
+\input{styles.tikzstyles}
+\usetikzlibrary{calc, positioning, shapes.geometric}
+\usetikzlibrary{
+	arrows,
+	shapes,
+	decorations,
+	intersections,
+	backgrounds,
+	positioning,
+	circuits.ee.IEC
+	}
+
+
+\newcommand{\tikzfigscale}[2]{\scalebox{#1}{\tikzfig{#2}}}
+
+
+%%----------Maths Characters---------%%
+\newcommand{\cat}{\mathbf}
+\newcommand{\morph}[1]{\xrightarrow{#1}}
+\newcommand{\id}[1]{\textrm{id}_{#1}}
+\newcommand{\ob}[1]{\textrm{Ob}(#1)}
+%\newcommand{\cor}{\textrm{cor}}
+%\newcommand{\cor}{\operatorname{\text{\faChain}}}
+\newcommand{\cor}{\operatorname{\rotatebox[origin=c]{90}{\text{\faRandom}}}}
+\newcommand{\putt}[1]{\mathbin{\uparrow_{#1}}}
+\newcommand{\get}[1]{\operatorname{\text{\faEye}}_{#1}}
+\newcommand{\mix}[1]{\sim_{#1}}
+\newcommand{\copyy}[1]{
+\mathbin{\begin{tikzpicture}
+		\node [style={black_dot}, scale=0.6] (0) at (0, 0) {};
+		\node [style=none] (1) at (0, -0.2) {};
+		\node [style=none] (2) at (-0.2, 0.2) {};
+		\node [style=none] (3) at (0.2, 0.2) {};
+		\draw (1.center) to (0);
+		\draw [in=-90, out=150] (0) to (2.center);
+		\draw [in=270, out=30] (0) to (3.center);
+\end{tikzpicture}}_{\hspace{-0.05cm}#1}}
+
+\newcommand{\wmult}{
+\mathbin{\begin{tikzpicture}[rotate=180]
+		\node [style={white_dot}, scale=0.6] (0) at (0, 0) {};
+		\node [style=none] (1) at (0, -0.2) {};
+		\node [style=none] (2) at (-0.2, 0.2) {};
+		\node [style=none] (3) at (0.2, 0.2) {};
+		\draw (1.center) to (0);
+		\draw [in=-90, out=150] (0) to (2.center);
+		\draw [in=270, out=30] (0) to (3.center);
+\end{tikzpicture}}}
+
+\newcommand{\wcomult}{
+\mathbin{\begin{tikzpicture}
+		\node [style={white_dot}, scale=0.6] (0) at (0, 0) {};
+		\node [style=none] (1) at (0, -0.2) {};
+		\node [style=none] (2) at (-0.2, 0.2) {};
+		\node [style=none] (3) at (0.2, 0.2) {};
+		\draw (1.center) to (0);
+		\draw [in=-90, out=150] (0) to (2.center);
+		\draw [in=270, out=30] (0) to (3.center);
+\end{tikzpicture}}}
+
+\newcommand{\banana}{\raisebox{-0.2cm}{\includegraphics[scale=0.03]{figs/banana}}}
+\newcommand{\smallbanana}{\raisebox{-0.01cm}{\includegraphics[scale=0.013]{figs/banana}}}
+\newcommand{\monkey}{\raisebox{-0.1cm}{\includegraphics[scale=0.05]{figs/monkey}}}
+\newcommand{\smallmonkey}{\raisebox{-0.01cm}{\includegraphics[scale=0.03]{figs/monkey}}}
+\newcommand{\smiley}{\raisebox{-0.15cm}{\includegraphics[scale=0.03]{figs/smile}}}
+\newcommand{\smallsmiley}{\raisebox{-0.01cm}{\includegraphics[scale=0.013]{figs/smile}}}
+
+%%-----------Theorems-------------%%
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}
+\theoremstyle{plain}
+\newtheorem{prop}{Proposition}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+    Modelling concept representation is a foundational problem in the study of cognition and linguistics. This work builds on the confluence of conceptual tools from G\"{a}rdenfors semantic spaces, categorical compositional linguistics, and applied category theory to present a domain-independent and categorial formalism of `concept'.
+\end{abstract}
+
+\section{Introduction}
+
+G\"{a}rdenfors proposes geometry as a mediator between raw empirical data and symbolic cognitive representations of concepts \cite{gardenfors_conceptual_2004}. Conceptual spaces conceived in this way were instrumental in developing state-of-the-art models for semantic inference from linguistic data \cite{bolt_interacting_2017}, in conjunction with tools from Firth's distributional models of meaning, and the DisCoCat programme of categorial grammar and semantics \cite{coecke_mathematical_2010}.\\
+
+G\"{a}rdenfors' model treats concepts as regions of abstract geometric domains that encode properties; for instance, where the domains are colour and taste, the concept `Banana' might be expressed as a well-behaved restricted region that captures the expected inferences that no bananas are red and sour, while yellow bananas tend to be sweet, and green ones bitter.\\
+
+We develop towards a categorical formalism that builds categories of semantic concepts -- such as `Banana' -- on top of arbitrary categories whose objects are the modeller's choice of conceptual spaces that constitute what G\"{a}rdenfors calls \emph{integral domains}.  We briefly recount G\"{a}rdenfors' ontology. An integral domain is a semantic space where one cannot have incomplete information, just as one cannot hear the pitch of a sound without also perceiving the volume. Colourspace (more accurately, Hue) is such an integral domain of three quality dimensions, redness, greenness, and blueness. Similarly, tastespace is an integral domain, along, say, the dimensions of sweetness, savouriness, bitterness, sourness, and umami. However, when considering fruitsspace, modelled as the (tensored) conjunction of colour and taste, it is possible to specify colour without taste (by just looking), and taste without colour (by eating blindfolded.) In this case we refer to the domains of colour and taste as independent domains\footnote{`integral' and `separable' are also referred to as `interacting' and `separable' in the literature}. We abstractly deem a concept to be a subregion of possibly multiple tensorially conjoined independent domains. For instance, where fruitspace is the tensor of colourspace and tastespace, the concept `banana' falls within an acceptable range of yellowness and greenness, sweetness and bitterness, in a potentially non-trivial way: we may tolerate different taste-ranges in bananas depending on their colour. Percepts that stray too far outside these constraints may not be intuitively classified as bananas \emph{per se}, as sour purple bananas are like black swans: arguably not bananas at all.\\
+
+In the remainder of this paper, we first briefly introduce Symmetric Monoidal Categories and their attendant graphical calculus, the tool of choice for the DisCoCat school of modelling categorial semantics. We then develop a cognitively-driven axiomatic account of updating static properties of systems. We then introduce the notion of correlators on update structures, and by demonstration, we exhibit how concepts may be constructed from domains by their restriction and correlating actions. We then recover from these tools the first categorical formulation of G\"{a}rdenfors' semantic concepts, and show how our construction reconciles with our account of updating.
+
+\section{Mathematical Background}
+
+For a thorough account of basic category theory, we refer the reader to \cite{abramsky_introduction_2010}. For an account of the available graphical calculi for various monoidal categories, we refer to \cite{selinger_survey_2010}.
+
+\begin{defn}[Category]
+A category $\cat{C}$ consists of the following data:
+\begin{itemize}
+\item{A collection $\ob{\cat{C}}$, the elements of which we call \textbf{objects} of $\cat{C}$.} 
+\item{For every pair of objects $c,d$, a set $\cat{C}(c,d)$, elements of which are called \textbf{morphisms}, or \textbf{arrows}, from $c$ to $d$. We might denote such a morphism $f: c \rightarrow d$, or $c \overset{f}{\rightarrow} d$.
+}
+\item{For every object $c$, a specification of a morphism $\id{c} \in \cat{C}(c,c)$, called the \textbf{identity morphism} on $c$.
+}
+\item{For every triple of objects $c,d,e$, and every pair of morphisms $f \in \cat{C}(c,d)$ and $g \in \cat{C}(d,e)$, a specification of a morphism in $\cat{C}(c,e)$ called the \textbf{composite} of $f$ and $g$, denoted either $g \circ f$, or $f ; g$. The former is read ``$g$ after $f$", and the latter is read ``$f$, then $g$".
+}
+\end{itemize}
+Subject to the following conditions:
+\begin{itemize}
+\item{\emph{(Unitality)}: For any $c\overset{f}{\rightarrow}d$, we have $\id{c} ; f = f = f; \id{d}$; that is, composing with identities does nothing.
+}
+\item{\emph{(Associativity)}: For any three morphisms $a \overset{f}{\rightarrow}b$, $b \overset{g}{\rightarrow} c$, $c \overset{h}{\rightarrow}d$, we have $(f;g);h = f;(g;h)$.}
+\end{itemize}
+\end{defn}
+
+\begin{defn}[Monoidal Category]
+A monoidal category is a tuple $(\cat{C},\otimes,I,\alpha,\lambda,\rho)$ where:
+\begin{itemize}
+\item{$\cat{C}$ is a category}
+\item{$\otimes$, the \textbf{tensor}, is a functor $\cat{C} \times \cat{C} \rightarrow \cat{C}$, and we use the infix notation $A \otimes B$ for $\otimes(A,B)$}
+\item{I, the \textbf{unit}, is an object of $\cat{C}$}
+\item{$\alpha,\lambda,\rho$ are families of natural isomorphisms, with types (for all $X,Y,Z$ in $\cat{C}$):
+\begin{itemize}
+\item{$\alpha_{X,Y,Z}: ((X \otimes Y)\otimes Z) \rightarrow (X \otimes (Y\otimes Z))$ -- the \textbf{associator}}
+\item{$\rho_X: X \otimes I \rightarrow X$ -- the \textbf{right unitor}}
+\item{$\lambda_X: I \otimes X \rightarrow X$ -- the \textbf{left unitor}}
+\end{itemize}
+Further, these natural isomorphisms must be such that any well-typed diagram consisting of $\otimes,\alpha,\lambda,\rho,\alpha^{-1},\rho^{-1},\lambda^{-1}$ commutes.}
+\end{itemize}
+A monoidal category is further \textbf{symmetric} if there is a \textbf{braiding} natural transformation $\theta_{X\otimes Y}: X \otimes Y \rightarrow Y \otimes X$ such that $$\theta_{Y \otimes X} \circ \theta_{X \otimes Y} = \text{id}_{X \otimes Y}$$
+\end{defn}
+
+Monoidal Categories are models of process theories \cite{bob_coecke_aleks_kissinger_picturing_2017}, and admit a sound and complete graphical calculus. The elements of the graphical calculus are as follows, from left to right of (\ref{basicprocesstheory}):
+\begin{itemize}
+\item{A wire of type $A$ (the identity process on the object $A$), which ferries stuff of that type.}
+\item{A process named $f$, drawn as an axis-aligned box, which takes stuff of type $A$ as input, and outputs stuff of type $B$.}
+\item{A vertical composite process of named processes $f$ and $g$. First $f$ `transforms' $A$-stuff to $B$-stuff, and then $g$ transforms that $B$-stuff into $C$-stuff.}
+\item{A horizontal composite process of named processes $h$ and $k$. Since we can name $h$ and $k$ separately, why not invoke those processes concurrently? This composite takes $A$-stuff and $C$-stuff, and returns $B$-stuff and $D$-stuff.}
+\item{A process $u$ that gives some output, but takes no input. We call these `states'.}
+\item{A process $v$ that accepts some input, but gives no output. We call these `effects'.}
+\item{The braid natural isomorphism is depicted as a pair of crossing wires.}
+\end{itemize}
+
+\begin{equation}\label{basicprocesstheory}
+\tikzfigscale{1}{figs/basicprocesstheory}
+\end{equation}
+
+The identity on the monoidal unit $I$ is represented as a blank diagram. In this work, we read diagrams bottom to top. In symmetric monoidal categories (SMCs), two diagrams are equal if they can be deformed into one another while keeping all boxes and lines on the page, that is to say they are equivalent up to planar isotopy. For example: 
+
+\begin{equation}
+\tikzfigscale{1}{figs/compositeprocess}
+\end{equation}
+
+Since we take our braiding to be symmetric, one need not worry about the order in which wires cross each other. Nevertheless, most of this work can be easily extended to the case of non-symmetric braided monoidal categories.\\
+
+The commonality of extant approaches to modelling semantics in categorial grammar is that wires are interpreted as `meaning spaces', and states on such wires correspond to specific objects. For instance, in the category \textbf{Set} of sets and functions, viewed as a SMC with cartesian product as monoidal product and singletons as monoidal unit is a monoidal category, the wires are sets, and states on wires are specific elements of those sets. In the SMC \textbf{Vect} of vector spaces and linear maps with $\otimes$ as tensor product, states on wires are vectors, which are used to encode semantics in distributional models of meaning.
+
+\section{Axiomatic Updating}
+
+In the following, we borrow terminology from the language of lenses, as studied in applied category theory. Lenses were developed as formal constructs \cite{foster_combinators_nodate} to study synchronised update systems \cite{bancilhon_update_1981}, and our aims here are broadly aligned. Our basic object of study is what we call an `update structure', which models updating an abstract system with an abstract property. We define what qualifies as an update structure in an SMC axiomatically, reflecting three intuitive cognitive criteria for updating static properties of systems.
+
+\begin{enumerate}
+    \item Examining a property and then immediately overwriting with the same property is the trivial operation.
+    \item Updating an object with properties in succession is procedurally equivalent to manipulating the collection of properties in some way beforehand to obtain a single property, and then overwriting once.
+    \item Repeatedly examining a property produces the same outcomes.
+\end{enumerate}
+
+\begin{defn}[Update Structure]
+An update structure $(\putt{},\get{},\mix{},\copyy{})$ in a SMC consists of:
+\begin{itemize}
+    \item An object $S$, which we refer to as a \textbf{system}
+    \item An object $p$, which we refer to as a \textbf{property}, which has:
+    \begin{itemize}
+    \item A magma structure $\mix{}: p \otimes p \rightarrow p$
+    \item A cocommutative, coassociative comagma structure $\copyy{}: p \rightarrow p \otimes p$
+    \end{itemize}
+    \item A \textbf{Put} operation $\putt{}: S \otimes p \rightarrow S$
+    \item A \textbf{Get} operation $\get{}: S \rightarrow S \otimes p$
+\end{itemize}
+Which satisfy the following equations:
+\begin{itemize}
+    \item (PutGet) To capture the intention of overwriting: 
+    \begin{equation}\label{putget}
+    \tikzfigscale{1}{figs/putget}
+    \end{equation}
+    \item (GetPut) To capture our first criterion, treating the identity process as trivial: 
+    \begin{equation}\label{getput}
+    \tikzfigscale{1}{figs/getput}
+    \end{equation}
+    \item (PutPut) To capture our second criterion, using the $\mix{}$ magma to encode property pre-processing: 
+    \begin{equation}\label{putput}
+    \tikzfigscale{1}{figs/putput}
+    \end{equation}
+    \item (GetGet) To capture our third criterion, following from the cocommutativity of $\copyy{}$:
+    \begin{equation}\label{getget}
+    \tikzfigscale{1}{figs/getget}
+    \end{equation}
+\end{itemize}
+\end{defn}
+It should be noted that axiom (\ref{putput}) says that $\putt{}$ is a ``weak'' module over the magma $\mix{}$ while (\ref{getget}) says that $\get{}$ is a ``weak'' comodule over the comagma $\copyy{}$. By weak we mean that they have no (co)units, nor are they actions over a (co)monoid as would be more usual. Modules and comodules in their usual setting have seen application in the categorical quantum mechanics line of research where they describe observables \cite{coecke_measurements}.\\
+
+We also define a slight weakening of an update structure, one where the GetPut axiom does not hold, but where it is replaced with the \textit{repeat-update} axiom.
+\begin{defn}[Weak Update Structure]
+A weak update structure $(\putt{},\get{},\mix{},\copyy{})$ satisfies all the axioms of an update structure apart from GetPut (\ref{getput}) which we replace with the strictly weaker \textit{repeat-update} axiom:
+\begin{equation}\label{compareaxiom}
+\tikzfigscale{1}{figs/compareaxiom}
+\end{equation}
+\end{defn}
+A weak update is one where the Put is static, in the sense that updating twice with copies of your input is the sane as updating once. 
+
+\begin{prop}\label{prop:strongisweak}
+Any update structure is also a weak update structure.
+\end{prop}
+\begin{proof}
+Follows by application of axiom \ref{putget} followed by axiom \ref{getput} to the right hand side of \ref{compareaxiom}, given explicitly in the appendix.
+\end{proof}
+In section \ref{weaktostrong} we will show how to ``upgrade'' any weak update structure to an update structure.
+
+Given the semantic modeller's choice of SMC, we take the objects of that SMC to be conceptual spaces. For instance, in the SMC of convex spaces and convexity preserving maps between them, there is an object corresponding to RGB colour-space, the states of which are particular colours. Conceptual spaces admit concepts as subregions, as `redness' would be defined as a subregion of RGB colour space. Generally, such concepts may be complex subregions of conceptual spaces which do not have an analogue object in the original SMC. Moreover, concepts like `monkeyness' might be modelled in terms of other, hierarchical concepts, such as `emotion' and `banananess', where the latter is modelled in terms of primitive conceptual spaces such as `colour' and `taste'.\\
+
+We may define concepts from conceptual spaces through update structures, by way of what we call `semantic correlators'. Considering concepts as semantic correlators along with update structures provides the necessary conceptual tools to construct complex hierarchical concepts such as `monkeyness' from other concepts.
+
+\section{Semantic Correlators}
+Given update structures for multiple different properties, an update structure for colour and an update structure for taste say, it is natural to ask how one can combine these together to create new update structures. In particular, one might wish to build a new update structure in the presence of additional information about how two properties combine together. For instance, if one were considering bananas then it is typical that yellow bananas are sweet and green bananas are bitter and the properties of colour and taste are no longer fully independent. To capture such instances we introduce a new map we call the correlator.
+
+\begin{defn}[Correlator]
+Given a family of properties $A_1, \dots, A_n, n\in\mathbb{N}$, a correlator is an idempotent map $\cor:A_1\otimes\dots\otimes A_n \morph{} A_1\otimes\dots\otimes A_n$, which is a comagma homomorphism for the comagma induced by those on each $A_i$,
+\begin{equation}
+\tikzfigscale{1}{figs/comonhom}
+\end{equation}
+and a magma homomorphism for the magma induced by those on each $A_i$
+\begin{equation}
+\tikzfigscale{1}{figs/monhom}
+\end{equation}
+\end{defn}
+
+One should think of the correlator as containing additional information about how certain properties influence each other. As such, correlators are very much dependent on the new concept one wishes to create from the underlying ones; the correlator for a banana is clearly very different from that of a fire engine, for instance.\\
+
+The idempotence of a correlator captures the notion that properties correlated in a particular fashion are invariant under correlating them the same way again. Demanding that a correlator be a comagma and magma homomorphism captures the notion that copying (mixing) then correlating ought to be the same as correlating then copying (mixing).\\
+
+For simplicity we will now work with correlators on only two properties, but the following techniques can easily be extended to more complicated cases. Suppose we have two properties, $c$ and $t$ with corresponding update structures $(\putt{c}, \get{c}, \mix{c}, \copyy{c})$ and $(\putt{t}, \get{t}, \mix{t}, \copyy{t})$ on a system $S$ and suppose that the structures commute, that is $\putt{t}\circ\putt{c}=\putt{c}\circ\putt{t}$ and $\get{t}\circ\get{c} = \get{c}\circ\get{t}$ where the composition is on the conceptual space $S$ and equality holds up to a braid on the properties\footnote{This notion of the \emph{independence} of the properties $c$ and $t$ reflects G\"{a}rdenfors' notion of independent domains, and is not unreasonable to require from a modelling perspective.}. Then one can construct a new correlated Put $\putt{ct}$ and correlated Get $\get{ct}$ by taking
+\begin{equation}\label{correlatedupdate}
+\tikzfigscale{1}{figs/correlatedput}, 
+\hspace{1cm}
+\tikzfigscale{1}{figs/correlatedget}
+\end{equation}
+
+Such a choice nearly forms a weak update structure but sadly PutGet only holds up to the correlator on input properties:
+\begin{equation*}
+\tikzfigscale{1}{figs/correlatedputgetmaintext}
+\end{equation*}
+We will be able to resolve this issue by moving the the category of semantic concepts in section \ref{sec:fruit}.
+
+For clarification of how the process of constructing correlators and correlated updates works consider the aforementioned example regarding the colour and taste of bananas. Suppose we identify the possible colours with the set $\llbracket\textrm{colour}\rrbracket:= \{ \textrm{yellow},\textrm{green}\}$ and possible tastes with the set $\llbracket \textrm{taste}\rrbracket := \{\textrm{bitter}, \textrm{sweet}\}$ and assume for simplicity that yellow bananas are always sweet and green bananas always bitter. Thus we have a map $P:\llbracket\textrm{colour}\rrbracket \morph{} \llbracket \textrm{taste}\rrbracket :: \textrm{yellow}\mapsto \textrm{sweet}, \textrm{green}\mapsto\textrm{bitter}$. Take the comultiplication on colour to be the copying map of the elements of the set of colours, $\wcomult:i\mapsto (i,i)$ for $i\in\llbracket \textrm{colour}\rrbracket$, and similarly for taste. One can then define the following correlator
+\begin{equation}\label{bananacor}
+\tikzfigscale{1}{figs/bananacor}
+\end{equation}
+which is clearly idempotent and it is straightforward to check that it is a comonoid homomorphism for the comonoid induced by copying colour and taste.
+
+Now take the following Gets, Puts and Mixes:
+
+\begin{minipage}{.5\textwidth}
+\begin{align*}
+\putt{c} &:: \langle c, t\rangle \times c' \mapsto \langle c' ,t \rangle \\
+\get{c} &:: \langle c, t\rangle \mapsto \langle c, t\rangle \times c \\
+\mix{c} &:: c\times c' \mapsto c'
+\end{align*}
+\end{minipage}%
+\begin{minipage}{.5\textwidth}
+\begin{align*}
+\putt{t} & :: \langle c, t\rangle \times t' \mapsto \langle c ,t' \rangle \\
+\get{t} & :: \langle c, t\rangle \mapsto \langle c, t\rangle \times t \\
+\mix{t} & :: t\times t' \mapsto t'
+\end{align*}
+\end{minipage}
+
+for $c,c'\in \llbracket\textrm{colour}\rrbracket$ and $t,t'\in \llbracket\textrm{taste}\rrbracket$.
+
+Then one can confirm that $\cor$ (\ref{bananacor}) is a monoid homomorphism for the monoid induced by $\mix{c}$ and $\mix{t}$. Furthermore, it is possible to construct the correlated weak update where green bananas are bitter and yellow bananas sweet from the above data.
+
+\section{Fruit Wires: The Category of Semantic Concepts}\label{sec:fruit}
+Taking the view that concepts can be defined by the correlations they exhibit between properties in independent domains, we aim to construct the concept $banana$ (\banana) from the domains $colour$ ($c$) and $taste$ ($t$) along with the correlator \[\cor_{\smallbanana}: c \otimes t \rightarrow c \otimes t\] Informally, any state $\psi$ on the property pair $c \otimes t$ which is consistent with the correlator should represent an instance of a banana:
+\begin{equation}
+\tikzfigscale{1}{figs/karoubis}
+\end{equation}
+Additionally the processes that can be performed on bananas should be all of those which are consistent with the correlations and applying the correlator to the inputs and outputs of $f$ should have no effect:
+\begin{equation}
+\tikzfigscale{1}{figs/karoubif}
+\end{equation}
+%The process of learning about a banana then consists of first identifying the basic properties of a banana which in our toy example we take to be color and taste $C,T$ and then restricting the processes on $C \otimes T$ to be only those consistent with the correlator $Cor$. 
+
+One can capture such scenarios by transitioning from working in the category $\cat{C}$ to the Karoubi envelope $\bar{\cat{C}}$.
+\begin{defn}[Karoubi Envelope]
+The Karoubi envelope $\bar{\cat{C}}$ of a category $\cat{C}$ has as objects the pairs $(A,\pi)$ where $A \in \ob{\cat{C}}$ and $\pi: A \rightarrow A$ is an idempotent. The morphisms $f : (A ,\pi) \rightarrow (B,\sigma)$ are the morphisms $f:A \rightarrow B$ such that $\sigma \circ f = f = f \circ \pi$. 
+\end{defn}
+Objects of the form $(c \otimes t, \cor_{\smallbanana})$ in the Karoubi envelope $\bar{\cat{C}}$ are precisely those for which the only allowed processes are those consistent with $\cor_{\smallbanana}$ and thus it makes sense to define new concepts as objects of this form for a given correlator.
+
+\begin{defn}[Concept]
+The concept corresponding to the correlator $\cor: (A,\pi_{A}) \otimes (B,\pi_{B}) \rightarrow (A,\pi_{A}) \otimes (B,\pi_{B})$ is the object $(A \otimes B, \cor)$ in $\bar{\cat{C}}$.
+\end{defn}
+We interpret the Karoubi envelope $\bar{\cat{C}}$ to be the category of semantic concepts, built from a modelling category of basic concepts $\cat{C}$. It is straightforward to show that there is an equivalence of categories between the full subcategory of $\bar{\cat{C}}$ spanned by objects of the form $(A,\id{A})$ for all $A\in\ob{\cat{C}}$ and the original category $\cat{C}$. Thus all of our initial conceptual spaces appear in $\bar{\cat{C}}$ alongside many new derived concepts given by the action of correlators. This allows us treat new concepts as formally different types within our category. Such notions have also been explored in the categorical quantum mechanics line of research where idempotent decoherence maps can be used to give quantum and classical data different types \cite{coecke_classicality, selinger_idempotents, Heunen_cp}.
+
+An example of a non-basic concept is the $banana$ object $\banana = (c \otimes t, \cor_{\smallbanana})$, built from a correlator \[\cor_{\smallbanana}: (c,\id{c}) \otimes (t,\id{t}) \rightarrow (c,\id{c}) \otimes (t,\id{t})\] upon the (basic) conceptual spaces $colour$ $(c,\id{c})$ and $taste$ $(t,\id{t})$. Intuitively $banana$ wires are $colour$ and $taste$ wires which have been correlated so as to be consistent with the concept $banana$.
+\begin{equation}
+\tikzfigscale{1}{figs/bananawire}
+\end{equation}
+This construction iterates, allowing definition of derived concepts which admit other derived concepts as properties. A further correlation between the flavour (and thus colour) of bananas and the happiness of a consumer induces its own correlator:
+\begin{equation}\label{monkeycor}
+\cor_{\smallmonkey} : (\banana,\cor_{\smallbanana}) \otimes (\smiley,\cor_{\smallsmiley}) \rightarrow (\banana,\cor_{\smallbanana}) \otimes (\smiley,\cor_{\smallsmiley})
+\end{equation}
+which acts on the properties \textit{banana} and \textit{emotion}. Such a correlator could be used to construct the concept $monkey$ $\monkey \equiv (\banana \otimes \smiley, \cor_{\smallmonkey})$ as the collection of maps which are consistent with the new correlator (\ref{monkeycor}). The consistency of states and processes on $\monkey$ with its constituent properties $\banana$ and $\smiley$ is guaranteed since for any $f: \monkey \rightarrow \monkey$, \[ f \circ (\cor_{\smallbanana} \otimes \cor_{\smallsmiley}) = f \circ \cor_{\smallmonkey} \circ (\cor_{\smallbanana} \otimes \cor_{\smallsmiley}) \] \[ =  f \circ \cor_{\smallmonkey} =  \cor_{\smallmonkey} \circ f  = (\cor_{\smallbanana} \otimes \cor_{\smallsmiley}) \circ \cor_{\smallmonkey} \circ f  = (\cor_{\smallbanana} \otimes \cor_{\smallsmiley}) \circ f\]
+
+
+We may treat \banana as a property of a system $(S,\id{S})$ by replacing updates for the basic properties $colour$, and $taste$ with an update for the property $banana$ $\banana = (c \otimes t, \cor_{\smallbanana})$ on $(S,\id{S})$; this expresses that $(S,\id{S})$ can only have properties $c$ and $t$ consistent as a result of an update of the property $\banana$:
+\begin{equation}
+\tikzfigscale{1}{figs/karoubiput}
+\end{equation}
+
+Now that we have developed a way of constructing new concepts from old ones we are able to return to the problem of combining update structures and state the following proposition:
+
+\begin{prop}\label{prop:corupdate}
+Let $(\putt{c}, \get{c}, \mix{c}, \copyy{c})$ and $(\putt{t}, \get{t}, \mix{t}, \copyy{t})$ be commuting update structures and $\cor$ be a correlator on $c$ and $t$. Then $(\putt{ct}, \get{ct}, \mix{ct}, \copyy{ct})$ forms a weak update structure on correlated inputs $(c\otimes t, \cor{})$ where $\putt{ct}$ and $\get{ct}$ are defined as in (\ref{correlatedupdate}) and $\mix{ct}$ and $\copyy{ct}$ are the magma and comagma induced by those on $c$ and $t$.
+\end{prop}
+
+\section{From Weak to Strong Update Structures}\label{weaktostrong}
+We now demonstrate how use update structures to formally enforce that an arbitrary concept, viewed as a system $(S,\pi_S)$, has properties ${c}$ and ${t}$ consistent with a (derived) property $(b,\pi_b) = (c \otimes t, \cor)$, by constructing from a weak update $(\putt{b}, \get{b}, \mix{b}, \copyy{b})$ of the property $(b,\pi_b)$ on the system $(S,\pi_S)$ a new system $(S,\pi_S ')$. 
+ 
+%To begin we examine the \textit{repeat-update} axiom, which is a weakening of the GetPut axiom. They are, respectively:
+The \textit{repeat-update} axiom, satisfied by the correlated update defined in (\ref{correlatedupdate}), is a statement of static-ness of the update property. Updating with `copies' of a property ${b}$ produced by the comagma is the same as updating with that property once. The GetPut axiom $\putt{b} \circ \get{b} = \id{(S,\pi_{S})}$ is (in the presence of axioms \ref{putget},\ref{putput},\ref{getget}) strictly stronger than the \textit{repeat-update} axiom; intuitively it is the additional claim that the system $(S,\pi_S)$ already has its \textit{colour} and \textit{taste} properties consistent with the correlator $\cor$. The failure of GetPut on a correlated update as defined in (\ref{correlatedupdate}) comes about because the system wire $(S,\pi_{S})$ is not guaranteed to have \textit{banana}-like \textit{colour} and \textit{taste} properties.
+\begin{equation}
+\tikzfigscale{1}{figs/failstronggetput2}
+\end{equation}
+
+An informal way to enforce that properties ${c}$ and ${t}$ of $(S,\pi_S)$ are correlated is to apply the GetPut $\putt{b} \circ \get{b}$ to anything on $(S,\pi_{S})$. After retrieval by $\get{b}$, the $\putt{b}$ will apply $\cor$, thereby correlating the properties ${c}$ and ${t}$. An implication of the \textit{repeat-update} axiom is that $\putt{b} \circ \get{b}$ is itself an idempotent,
+\[\putt{{b}} \circ \get{{b}} \circ \putt{{b}} \circ \get{{b}} = \putt{{b}} \circ \get{{b}}\] 
+and thus applying $\putt{b} \circ \get{b}$ to a system which is already consistent with the correlations $\cor$ will have no effect.
+%\begin{equation}
+%\tikzfigscale{1}{figs/getputidempotent}
+%\end{equation}
+The new object in $\bar{\cat{C}}$ which enforces consistency of the system with $\cor$ is then \[(S,\pi_{S}') \equiv (S,\putt{b} \circ \get{b})\]
+Any state or process on $(S,\pi_{S}')$ is consistent with the system already having ${c}$ and ${t}$ correlated by $\cor$. What remains is to show that $(S,\pi_{S}')$ itself can actually be practically used: a new update property with system $(S,\pi_{S}')$ and property $(b,\pi_b)  = (c \otimes t, \cor)$ which satisfies the GetPut axiom $\putt{{b}} \circ \get{b} = \id{(S,\pi_{S}')}$ can be constructed.
+
+\begin{prop}[GetPut Restriction]\label{reptoget}
+For a weak update structure $(\putt{b}, \get{b}, \mix{b}, \copyy{b})$ on system $(S,\pi_{S})$ and property $(b,\pi_b)$ satisfying the \textit{repeat-update} axiom, the GetPut-Restricted updates
+\begin{equation}
+\tikzfigscale{1}{figs/newgetandput3}
+\end{equation}
+along with $(\mix{b}, \copyy{b})$ define an update structure on system $(S,\putt{b} \circ \get{b})$ and property $(b,\pi_b)$. 
+\end{prop}
+\begin{proof}
+By idempotency of $\putt{b} \circ \get{b}$ it is immediate that $\get{b}'$ and $\putt{b}'$ appear as morphisms \[\get{b}' : (S,\putt{b} \circ \get{b}) \rightarrow (S,\putt{b} \circ \get{b}) \otimes (b,\pi_b) \] and \[\putt{{b}}' :  (S,\putt{b} \circ \get{b}) \otimes (b,\pi_b) \rightarrow (S,\putt{b} \circ \get{b}) \] respectively. The update structure axioms \ref{putget},\ref{getput},\ref{putput},\ref{getget} all hold, the proofs of which are given in the appendix.
+\end{proof}
+The statement and proof of proposition \ref{reptoget} makes no explicit reference to correlations, and so gives a general way to force consistency of a system with its properties by moving from an update mechanism satisfying the \textit{repeat-update} axiom, to an update mechanism satisfying the GetPut axiom. 
+
+
+\section{Conclusion}
+
+We have demonstrated a proof-of-concept for the categorical representation of concepts as restricted and correlated regions of G\"{a}rdenfors' conceptual spaces, which, to our knowledge, is the first semantic-engineering contribution of this kind.\\
+
+The core element of our construction is an interacting magma module and comagma comodule, internal to a symmetric monoidal category, reflecting `update' and `examine' properties. Though we borrowed terminology from lenses, our approach is distinct on two counts. Firstly, we define our constructs in arbitrary symmetric monoidal categories, whereas lenses typically assume cartesian categories. Secondly, the notion of interacting (co)magma modules is conceptually minimal, there being no analogue in the field of profunctor optics at large to the update structures we have defined, to the best of our knowledge. The benefit of this conceptual minimalism is that the requirements for update structures to exist are readily met by most approaches to categorical linguistic models. In this work, we have only considered \textbf{Set}-based semantic models, but there is no obstacle in principle to application to applying the same approach in true convex geometric domains and vector spaces.\\
+
+It remains for future work to demonstrate practical applications, say, in terms of inference in vector-based models of linguistic meaning, where we expect our update formalism will permit dynamic epistemic modelling as is encountered in the reading of a long text \cite{coecke_mathematics_2019}, where the properties of various actors change over time. It is also pressing work to integrate our approach with extant research on density-matrix based models of compositional cognition \cite{al-mehairi_compositional_2016}.\\
+
+A further added benefit of such a conceptually minimal and axiomatic approach is that new domains of semantic models are now amenable for use, for instance, those obtained by RDF triples: no matter the underlying representations, once one has verified that a candidate update structure satisfies the axioms, one can be confident that the structure suitably models updating and viewing properties.\\
+
+We are surprised by the power and fruitfulness of adopting graphical axiomatics that reflect cognitive modelling intentions, and we believe that further progress can be made in semantic-engineering following this general method. The authors have explored various other axiomatisations of update structures, each capturing different operational intuitions, and yielding qualitatively different systems: it remains for future work to tame the zoo of update structures obtained in this way.
+
+
+\subsubsection*{Acknowledgements}
+With thanks to Sean Tull, Cole Comfort, Irene Rizzo, and Bob Coecke for helpful discussions.
+This work was supported by University College London and the EPSRC
+[grant number EP/L015242/1].
+
+\appendix
+\section{Proofs}
+\subsection{Proof of Proposition \ref{prop:strongisweak}}
+\begin{proof}
+By application of PutGet followed by GetPut
+\begin{equation*}
+\tikzfigscale{1}{figs/strongtoweak}
+\end{equation*}
+\end{proof}
+\subsection{Proof of Proposition \ref{prop:corupdate}}
+\begin{proof}
+We check the PutPut, GetGet, PutGet and \textit{repeat-update} axioms, recalling that we assume that the Gets and Puts of the two systems respectively commute. PutPut follows by:
+\begin{equation*}
+\tikzfigscale{1}{figs/correlatedputput}
+\end{equation*}
+\begin{equation*}
+\tikzfigscale{1}{figs/correlatedputput2}
+\end{equation*}
+with GetGet very similar. PutGet follows up to correlating the input properties:
+\begin{equation*}
+\tikzfigscale{1}{figs/correlatedputget}
+\end{equation*}
+\begin{equation*}
+\tikzfigscale{1}{figs/correlatedputget2}
+\end{equation*}
+That is to say that we are constructing an update on the new correlated type $(c\otimes t, \cor{})$ in $\bar{\cat{C}}$. Finally, GetPut, does not hold on all input systems:
+\begin{equation*}
+\tikzfigscale{1}{figs/correlatedgetput}
+\end{equation*}
+but the \textit{repeat-update} axiom is easy to check.
+\end{proof}
+
+\subsection{Proof of Proposition \ref{reptoget}}
+Making heavy use of the equation,
+\begin{equation*}
+\tikzfigscale{1}{figs/usefulidentity}
+\end{equation*}
+along with idempotency of $\putt{b} \circ \get{b}$ throughout, we begin by verifying PutPut,
+\begin{equation*}
+\tikzfigscale{1}{figs/proveputput}
+\end{equation*}
+GetPut
+\begin{equation*}
+\tikzfigscale{1}{figs/PROVEGETPUT}
+\end{equation*}
+PutGet
+\begin{equation*}
+\tikzfigscale{1}{figs/proveputget}
+\end{equation*}
+
+Finally, since
+\begin{equation*}
+\tikzfigscale{1}{figs/proveggpart1}
+\end{equation*}
+\begin{equation*}
+\tikzfigscale{1}{figs/proveggpart2}
+\end{equation*}
+GetGet follows
+\begin{equation*}
+\tikzfigscale{1}{figs/provegetgetpart2}
+\end{equation*}
+
+
+\clearpage
+
+\bibliography{putget}
+\bibliographystyle{plain}
+
+\end{document}
