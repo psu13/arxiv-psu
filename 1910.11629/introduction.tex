@@ -1,0 +1,103 @@
+% !TEX root = runners-in-action.tex
+
+\section{Introduction}
+\label{sect:introduction}
+
+Computational effects, such as exceptions, input-output, state, nondeterminism, and
+randomness, are an important component of general-purpose programming languages,
+whether they adopt functional, imperative, object-oriented, or other
+programming paradigms. Even pure languages exhibit
+computational effects at the top level, so to speak, by interacting with their
+external environment.
+
+In modern languages, computational effects are often
+structured using~\emph{monads}~\cite{Moggi:ComputationalLambdaCalculus,Moggi:NotionsofComputationandMonads,Wadler:Monads},
+or \emph{algebraic effects and handlers}~\cite{Kammar:Handlers,Plotkin:NotionsOfComputation,Plotkin:HandlingEffects}.
+These mechanisms excel at implementation of computational effects within
+the language itself. For instance, the familiar implementation of mutable state in terms of state-passing functions requires no native state, and can be implemented either as a monad or using handlers.
+%
+One is naturally drawn to using these techniques also for dealing with actual effects, such as manipulation of native memory and access to  hardware. These are represented inside the language as algebraic operations (as in \pl{Eff}~\cite{Bauer:AlgebraicEffects}) or a monad (in the style of \pl{Haskell}'s~\textsf{IO}), but treated specially by the language's top-level runtime, which invokes corresponding operating system functionality.
+%
+While this approach works in practice, it has some unfortunate downsides too, namely \emph{lack of modularity and
+linearity}, and \emph{excessive generality}.
+
+Lack of modularity is caused by having the external resources hard-coded into the top-level runtime.
+As a result, changing which resources are available and how they are implemented requires modifications of the language implementation. Additional complications arise when a language supports several operating systems and hardware platforms, each providing their own, different feature set. One wishes that the ingenuity of the language implementors were better supported by a more flexible methodology with a sound theoretical footing.
+
+
+Excessive generality is not as easily discerned, because generality of programming concepts makes a language expressive and useful, 
+such as general algebraic effects and handlers enabling one to implement timeouts, rollbacks, stream redirection~\cite{Plotkin:HandlingEffects}, async \& await~\cite{Leijen:AsyncAwait}, and concurrency~\cite{Dolan:MulticoreOCaml}. However, the flip side of such expressive freedom is the lack of any guarantees about how external resources will actually be used.
+%
+For instance, consider a simple piece of code, written in \pl{Eff}-like syntax, which first opens a file, then writes to it, and finally closes it:
+%
+\begin{lstlisting}
+let fh = open "hello.txt" in write (fh, "Hello, world."); close fh
+\end{lstlisting}
+
+What this program actually does depends on how the operations $\tm{open}$, $\tm{write}$, and $\tm{close}$ are handled. For all we know, an enveloping handler may intercept the $\tm{write}$ operation and discard its continuation, so that $\tm{close}$ never happens and the file is not properly closed. 
+Telling the programmer not to shoot themselves in the foot by avoiding such handlers is not helpful, because the handler may encounter an external reason for not being able to continue, say a full disk.
+
+Even worse, external resources may be misused accidentally when we combine two handlers, each of which works as intended on its own. 
+For example, if we combine the above code with a non-deterministic $\tm{choose}$ operation, as in
+%
+\begin{lstlisting}
+let fh = open "greeting.txt" in
+let b = choose () in
+if b then write (fh, "hello") else write (fh, "good bye") ; close fh
+\end{lstlisting}
+%
+and handle it with the standard non-determinism handler
+%
+\begin{lstlisting}
+handler { return x -> [x], choose () k -> return (append (k true) (k false)) }
+\end{lstlisting}
+%
+The resulting program attempts to close the file twice, as well as write to it twice, because the continuation $\tm{k}$ is invoked twice when handling $\tm{choose}$.
+%
+Of course, with enough care all such situations can be dealt with, but that is beside the point. It is worth sacrificing some amount of the generality of algebraic effects and monads in exchange for predictable and safe usage of external computational effects, so long as the vast majority of common use cases are accommodated.
+
+\subsubsection*{Contributions}
+
+We address the described issues by showing how to design a programming
+language based on \emph{runners of algebraic effects}. We
+review runners in~\cref{sect:runnersbyexample} and recast them as
+a programming construct in~\cref{sec:programming-with-runners}.
+%
+In \cref{sect:corecalculus}, we present $\lambdacoop$, a calculus that captures the core ideas of programming with
+runners. 
+%
+We provide a coherent and sound denotational semantics for $\lambdacoop$ in \cref{sec:denotational-semantics}, where we also prove that well-typed code is properly finalised.
+%
+In~\cref{sect:examples}, we show examples of runners in action. The paper is accompanied by a
+prototype language \pl{Coop} and a \pl{Haskell} library \pl{Haskell-Coop}, based on~$\lambdacoop$, see~\cref{sect:implementation}. The relationship between $\lambdacoop$ and existing work is addressed in~\cref{sect:relatedwork}, and future possibilities discussed in \cref{sect:conclusion}.
+
+The paper is also accompanied by an online appendix (\url{https://arxiv.org/abs/1910.11629}) that provides the typing and equational rules we omit in \cref{sect:corecalculus}.
+
+
+
+Runners are \emph{modular} in that they
+can be used not only to model the top-level interaction
+with the external environment, but programmers can also use them to
+define and nest their own intermediate ``virtual machines''.
+Our runners are \emph{effectful}: they may handle operations by calling further outer operations, and raise exceptions and send signals, through which  exceptional conditions and runtime errors are communicated back to user programs in a safe
+fashion that preserves linear usage of external resources and ensures their proper finalisation.
+
+We achieve \emph{suitable generality} for handling of external resources by
+showing how runners provide implementations of algebraic operations together with
+a natural notion of finalisation, and a strong guarantee that in the absence of
+external kill signals the finalisation code is executed exactly once (\cref{thm:finalisation}). We argue
+that for most purposes such discipline is well worth having, and giving up the
+arbitrariness of effect handlers is an acceptable price to pay.
+%
+In fact, as will be apparent in the denotational semantics, runners are simply
+a restricted form of handlers, which apply the continuation at most once in a tail call position.
+
+Runners guarantee \emph{linear usage of resources} not through a linear or uniqueness type system (such as in the \pl{Clean} programming language~\cite{Koopman:FPinClean}) or a syntactic discipline governing the application of continuations in handlers, but rather by a design based on the linear state-passing technique studied by Møgelberg and Staton~\cite{Mogelberg:LinearUsageOfState}.
+In this approach, a computational resource may be implemented without restrictions, but is then guaranteed to be used linearly by user code.
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "runners-in-action"
+%%% End:

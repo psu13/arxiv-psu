@@ -1,0 +1,238 @@
+% !TEX root = runners-in-action.tex
+
+\section{Equational theory of $\lambdacoop$}
+\label{sec:appendix-equational-rules}
+
+Values, user and kernel computations each have an equality judgement
+\begin{equation*}
+\Gamma \types V \equiv W : X
+\qquad
+\Gamma \types M \equiv N : \tyuser{X}{\Ueff}
+\qquad
+\Gamma \types K \equiv L  : \tyuser{X}{\Keff}.
+\end{equation*}
+%
+It is presupposed that we only compare well-typed expressions with the indicated types.
+For the most part, the context and the type annotation will play no part in the equation,
+and so we shall drop them when no confusion can arise.
+
+The \emph{computational equations} are displayed in \cref{fig:computational-equations-user,fig:computational-equations-kernel}.
+These can be read left-to-right as evaluation rules that explain the operational meaning
+of computations. The remaining equations are displayed in \cref{fig:other-equations}.
+%
+We omit standard equations which specify how substitution is performed, as well
+as equations stating that equality is a congruence with respect to all the term
+formers.
+
+
+%%%% User computation rules
+\begin{figure}[tbp]
+  \centering
+  \parbox{\textwidth}{
+  \small
+  %
+  \mathtoolsset{original-shortintertext=false,below-shortintertext-sep=0pt,above-shortintertext-sep=0pt}
+  \begin{align*}
+    \tmapp{(\tmfun{x \of X}{M})}{V} &\equiv M[V/x]
+    \\[1ex]
+    \tmtry{(\tmreturn{V})}{H} &\equiv N[V/x]
+    \\
+    \tmtry{(\tmraise[X]{e})}{H} &\equiv N_{e}
+    \\
+    \tmtry{(
+      \tmop{op}{X}{V}{\tmcont x M}{\tmexccont {N'} {e'} {E_\op}}
+    )}{H} &\equiv \\
+    \tmop{op}{X}{V}{\tmcont x {\tmtry{&M}{H}}}{\left(\tmtry{N'_{e'}}{H}\right)_{e' \in E_\op}}
+    \\[1ex]
+    \tmmatch{\tmpair{V}{W}}{\tmpair{x}{y} \mapsto M} &\equiv
+    M[V/x, W/y]
+    \\
+    \tmmatch[X]{V}{} &\equiv
+    N
+    \\
+    \mathllap{
+      \tmmatch{(\tminl[X,Y]{V})}{\tminl{x} \mapsto M, \tminr{y} \mapsto N} 
+    } &\equiv
+    M[V/x]
+    \\
+    \mathllap{
+      \tmmatch{(\tminr[X,Y]{W})}{\tminl{x} \mapsto M, \tminr{y} \mapsto N}
+    } &\equiv
+    N[W/y]
+    \\[1ex]
+    \tmrun{V}{W}{(\tmreturn{V'})}{F} &\equiv N[V'/x, W/c]
+    \\
+    \tmrun{V}{W}{(\tmraise[X]{e})}{F} &\equiv N_{e}[W/c]
+    \\
+    \omit\rlap{$
+    \tmkw{using}\; R \at W \;\tmkw{run}\;
+      \tmop{op}{X}{V}{\tmcont x M}{\tmexccont {N'} {e'} {E_\op}}
+      \;\tmkw{finally}\; F \equiv $}
+    \\
+    &
+    \quad\tmkernel{K_\op[V/x]}{W}{F'}
+    \\
+    \shortintertext{\hfil \parbox{0.6\textwidth}{
+    \abovedisplayskip=0pt
+    \belowdisplayskip=0pt
+    \begin{equation*}
+      \text{where\ } F' \defeq 
+      \begin{aligned}[t]
+        \{
+        &\tmreturn{x} \at c' \mapsto (\tmrun{R}{c'}{M}{F}), \\
+        &\left(
+            \tmraise{e'} \at c' \mapsto (\tmrun{R}{c'}{N'_{e'}}{F})
+         \right)_{e' \in E_\op},\\
+        &\left(
+            \tmkill{s} \mapsto N_s
+          \right)_{s \in S}
+      \}
+      \end{aligned}
+    \end{equation*}
+    }}
+  \\
+    \tmkernel{(\tmreturn[C]{V})}{W}{F} &\equiv N[V/x, W/c] \\
+    \tmkernel{(\tmraise[X \at C]{e})}{W}{F} &\equiv N_{e}[W/c] \\
+    \tmkernel{(\tmkill[X \at C]{s})}{W}{F} &\equiv N_{s} \\
+    \tmkernel{(\tmgetenv[C]{\tmcont c K})}{W}{F} &\equiv \tmkernel{K[W/c]}{W}{F} \\
+    \tmkernel{(\tmsetenv{V}{K})}{W}{F} &\equiv \tmkernel{K}{V}{F}
+    \\
+    \omit\rlap{$
+       \tmkernel{\tmop{op}{X}{V}{\tmcont x K}{\tmexccont L {e'} {E_\op}}}{W}{F}
+      \equiv $}
+    \\
+      \tmop{op}{X}{V}{\tmcont x {\tmkernel{K}{W}{&F}}}{
+      \left(
+         \tmkernel{L_{e'}}{W}{F}
+      \right)_{e' \in E_\op}}
+  \end{align*}
+  %
+  Abbreviations:
+  %
+  \begin{align*}
+    F &\defeq
+       \{ \tmreturn{x} \at c \mapsto N,
+       (\tmraise{e} \at c \mapsto N_e)_{e \in E},
+       (\tmkill{s} \mapsto N_s)_{s \in S}
+       \}
+    \\
+    H &\defeq
+       \{ \tmreturn{x} \mapsto N,
+          (\tmraise{e} \mapsto N_e)_{e \in E}
+       \}
+    \\
+    R &\defeq \tmrunner{(\tm{op}\,x \mapsto K_{\tm{op}})_{\tm{op} \in \sig}}{C}
+  \end{align*}
+  } % parbox
+  \caption{Computational equations (user mode).}
+  \label{fig:computational-equations-user}
+\end{figure}
+
+%%%% Kernel computation rules
+\begin{figure}[tb]
+  \centering
+  \parbox{\textwidth}{
+  \small
+  %
+  \begin{align*}
+    \tmapp{(\tmfunK{x \of X}{K})}{V} &\equiv K[V/x]
+    \\[1ex]
+    \tmtry{(\tmreturn{V})}{G} &\equiv L[V/x]
+    \\
+    \tmtry{(\tmraise[X \at C]{e})}{G} &\equiv L_{e}
+    \\
+    \tmtry{(\tmkill[X \at C]{s})}{G} &\equiv \tmkill[X \at C]{s}
+    \\
+    \tmtry{(
+      \tmop{op}{X}{V}{\tmcont x K}{\tmexccont {L'} {e'} {E_\op}}
+    )}{G} &\equiv \\
+    \tmop{op}{X}{V}{\tmcont x {\tmtry{&K}{G}}}{\left(\tmtry{L'_{e'}}{G}\right)_{e' \in E_\op}}
+    \\
+    \tmtry{(\tmgetenv[C]{\tmcont c K})}{G} &\equiv \tmgetenv[C]{\tmcont c {\tmtry{K}{G}}}
+    \\
+    \tmtry{(\tmsetenv{V}{K})}{G} &\equiv \tmsetenv{V}{\tmtry{K}{G}}
+    \\[1ex]
+    \tmmatch{\tmpair{V}{W}}{\tmpair{x}{y} \mapsto K} &\equiv
+    K[V/x, W/y]
+    \\
+    \tmmatch[X \at C]{V}{} &\equiv
+    K
+    \\
+    \tmmatch{(\tminl[X,Y]{V})}{\tminl{x} \mapsto K, \tminr{y} \mapsto L} &\equiv
+    K[V/x]
+    \\
+    \tmmatch{(\tminr[X,Y]{W})}{\tminl{x} \mapsto K, \tminr{y} \mapsto L} &\equiv
+    L[W/y]
+    \\[1ex]
+    \tmuser{(\tmreturn{V})}{G} &\equiv L[V/x]
+    \\
+    \tmuser{(\tmraise[X]{e})}{G} &\equiv L_e
+    \\
+    \tmuser{(
+      \tmop{op}{X}{V}{\tmcont x M}{\tmexccont {N'} {e'} {E_\op}}
+    )}{G} &\equiv \\
+    \tmop{op}{X}{V}{\tmcont x {\tmuser{&M}{G}}}{\left(\tmuser{N'_{e'}}{G} \right)_{e' \in E_\op}}
+  \end{align*}
+  %
+  Abbreviation: $G \defeq \{ \tmreturn{x} \mapsto L, (\tmraise{e} \mapsto L_e)_{e \in E} \}$
+  } % parbox
+  \caption{Computational equations (kernel mode).}
+  \label{fig:computational-equations-kernel}
+\end{figure}
+
+
+\begin{figure}[tb]
+  \centering
+  \parbox{\textwidth}{
+  \small
+  \begin{gather*}
+    V \equiv \tmunit : \tyunit \qquad\qquad
+    \tmfun{x \of A}{\tmapp{V}{x}} \equiv V \qquad\qquad
+    \tmfunK{x \of A}{\tmapp{V}{x}} \equiv V
+    \\
+    \tmtry{M}{
+       \{ \tmreturn{x} \mapsto \tmreturn{x},
+          (\tmraise{e} \mapsto \tmraise[X]{e})_{e \in E}
+       \}
+    }
+    \equiv M
+    \\
+    \tmtry{K}{
+       \{ \tmreturn{x} \mapsto \tmreturn{x},
+          (\tmraise{e} \mapsto \tmraise[X \at C]{e})_{e \in E}
+       \}
+    }
+    \equiv K
+    \\[1ex]
+  \begin{aligned}
+  \tmgetenv[C]{\tmcont c {\tmsetenv{c}{K}}} &\equiv K
+  \\
+  \tmsetenv{V}{\tmgetenv[C]{\tmcont c K}} &\equiv
+  \tmsetenv{V}{K[V/c]}
+  \\
+  \tmsetenv{V}{\tmsetenv{W}{K}} &\equiv \tmsetenv{W}{K}
+  \\
+  \tmgetenv[C]{\tmcont c {\tmkill[X \at C]{s}}} &\equiv
+  \tmkill[X \at C]{s}
+  \\
+  \tmsetenv{V}{\tmkill[X \at C]{s}} &\equiv
+  \tmkill[X \at C]{s}
+  \\
+  \tmgetenv[C]{\tmcont c {\tmop{op}{X}{V}{\tmcont x K}{\tmexccont L e {E_\op}}}}
+  &\equiv \\
+  \tmop{op}{X}{V}{\tmcont x {\tmgetenv[C]{&\tmcont c K}}}{\left(\tmgetenv[C]{\tmcont c {L_e}}\right)_{e \in E_\op}}
+  \\
+  \tmsetenv{V}{\tmop{op}{X}{V}{\tmcont x K}{\tmexccont L e {E_\op}}}
+  &\equiv \\
+  \tmop{op}{X}{&V}{\tmcont x {\tmsetenv{V}{K}}}{\left(\tmsetenv{V}{L_e}\right)_{e \in E_\op}}
+  \end{aligned}
+  \end{gather*}
+  } % parbox
+  \caption{Other equations (for $\eta$-expansion and the kernel theory from \cref{sec:user-kernel-monads}).}
+  \label{fig:other-equations}
+\end{figure}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "runners-in-action"
+%%% End:

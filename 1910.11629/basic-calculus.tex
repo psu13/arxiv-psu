@@ -1,0 +1,463 @@
+% !TEX root = runners-in-action.tex
+
+
+\newcommand{\tmcoop}[3]{\mathtt{\overline{#1}}~#2 \mapsto #3}
+
+\section{A calculus for programming with runners}
+\label{sect:corecalculus}
+
+Inspired by the semantic notion of runners and the ideas of the previous
+section, we now present a calculus for programming with co-operations and
+runners, called $\lambdacoop$. It is a low-level fine-grain call-by-value
+calculus~\cite{Levy:CBPV}, and as such could inspire an intermediate language
+that a high-level language is compiled to.
+
+\subsection{Types}
+\label{sect:types}
+
+\begin{figure}[tb]
+  \parbox{\textwidth}{
+  \centering
+  \small
+  \begin{align*}
+  \text{Ground type $A$, $B$, $C$}
+  \bnfis& \tybase      & &\text{base type} \\
+  \bnfor& \tyunit       & &\text{unit type} \\
+  \bnfor& \tyempty      & &\text{empty type} \\
+  \bnfor& \typrod{A}{B} & &\text{product type} \\
+  \bnfor& \tysum{A}{B}  & &\text{sum type}
+  \\[1ex]
+  \text{Constant signature:}
+  \phantom{\bnfis}& \tmconst{f} : (A_1,\ldots,A_n) \to B
+  \\[1ex]
+  \text{Signature $\sig$}
+  \bnfis& \{\op_1, \op_2, \ldots, \op_n\} \subset \Ops
+  \\
+  \text{Exception set $E$}
+  \bnfis& \{e_1, e_2, \ldots, e_n\} \subset \Excs
+  \\
+  \text{Signal set $S$}
+  \bnfis& \{s_1, s_2, \ldots, s_n\} \subset \Sigs
+  \\[1ex]
+  \text{Operation signature:}
+  \phantom{\bnfis}& \op : \tysigop{A_\op}{B_\op}{E_\op}
+  \\[1ex]
+  \text{Value type $X$, $Y$, $Z$}
+  \bnfis& A                                       & &\text{ground type} \\
+  \bnfor& \typrod{X}{Y}                           & &\text{product type} \\
+  \bnfor& \tysum{X}{Y}                            & &\text{sum type} \\
+  \bnfor& \tyfun{X}{\tyuser{Y}{\Ueff}}           & &\text{user function type} \\
+  \bnfor& \tyfunK{X}{\tykernel{Y}{\Keff}}         & &\text{kernel function type} \\
+  \bnfor& \tyrunner{\sig}{\sig'}{S}{C}      & &\text{runner type}
+  \\[1ex]
+  \text{User (computation) type:}
+  \phantom{\bnfor} &\tyuser{X}{\Ueff} \quad \text{where $\Ueff = (\sig, E)$}
+  \\
+  \text{Kernel (computation) type:}
+  \phantom{\bnfor}& \tykernel{X}{\Keff} \quad \text{where $\Keff = (\sig, E, S, C)$}
+  \end{align*}
+  } 
+  \caption{The types of $\lambdacoop$.}
+  \label{fig:lambdacoop-types}
+\end{figure}
+
+The types of $\lambdacoop$ are shown in \cref{fig:lambdacoop-types}.
+%
+The \emph{ground types} contain \emph{base types}, and are closed under finite sums and
+products. These are used in operation signatures and as types of kernel state. (Allowing
+arbitrary types in either of these entails substantial complications that can be dealt
+with but are tangential to our goals.) Ground types can also come with corresponding 
+constant symbols~$\tmconst{f}$, each associated with a fixed \emph{constant signature}
+$\tmconst{f} : (A_1,\ldots,A_n) \to B$.
+
+We assume a supply of operation symbols $\Ops$, exception names $\Excs$, and
+signal names $\Sigs$. Each operation symbol~$\op \in \Ops$ is equipped with an
+\emph{operation signature} $\tysigop{A_\op}{B_\op}{E_\op}$, which specifies its
+parameter type~$A_\op$ and arity type~$B_\op$, and the exceptions~$E_\op$ 
+that the corresponding co-operations may raise in runners.
+
+The \emph{value types} extend ground types with two 
+function types, and a type of runners.
+%
+The \emph{user function type $\tyfun{X}{\tyuser{Y}{(\sig, E)}}$} classifies
+functions taking arguments of type~$X$ to computations classified by the \emph{user
+  (computation) type}~${\tyuser{Y}{(\sig, E)}}$, i.e., those that return values of
+type~$Y$, and may call operations~$\sig$ and raise exceptions~$E$.
+%
+Similarly, the \emph{kernel function type
+  $\tyfunK{X}{\tykernel{Y}{(\sig, E, S, C)}}$} classifies functions taking
+arguments of type~$X$ to computations classified by the \emph{kernel
+  (computation) type~$\tykernel{Y}{(\sig, E, S, C)}$}, i.e., those that return
+values of type~$Y$, and may call operations~$\sig$, raise exceptions~$E$, send
+signals~$S$, and use state of type~$C$. We note that the ingredients for user and kernel types
+correspond precisely to the parameters of the user monad $\UU{\sig}{E}$ and the
+kernel monad $\KK{C}{\sig}{E}{S}$ from \cref{sec:user-kernel-monads}.
+%
+Finally, the \emph{runner type $\tyrunner{\sig}{\sig'}{S}{C}$} classifies runners that
+implement co-operations for the operations~$\sig$ as kernel computations which use 
+operations~$\sig'$, send signals~$S$, and use state of type~$C$.
+
+
+\subsection{Values and computations}
+\label{sec:values-computations}
+
+
+\begin{figure}[tp]
+  \parbox{\textwidth}{
+  \centering
+  \small
+  \abovedisplayskip=0pt
+  \begin{align*}
+  \intertext{\textbf{Values}}
+  V, W
+  \bnfis& x                                       & &\text{variable} \\
+  \bnfor& \tmconst{f}(V_1,\ldots,V_n)                                       & &\text{ground constant} \\
+  \bnfor& \tmunit                                 & &\text{unit} \\
+  \bnfor& \tmpair{V}{W}                           & &\text{pair} \\
+  \bnfor& \tminl[X,Y]{V} \bnfor \tminr[X,Y]{V}    & &\text{injection} \\
+  \bnfor& \tmfun{x : X}{M}                        & &\text{user function} \\
+  \bnfor& \tmfunK{x : X}{K}                       & &\text{kernel function} \\
+  \bnfor& \tmrunner{(\tm{op}\,x \mapsto K_{\tm{op}})_{\tm{op} \in \sig}}{C}
+                                                  & &\text{runner}
+  \\[1ex]
+  \intertext{\textbf{User computations}}
+  M, N
+  \bnfis& \tmreturn{V}                            & &\text{value} \\
+  \bnfor& V\,W                                    & &\text{application} \\
+  \bnfor& \tmtry{M}{
+          \{ \tmreturn{x} \mapsto N,
+             (\tmraise{e} \mapsto N_e)_{e \in E} \}
+          }
+                                                  & &\text{exception handler} \\
+  \bnfor& \tmmatch{V}{\tmpair{x}{y} \mapsto M}    & &\text{product elimination} \\
+  \bnfor& \tmmatch[X]{V}{}                        & &\text{empty elimination} \\
+  \bnfor& \tmmatch{V}{\tminl{x} \mapsto M, \tminr{y} \mapsto N}
+                                                  & &\text{sum elimination} \\
+  \bnfor& \tmop{op}{X}{V}{\tmcont x M}{\tmexccont N e {E_\op}}
+                                                  & &\text{operation call} \\
+  \bnfor& \tmraise[X]{e}                          & &\text{raise exception} \\
+  \bnfor& \tmrun{V}{W}{M}{F} 
+                                                  & &\text{running user code} \\
+  \bnfor& 
+            \tmkernel{K}{W}{F}
+                                                  & &\text{switch to kernel mode}
+  \\[2ex]
+  F \bnfis & \omit \rlap{$\{ \tmreturn{x} \at c \mapsto N, 
+                    (\tmraise{e} \at c \mapsto N_e)_{e \in E},
+                    (\tmkill{s} \mapsto N_s)_{s \in S} \}$}
+  \\[1ex]
+  \intertext{\textbf{Kernel computations}}
+  K, L
+  \bnfis& \tmreturn[C]{V}                         & &\text{value} \\
+  \bnfor& V\,W                                    & &\text{application} \\
+  \bnfor& \tmtry{K}{
+          \{ \tmreturn{x} \mapsto L,
+             (\tmraise{e} \mapsto L_e)_{e \in E} \}
+          }
+                                                  & &\text{exception handler} \\
+  \bnfor& \tmmatch{V}{\tmpair{x}{y} \mapsto K}    & &\text{product elimination} \\
+  \bnfor& \tmmatch[X \at C]{V}{}                  & &\text{empty elimination} \\
+  \bnfor& \tmmatch{V}{\tminl{x} \mapsto K, \tminr{y} \mapsto L}
+                                                  & &\text{sum elimination} \\
+  \bnfor& \tmop{op}{X}{V}{\tmcont x K}{\tmexccont L e {E_\op}}
+                                                  & &\text{operation call} \\
+  \bnfor& \tmraise[X \at C]{e}                    & &\text{raise exception} \\
+  \bnfor& \tmkill[X \at C]{s}                     & &\text{send signal} \\
+  \bnfor& \tmgetenv[C]{\tmcont c K}               & &\text{get kernel state} \\
+  \bnfor& \tmsetenv{V}{K}                         & &\text{set kernel state} \\
+  \bnfor& \tmuser{M}{
+          \begin{aligned}[t]
+          \{ &\tmreturn{x} \mapsto K,
+             (\tmraise{e} \mapsto L_e)_{e \in E} \}
+          \end{aligned}
+          }
+                                                  & &\text{switch to user mode}
+  \end{align*}
+  } 
+  \caption{Values, user computations, and kernel computations of $\lambdacoop$.}
+  \label{fig:lambdacoop-terms}
+\end{figure}
+
+The syntax of terms is shown in \cref{fig:lambdacoop-terms}. The
+usual fine-grain call-by-value stratification of terms into pure values and effectful
+computations is present, except that we further distinguish between \emph{user} and
+\emph{kernel} computations.
+
+\subsubsection{Values}
+\label{sec:values}
+
+Among the values are variables, constants for ground types, and constructors 
+for sums and products. There are two kinds of functions, for abstracting over user and
+kernel computations. A \emph{runner} is a value of the form
+%
+\begin{equation*}
+  \tmrunner{(\tm{op}\,x \mapsto K_{\tm{op}})_{\tm{op} \in \sig}}{C}.
+\end{equation*}
+%
+It implements co-operations for operations $\tm{\op}$ as kernel
+computations~$K_\op$, with $x$ bound in~$K_\op$. The type annotation~$C$
+specifies the type of the state that~$K_\op$ uses.
+Note that $C$ ranges over ground types, a restriction that allows us to define a naive
+set-theoretic semantics.
+%
+We sometimes omit these type annotations.
+
+\subsubsection{User and kernel computations}
+
+The user and kernel computations both have pure computations, function application,
+exception raising and handling, standard elimination forms, and operation calls.
+Note that the typing annotations on some of these differ according to their mode.
+For instance, a user operation call is annotated
+with the result type~$X$, whereas the annotation $X \at C$ on a kernel operation call
+also specifies the kernel state type~$C$.
+
+The binding construct $\tmlet[X ! E]{x}{M}{N}$ is not part of the syntax,
+but is an abbreviation for
+%
+$
+  \tmtry{M}{
+  \{ \tmreturn{x} \mapsto N,
+     (\tmraise{e} \mapsto \tmraise[X]{e})_{e \in E}
+   \}}
+$,
+%
+and there is an analogous one for kernel computations. We often drop the 
+annotation $X ! E$.
+
+Some computations are specific to one or the other mode. Only the kernel mode
+may send a signal with $\tmkill{\!}$, and manipulate state with
+$\tmkw{getenv}$ and $\tmkw{setenv}$, but only the user mode has the 
+$\tmkw{run}$ construct from \cref{sec:runn-as-progr}.
+%
+Finally, each mode has the ability to ``context switch'' to the other one.
+The kernel computation
+%
+\begin{equation*}
+\tmuser{M}{
+   \{
+     \tmreturn{x} \mapsto K,
+     (\tmraise{e} \mapsto L_e)_{e \in E}
+   \}
+}
+\end{equation*}
+%
+runs a user computation $M$ and handles the returned value and leftover
+exceptions with kernel computations $K$ and $L_e$.
+Conversely, the user computation
+%
+\begin{equation*}
+\tmkernel{K}{W}{
+  \{x \at c \mapsto M,
+    (\tmraise{e} \at c \mapsto N_e)_{e \in E},
+    (\tmkill{s} \mapsto N_s)_{s \in S}
+  \}
+}
+\end{equation*}
+%
+runs kernel computation $K$ with initial state $W$, and handles the returned value,
+and leftover exceptions and signals with user computations $M$, $N_e$, and $N_s$.
+
+\subsection{Type system}
+\label{sec:typesystem}
+
+We equip $\lambdacoop$ with a type system akin to type and effect systems for
+algebraic effects and handlers~\cite{Bauer:EffectSystem,Benton:ExceptionalSyntax,Kammar:Handlers}.
+We are experimenting with resource control, so it makes sense for the type system
+to tightly control resources. Consequently, our effect system
+does not allow effects to be implicitly propagated outwards.
+
+In \cref{sect:types}, we assumed that each operation $\op \in \Ops$ 
+is equipped with some fixed operation signature
+%
+$
+  \op : \tysigop{A_\op}{B_\op}{E_\op}
+$.
+%
+We also assumed a fixed constant signature $\tmconst{f} : (A_1, \ldots, A_n) \to B$
+for each ground constant $\tmconst{f}$.
+%
+We consider this information to be part of the type system and say no more about it.
+
+Values, user computations, and kernel computations each have a corresponding
+\emph{typing judgement} form and a \emph{subtyping relation}, given by 
+%
+\begin{align*}
+  &\Gamma \types V : X,
+& &\Gamma \types M : \tyuser{X}{\Ueff},
+& &\Gamma \types K : \tykernel{X}{\Keff},\\
+  &X \sub Y,
+& &\tyuser{X}{\Ueff} \sub \tyuser{Y}{\Veff},
+& &\tykernel{X}{\Keff} \sub \tykernel{Y}{\Leff}, 
+\end{align*}
+%
+where $\Gamma$ is a \emph{typing context} $x_1 : X_1, \ldots, x_n : X_n$.
+%
+The effect information is an over-approximation, i.e., $M$ and $K$ employ \emph{at
+  most} the effects described by $\Ueff$ and $\Keff$.
+%
+The complete rules for these judgements are given in the online appendix. %\cref{sec:typing-rules}. 
+We comment here
+only on the rules that are peculiar to~$\lambdacoop$, see \cref{fig:typing-selected}.
+
+\begin{figure}[tp]
+  \centering
+  \small
+  \begin{mathpar}
+    %%% NOTE: these should be kept in sync with the rules given in
+    %%%       tpying-rules.tex. The rules in that file are the official version,
+    %%%       the ones here are the copies. If you delete a rule here, make sure
+    %%%       to note so in typing-rules.tex.
+    %%%
+    %%%       Do not place a rule here without commenting on it in the text,
+    %%%       that's bad manners.
+    \coopinfer{Sub-Ground}{ }{A \sub A}
+    
+    \coopinfer{Sub-Runner}{
+      \sig_1' \subseteq \sig_1 \\
+      \sig_2 \subseteq \sig_2' \\
+      S \subseteq S' \\
+      C \equiv C'
+    }{
+      \tyrunner{\sig_1}{\sig_2}{S}{C} \sub \tyrunner{\sig_1'}{\sig_2'}{S'}{C'}
+    }
+
+    \coopinfer{Sub-Kernel}{
+      X \sub X' \\
+      \sig \subseteq \sig' \\
+      E \subseteq E' \\
+      S \subseteq S' \\
+      C \equiv C'
+    }{
+      \tykernel{X}{(\sig, E, S, C)} \sub \tykernel{X'}{(\sig', E', S', C')}
+    }
+
+  \coopinfer{TyUser-Try}{
+    \Gamma \types M : \tyuser{X}{(\sig,E)}
+    \\
+    \Gamma, x \of X \types N : \tyuser{Y}{(\sig,E')}
+    \\
+    \big(
+      \Gamma \types N_e : \tyuser{Y}{(\sig,E')}
+    \big)_{e \in E}
+  }{
+    \Gamma \types
+    \tmtry{M}{
+        \{ \tmreturn{x} \mapsto N,
+           (\tmraise{e} \mapsto N_e)_{e \in E} \}
+        }
+    : \tyuser{Y}{(\sig,E')}
+  }
+
+  \coopinfer{TyUser-Run}{
+    F \equiv
+    \{ \tmreturn{x} \at c \mapsto N,
+       (\tmraise{e} \at c \mapsto N_e)_{e \in E},
+       (\tmkill{s} \mapsto N_s)_{s \in S}
+    \}
+    \\\\
+    \Gamma \types V : \tyrunner{\sig}{\sig'}{S}{C} \\
+    \Gamma \types W : C \\\\
+    \Gamma \types M : \tyuser{X}{(\sig, E)} \\
+    \Gamma, x \of X, c \of C \types N : \tyuser{Y}{(\sig', E')} \\
+    \big(
+       \Gamma, c \of C \types N_e : \tyuser{Y}{(\sig', E')}
+    \big)_{e \in E} \\
+    \big(
+       \Gamma \types N_s : \tyuser{Y}{(\sig', E')}
+    \big)_{s \in S} \\
+  }{
+    \Gamma \types \tmrun{V}{W}{M}{F} : \tyuser{Y}{(\sig', E')}
+  }
+
+  \coopinfer{TyUser-Op}{
+    \Ueff \equiv (\sig,E) \\
+    \op \in \sig \\
+    \Gamma \types V : A_\op \\\\
+    \Gamma, x \of B_\op \types M : \tyuser{X}{\Ueff} \\
+    \big(
+      \Gamma \vdash N_e : \tyuser{X}{\Ueff}
+    \big)_{e \in E_\op}
+  }{
+    \Gamma \types \tmop{op}{X}{V}{\tmcont x M}{\tmexccont N e {E_\op}} : \tyuser{X}{\Ueff}
+  }
+
+  \coopinfer{TyKernel-Op}{
+    \Keff \equiv (\sig, E, S, C) \\
+    \op \in \sig \\
+    \Gamma \types V : A_\op \\\\
+    \Gamma, x \of B_\op \types K : \tykernel{X}{\Keff} \\
+    \big(
+      \Gamma \vdash L_e : \tykernel{X}{\Keff}
+    \big)_{e \in E_\op}
+  }{
+    \Gamma \types \tmop{op}{X}{V}{\tmcont x K}{\tmexccont L e {E_\op}} : \tykernel{X}{\Keff}
+  }
+
+  \coopinfer{TyUser-Kernel}{
+    F \equiv
+    \{ \tmreturn{x} \at c \mapsto N,
+       (\tmraise{e} \at c \mapsto N_e)_{e \in E},
+       (\tmkill{s} \mapsto N_s)_{s \in S}
+    \}
+    \\\\
+    \Gamma \types K : \tykernel{X}{(\sig, E, S, C)} \\
+    \Gamma \types W : C \\
+    \Gamma, x \of X, c \of C \types N : \tyuser{Y}{(\sig, E')} \\
+    \big(
+      \Gamma, c \of C \types N_e : \tyuser{Y}{(\sig, E')}
+    \big)_{e \in E} \\
+    \big(
+      \Gamma \types N_s : \tyuser{Y}{(\sig, E')}
+    \big)_{s \in S} \\
+  }{
+    \Gamma \types \tmkernel{K}{W}{F} : \tyuser{Y}{(\sig, E')}
+  }
+
+  \coopinfer{TyKernel-User}{
+   \Keff \equiv (\sig, E', S, C) \\
+   \Gamma \types M : \tyuser{X}{(\sig, E)} \\\\
+   \Gamma, x \of X \types K : \tykernel{Y}{\Keff} \\
+   \big(
+     \Gamma \types L_e : \tykernel{Y}{\Keff}
+   \big)_{e \in E}
+  }{
+    \Gamma \types
+    \tmuser{M}{
+      \{ \tmreturn{x} \mapsto K,
+         (\tmraise{e} \mapsto L_e)_{e \in E}
+      \}
+    }
+    : \tykernel{Y}{\Keff}
+  }
+  \end{mathpar}
+  \caption{Selected typing and subtyping rules.}
+  \label{fig:typing-selected}
+\end{figure}
+
+Subtyping of ground types \textsc{Sub-Ground} is trivial, as it relates only equal types.
+Subtyping of runners \textsc{Sub-Runner} and kernel computations
+\textsc{Sub-Kernel} requires equality of the kernel state types~$C$ and~$C'$
+because state is used invariantly in the kernel monad.
+We leave it for future work to replace ${C \equiv C'}$ with a
+\emph{lens}~\cite{Foster:Lenses} from~$C'$ to~$C$, i.e., maps $C' \to C$ and ${C' \times C \to C'}$
+satisfying state equations analogous to \cref{ex:state}. It has been
+observed~\cite{OConnor:Lens,Power:Comodels} that such a lens in fact amounts to
+an ordinary runner for $C$-valued state.
+
+The rules \textsc{TyUser-Op} and \textsc{TyKernel-Op} govern operation calls, where 
+we have a success continuation which receives a value returned by a 
+co-operation, and exceptional continuations which receive exceptions raised by co-operations.
+
+The rule \textsc{TyUser-Run} requires that the runner $V$ implements \emph{all} the
+operations $M$ can use, meaning that operations are \emph{not} implicitly propagated outside a $\tmkw{run}$ block (which is different from how handlers are sometimes implemented). Of course, the co-operations of the runner may call further external operations, as recorded by the signature~$\sig'$. Similarly, we require the finally block~$F$ to intercept all exceptions and signals that might be produced by the co-operations of $V$ or the user code $M$.
+%
+Such strict control is exercised throughout. For example, in 
+\textsc{TyUser-Run}, \textsc{TyUser-Kernel}, and \textsc{TyKernel-User} we catch all the exceptions and signals that the code might produce.
+%
+One should judiciously relax these requirements in a language that is presented to
+the programmer, and allow re-raising and re-sending clauses to be automatically inserted.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "runners-in-action"
+%%% End:

@@ -1,0 +1,163 @@
+% !TEX root = runners-in-action.tex
+
+\section{Runners in action}
+\label{sect:examples}
+
+Let us show examples that demonstrate how runners can be usefully combined to provide flexible
+resource management.
+%
+We implemented these and other examples in the language \pl{Coop} and a library
+\pl{Haskell-Coop}, see \cref{sect:implementation}.
+
+To make the code more understandable, we do not adhere strictly to the syntax of
+$\lambdacoop$, e.g., we use the generic versions of effects~\cite{Plotkin:AlgOperations}, 
+as is customary in programming, and effectful initialisation of 
+kernel state as discussed in \cref{sec:runn-as-progr}.
+
+\begin{example}[Nesting]
+\label{ex:nesting}
+  In \cref{ex:file-IO}, we considered a runner $\mathsf{fileIO}$ for basic file
+  operations. Let us suppose that $\mathsf{fileIO}$ is implemented by immediate calls to the
+  operating system. Sometimes, we might prefer to accumulate writes and
+  commit them all at once, which can be accomplished by interposing between $\mathsf{fileIO}$
+  and user code the following runner $\mathsf{accIO}$, which accumulates writes in its state:
+  %
+\begin{lstlisting}
+{ write s' -> let s = getenv () in setenv (concat s s') }$_\tm{string}$
+\end{lstlisting}
+  %
+By \emph{nesting} the runners, and calling the outer $\tm{write}$ (the one of $\mathsf{fileIO}$) only in the finalisation
+code for $\mathsf{accIO}$, the accumulated writes are commited all at once:
+%
+\begin{lstlisting}
+using fileIO @ (open "hello.txt") run
+  using accIO @ (return "") run
+    write "Hello, world."; write "Hello, again."
+  finally { return x @ s -> write s; return x }
+finally { return x @ fh -> ... , raise QuotaExceeded @ fh -> ... , kill IOError -> ... }
+\end{lstlisting}
+\end{example}
+
+\begin{example}[Instrumentation]
+%
+Above, $\mathsf{accIO}$ implements the same signature as $\mathsf{fileIO}$ and
+thus intercepts operations without the user code being aware of it.
+This kind of invisibility
+can be more generally used to implement \emph{instrumentation}:
+%
+\begin{lstlisting}
+using { ..., op x -> let c = getenv () in setenv (c+1); op x, ... }$_\tm{int}$ @ (return 0) run
+  $M$
+finally { return x @ c -> report_cost c; return x, ... }
+\end{lstlisting}
+%
+Here the interposed runner implements all operations of some enveloping runner,
+by simply forwarding them, 
+while also measuring computational cost 
+by counting the total number of operation calls, 
+which is then reported during finalisation.
+\end{example}
+
+\begin{example}[ML-style references]
+  \label{ex:ml-ref}
+  Continuing with the theme of nested runners, they can also be used to implement abstract
+  and safe interfaces to low-level resources. For instance, suppose we have a low-level
+  implementation of a memory heap that potentially allows unsafe memory access, and we would
+  like to implement ML-style references on top of it. A good first attempt is the runner
+%
+\begin{lstlisting}
+{ ref x -> let h = getenv () in
+              let (r,h') = malloc h x in
+              setenv h'; return r,
+  get r -> let h = getenv () in memread h r,
+  put (r, x) -> let h = getenv () in memset h r x }$_\tm{heap}$
+\end{lstlisting}
+%
+  which has the desired interface, but still suffers from three deficiencies that can be
+  addressed with further language support. First, \emph{abstract types} would let us hide the
+  fact that references are just memory locations, so that the user code could never devise
+  invalid references or otherwise misuse them. Second, our simple typing discipline forces
+  all references to hold the same type, but in reality we want them to have different types.
+  This could be achieved through quantification over types in the low-level implementation of 
+  the heap, as we have done in the \pl{Haskell-Coop} library using \pl{Haskell}'s $\mathsf{forall}$.
+  Third, user code could hijack a reference and
+  misuse it out of the scope of the runner, which is difficult to prevent. In practice the
+  problem does not occur because, so to speak, the runner for references is at the very top level,
+  from which user code cannot escape.
+\end{example}
+
+\begin{example}[Monotonic state]
+%
+Nested runners can also implement access restrictions to resources,
+with applications in security~\cite{DelignatLavaud:TLS}. For example, we can restrict
+the references from the previous example to be used \emph{monotonically} by associating
+a preorder with each reference, which assignments then have to obey.
+This idea is similar to how monotonic state is implemented in the $\mathrm{F}^{*}$
+language~\cite{Ahman:RecallingAWitness}, except that we make dynamic checks where
+$\mathrm{F}^{*}$ statically uses dependent types.
+
+While we could simply modify the previous example, it is better to implement a new runner which
+is nested inside the previous one, so that we obtain a modular solution that works with
+\emph{any} runner implementing operations $\tm{ref}$, $\tm{get}$, and $\tm{put}$:
+%
+\begin{lstlisting}
+{ mref x rel -> let r = ref x in
+                    let m = getenv () in
+                    setenv (add m (r,rel)); return r,
+  mget r -> get r,
+  mput (r, y) -> let x = get r in
+                     $\,$let m = getenv () in
+                     $\,$match (sel m r) with
+                     $\,$| inl rel -> if (rel x y) then put (r, y)
+                                                 $\,\,$else raise MonotonicityViolation
+                     $\,$| inr () -> kill NoPreoderFound }$_{\tm{map} (\tm{ref}, \tm{intRel})}$
+\end{lstlisting}
+%
+The runner's state is a map from references to preorders on integers. The co-operation $\tm{mref~x~rel}$ creates a new
+reference $\tm{r}$ initialised with~$\tm{x}$ (by calling $\tm{ref}$ of the outer runner), and 
+then adds the pair $\tm{(r,rel)}$ to the map stored in the runner's state. Reading is delegated to the outer runner, while assignment 
+first checks that the new state is larger than the old one, according to the associated preorder. If the
+preorder is respected, the runner proceeds with assignment (again delegated to the outer runner), otherwise it reports a
+monotonicity violation. We may not assume that every reference has an associated preorder,
+because user code could pass to $\tm{mput}$ a reference that was created earlier outside 
+the scope of the runner. If this happens, the runner simply kills the offending user code with
+a signal.
+\end{example}
+
+\begin{example}[Pairing]
+%
+\label{ex:pairing}
+%
+  Another form of modularity is achieved by \emph{pairing} runners. Given two runners
+  $\tmrunner{(\tm{op}\,x \mapsto K_{\tm{op}})_{\tm{op} \in \sig_1}}{C_1}$ and
+  $\tmrunner{(\tm{op'}\,x \mapsto K_{\tm{op'}})_{\tm{op'} \in \sig_2}}{C_2}$, e.g., for state
+  and file operations, we can use them side-by-side by combining them into a single runner
+  with operations $\sig_1 + \sig_2$ and kernel state $C_1 \times C_2$, as follows (the
+  co-operations $\tm{op}'$ of the second runner are treated symmetrically):
+%
+\begin{lstlisting}
+{ op x -> let (c,c') = getenv () in
+             user
+               kernel ($K_\op$ x) @ c finally {
+                  return y @ c'' -> return (inl (inl y, c'')),
+                  (raise e @ c'' -> return (inl (inr e, c'')))$_{e \in E_\op}$, 
+                  (kill s -> return (inr s))$_{s \in S_1}$}
+             with {
+               return (inl (inl y, c'')) -> setenv (c'', c'); return y,
+               return (inl (inr e, c'')) -> setenv (c'', c'); raise e,
+               return (inr s) -> kill s},
+  op' x -> ... , ... }$_{C_1 \times C_2}$
+\end{lstlisting}
+%
+Notice how the inner $\tmkw{kernel}$ context switch passes to the co-operation~$K_\op$ 
+only its part of the combined state, and
+how it returns the result of~$K_\op$ in a reified form (which requires treating exceptions and signals 
+as values). The outer $\tmkw{user}$ context switch then receives this reified result, updates the combined state,
+and forwards the result (return value, exception, or signal) in unreified form.
+\end{example}
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "runners-in-action"
+%%% End:

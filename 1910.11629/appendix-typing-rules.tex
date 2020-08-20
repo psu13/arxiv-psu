@@ -1,0 +1,438 @@
+% !TEX root = runners-in-action.tex
+
+\section{Typing rules of $\lambdacoop$}
+\label{sec:typing-rules}
+
+In this appendix we give the complete typing rules for $\lambdacoop$. We refer to
+\cref{fig:lambdacoop-types,fig:lambdacoop-terms} for the syntax of types, values, 
+and user and kernel computations.
+%
+For each operation symbol $\op \in \Ops$, we assume a given and fixed operation signature
+%
+\begin{equation*}
+  \op : \tysigop{A_\op}{B_\op}{E_\op},
+\end{equation*}
+%
+and for each ground constant $\tmconst{f}$, we assume 
+a signature $\tmconst{f} : (A_1,\ldots,A_n) \to B$, 
+both of which the typing rules refer to without further ado.
+%
+Values, and user and kernel computations each have a typing and a subtyping judgement of the
+form
+%
+\begin{align*}
+  &\Gamma \types V : X,
+& &\Gamma \types M : \tyuser{X}{\Ueff},
+& &\Gamma \types K : \tykernel{X}{\Keff},\\
+  &X \sub Y,
+& &\tyuser{X}{\Ueff} \sub \tyuser{Y}{\Veff},
+& &\tykernel{X}{\Keff} \sub \tykernel{Y}{\Leff}.
+\end{align*}
+%
+where $\Gamma$ is the customary typing context assigning value types to variables. 
+The subtyping rules are given in \cref{fig:subtyping}, and the 
+typing rules in \cref{fig:typing-values,fig:typing-user,fig:typing-kernel}.
+
+
+%%%%%%%%%%%%%%%%%%%%%% SUBTYPING RULES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}[p]
+  \small
+  \begin{mathpar}
+    \coopinfer{Sub-Ground}{ }{A \sub A}
+
+    \coopinfer{Sub-Product}{
+      X \sub X' \\
+      Y \sub Y'
+    }{
+      X \times Y \sub X' \times Y'
+    }
+
+    \coopinfer{Sub-Sum}{
+      X \sub X' \\
+      Y \sub Y'
+    }{
+      X + Y \sub X' + Y'
+    }
+
+    \coopinfer{Sub-UserFun}{
+      X' \sub X \\
+      \tyuser{Y}{\Ueff} \sub \tyuser{Y'}{\Ueff'}
+    }{
+      \tyfun{X}{\tyuser{Y}{\Ueff}} \sub \tyfun{X'}{\tyuser{Y'}{\Ueff'}}
+    }
+
+    \coopinfer{Sub-KernelFun}{
+      X' \sub X \\
+      \tykernel{Y}{\Keff} \sub \tykernel{Y'}{\Keff'}
+    }{
+      \tyfunK{X}{\tykernel{Y}{\Keff}} \sub \tyfunK{X'}{\tykernel{Y'}{\Keff'}}
+    }
+
+    %%% SELECTED RULE, KEEP IN SYNC WITH fig:typing-selected
+    \coopinfer{Sub-Runner}{
+      \sig_1' \subseteq \sig_1 \\
+      \sig_2 \subseteq \sig_2' \\
+      S \subseteq S' \\
+      C \equiv C'
+    }{
+      \tyrunner{\sig_1}{\sig_2}{S}{C} \sub \tyrunner{\sig_1'}{\sig_2'}{S'}{C'}
+    }
+
+    \coopinfer{Sub-User}{
+      X \sub X' \\
+      \sig \subseteq \sig' \\
+      E \subseteq E'
+    }{
+      \tyuser{X}{(\sig, E)} \sub \tyuser{X'}{(\sig', E')}
+    }
+
+    %%% SELECTED RULE, KEEP IN SYNC WITH fig:typing-selected
+    \coopinfer{Sub-Kernel}{
+      X \sub X' \\
+      \sig \subseteq \sig' \\
+      E \subseteq E' \\\\
+      S \subseteq S' \\
+      C \equiv C'
+    }{
+      \tykernel{X}{(\sig, E, S, C)} \sub \tykernel{X'}{(\sig', E', S', C')}
+    }
+
+    \coopinfer{Subsume-Value}{
+      \Gamma \types V : X \\
+      X \sub X'
+    }{
+      \Gamma \types V : X'
+    }
+
+    \coopinfer{Subsume-User}{
+      \Gamma \types M : \tyuser{X}{\Ueff} \\
+      \tyuser{X}{\Ueff} \sub \tyuser{X'}{\Ueff'}
+    }{
+      \Gamma \types M : \tyuser{X'}{\Ueff'}
+    }
+
+    \coopinfer{Subsume-Kernel}{
+      \Gamma \types K : \tykernel{X}{\Keff} \\
+      \tykernel{X}{\Keff} \sub \tykernel{X'}{\Keff'}
+    }{
+      \Gamma \types M : \tykernel{X'}{\Keff'}
+    }
+  \end{mathpar}
+  \caption{Subtyping and subsumption rules.}
+  \label{fig:subtyping}
+\end{figure}
+
+%%%%%%%%%%%%%%%%% VALUE RULES %%%%%%%%%%%%%%%%%%%%
+\begin{figure}[p]
+  \centering
+  \small
+\begin{mathpar}
+
+  \coopinfer{TyValue-Var}{
+    \Gamma(x) \equiv X
+  }{
+    \Gamma \types x : X
+  }
+  
+  \coopinfer{TyValue-Const}{
+    (\Gamma \types V_i : A_i)_{1 \leq i \leq n}
+  }{
+    \Gamma \types \tmconst{f}(V_1, \ldots , V_n) : B
+  }
+
+  \coopinfer{TyValue-Unit}{
+  }{
+    \Gamma \types \tmunit : \tyunit
+  }
+
+  \coopinfer{TyValue-Pair}{
+    \Gamma \types V : X \\
+    \Gamma \types W : Y
+  }{
+    \Gamma \types \tmpair{V}{W} : \typrod{X}{Y}
+  }
+
+  \coopinfer{TyValue-Inl}{
+    \Gamma \types V : X
+  }{
+    \Gamma \types \tminl[X,Y]{V} : X + Y
+  }
+
+  \coopinfer{TyValue-Inr}{
+    \Gamma \types W : Y
+  }{
+    \Gamma \types \tminr[X,Y]{W} : X + Y
+  }
+
+  \coopinfer{TyValue-UserFun}{
+    \Gamma, x \of X \types M : \tyuser{Y}{\Ueff}
+  }{
+    \Gamma \types \tmfun{x : X}{M} : \tyfun{X}{\tyuser{Y}{\Ueff}}
+  }
+
+  \coopinfer{TyValue-KernelFun}{
+    \Gamma, x \of X \types K : \tykernel{Y}{\Keff}
+  }{
+    \Gamma \types \tmfunK{x : X}{K} : \tyfunK{X}{\tykernel{Y}{\Keff}}
+  }
+
+  \coopinfer{TyValue-Runner}{
+    \big(
+      \Gamma, x \of A_\op \types K_\op : \tykernel{B_\op}{(\sig', E_\op, S, C)}
+    \big)_{\op \in \sig}
+  }{
+    \Gamma \types
+    \tmrunner{(\tm{op}\,x \mapsto K_{\tm{op}})_{\tm{op} \in \Sigma}}{C} :
+    \tyrunner{\sig}{\sig'}{S}{C}
+  }
+\end{mathpar}
+  \caption{Value typing rules.}
+  \label{fig:typing-values}
+\end{figure}
+
+%%%%%%%%%%%%%%%%% USER RULES %%%%%%%%%%%%%%%%%%%%
+\begin{figure}[tp]
+  \centering
+  \small
+\begin{mathpar}
+  \coopinfer{TyUser-Return}{
+    \Gamma \types V : X
+  }{
+    \Gamma \types \tmreturn{V} : \tyuser{X}{\Ueff}
+  }
+
+  \coopinfer{TyUser-Apply}{
+    \Gamma \types V : \tyfun{X}{\tyuser{Y}{\Ueff}} \\
+    \Gamma \types W : X
+  }{
+    \Gamma \types \tmapp{V}{W} : \tyuser{Y}{\Ueff}
+  }
+
+  %%% SELECTED RULE, KEEP IN SYNC WITH fig:typing-selected
+  \coopinfer{TyUser-Try}{
+    \Gamma \types M : \tyuser{X}{(\sig,E)}
+    \\
+    \Gamma, x \of X \types N : \tyuser{Y}{(\sig,E')}
+    \\
+    \big(
+      \Gamma \types N_e : \tyuser{Y}{(\sig,E')}
+    \big)_{e \in E}
+  }{
+    \Gamma \types
+    \tmtry{M}{
+        \{ \tmreturn{x} \mapsto N,
+           (\tmraise{e} \mapsto N_e)_{e \in E} \}
+        }
+    : \tyuser{Y}{(\sig,E')}
+  }
+
+  \coopinfer{TyUser-MatchPair}{
+    \Gamma \types V : \typrod{X}{Y} \\
+    \Gamma, x \of X, y \of Y \types M : \tyuser{Z}{\Ueff}
+  }{
+    \Gamma \types \tmmatch{V}{\tmpair{x}{y} \mapsto M} : \tyuser{Z}{\Ueff}
+  }
+
+  \coopinfer{TyUser-MatchEmpty}{
+    \Gamma \types V : \tyempty
+  }{
+    \Gamma \types \tmmatch[Z]{V}{} : \tyuser{Z}{\Ueff}
+  }
+
+  \coopinfer{TyUser-MatchSum}{
+    \Gamma \types V : X + Y \\
+    \Gamma, x \of X \types M : \tyuser{Z}{\Ueff} \\
+    \Gamma, y \of Y \types N : \tyuser{Z}{\Ueff} \\
+  }{
+    \Gamma \types \tmmatch{V}{\tminl{x} \mapsto M, \tminr{y} \mapsto N} : \tyuser{Z}{\Ueff}
+  }
+
+  %%% SELECTED RULE, KEEP IN SYNC WITH fig:typing-selected
+  \coopinfer{TyUser-Op}{
+    \Ueff \equiv (\sig,E) \\
+    \op \in \sig \\
+    \Gamma \types V : A_\op \\\\
+    \Gamma, x \of B_\op \types M : \tyuser{X}{\Ueff} \\
+    \big(
+      \Gamma \vdash N_e : \tyuser{X}{\Ueff}
+    \big)_{e \in E_\op}
+  }{
+    \Gamma \types \tmop{op}{X}{V}{\tmcont x M}{\tmexccont N e {E_\op}} : \tyuser{X}{\Ueff}
+  }
+
+  \coopinfer{TyUser-Raise}{
+     e \in E
+  }{
+     \Gamma \types \tmraise[X]{e} : \tyuser{X}{(\sig, E)}
+  }
+
+  %%% SELECTED RULE, KEEP IN SYNC WITH fig:typing-selected
+  \coopinfer{TyUser-Run}{
+    F \equiv
+    \{ \tmreturn{x} \at c \mapsto N,
+       (\tmraise{e} \at c \mapsto N_e)_{e \in E},
+       (\tmkill{s} \mapsto N_s)_{s \in S}
+    \}
+    \\\\
+    \Gamma \types V : \tyrunner{\sig}{\sig'}{S}{C} \\
+    \Gamma \types W : C \\\\
+    \Gamma \types M : \tyuser{X}{(\sig, E)} \\
+    \Gamma, x \of X, c \of C \types N : \tyuser{Y}{(\sig', E')} \\
+    \big(
+       \Gamma, c \of C \types N_e : \tyuser{Y}{(\sig', E')}
+    \big)_{e \in E} \\
+    \big(
+       \Gamma \types N_s : \tyuser{Y}{(\sig', E')}
+    \big)_{s \in S} \\
+  }{
+    \Gamma \types \tmrun{V}{W}{M}{F} : \tyuser{Y}{(\sig', E')}
+  }
+
+  %%% SELECTED RULE, KEEP IN SYNC WITH fig:typing-selected
+  \coopinfer{TyUser-Kernel}{
+    F \equiv
+    \{ \tmreturn{x} \at c \mapsto N,
+       (\tmraise{e} \at c \mapsto N_e)_{e \in E},
+       (\tmkill{s} \mapsto N_s)_{s \in S}
+    \}
+    \\\\
+    \Gamma \types K : \tykernel{X}{(\sig, E, S, C)} \\
+    \Gamma \types W : C \\
+    \Gamma, x \of X, c \of C \types N : \tyuser{Y}{(\sig, E')} \\
+    \big(
+      \Gamma, c \of C \types N_e : \tyuser{Y}{(\sig, E')}
+    \big)_{e \in E} \\
+    \big(
+      \Gamma \types N_s : \tyuser{Y}{(\sig, E')}
+    \big)_{s \in S} \\
+  }{
+    \Gamma \types \tmkernel{K}{W}{F} : \tyuser{Y}{(\sig, E')}
+  }
+\end{mathpar}
+  \caption{User typing rules.}
+  \label{fig:typing-user}
+\end{figure}
+
+
+%%%%%%%%%%%%%%%%% KERNEL RULES %%%%%%%%%%%%%%%%%%%%
+\begin{figure}[tp]
+  \centering
+  \small
+\begin{mathpar}
+
+  \coopinfer{TyKernel-Return}{
+    \Gamma \types V : X
+  }{
+    \Gamma \types \tmreturn[C]{V} : \tykernel{X}{(\sig, E, S, C)}
+  }
+
+  \coopinfer{TyKernel-Apply}{
+    \Gamma \types V : \tyfun{X}{\tykernel{Y}{\Keff}} \\
+    \Gamma \types W : X
+  }{
+    \Gamma \types \tmapp{V}{W} : \tykernel{Y}{\Keff}
+  }
+
+  \coopinfer{TyKernel-Try}{
+    \Gamma \types K : \tykernel{X}{(\sig, E, S, C)}
+    \\
+    \Gamma, x \of X \types L : \tykernel{Y}{(\sig, E', S, C)}
+    \\
+    \big(
+      \Gamma \types L_e : \tykernel{Y}{(\sig, E', S, C)}
+    \big)_{e \in E}
+  }{
+    \Gamma \types
+    \tmtry{K}{
+        \{ \tmreturn{x} \mapsto L,
+           (\tmraise{e} \mapsto L_e)_{e \in E} \}
+        }
+    : \tykernel{Y}{(\sig, E', S, C)}
+  }
+
+  \coopinfer{TyKernel-MatchPair}{
+    \Gamma \types V : \typrod{X}{Y} \\
+    \Gamma, x \of X, y \of Y \types K : \tykernel{Z}{\Keff}
+  }{
+    \Gamma \types \tmmatch{V}{\tmpair{x}{y} \mapsto K} : \tykernel{Z}{\Keff}
+  }
+
+  \coopinfer{TyKernel-MatchEmpty}{
+    \Gamma \types V : \tyempty
+  }{
+    \Gamma \types \tmmatch[Z \at C]{V}{} : \tykernel{Z}{(\sig, E, S, C)}
+  }
+
+  \coopinfer{TyKernel-MatchSum}{
+    \Gamma \types V : X + Y \\
+    \Gamma, x \of X \types K : \tykernel{Z}{\Keff} \\
+    \Gamma, y \of Y \types L : \tykernel{Z}{\Keff} \\
+  }{
+    \Gamma \types \tmmatch{V}{\tminl{x} \mapsto K, \tminr{y} \mapsto L} : \tykernel{Z}{\Keff}
+  }
+
+  %%% SELECTED RULE, KEEP IN SYNC WITH fig:typing-selected
+  \coopinfer{TyKernel-Op}{
+    \Keff \equiv (\sig, E, S, C) \\
+    \op \in \sig \\
+    \Gamma \types V : A_\op \\\\
+    \Gamma, x \of B_\op \types K : \tykernel{X}{\Keff} \\
+    \big(
+      \Gamma \vdash L_e : \tykernel{X}{\Keff}
+    \big)_{e \in E_\op}
+  }{
+    \Gamma \types \tmop{op}{X}{V}{\tmcont x K}{\tmexccont L e {E_\op}} : \tykernel{X}{\Keff}
+  }
+
+  \coopinfer{TyKernel-Raise}{
+     e \in E
+  }{
+     \Gamma \types \tmraise[X \at C]{e} : \tykernel{X}{(\sig, E, S, C)}
+  }
+
+  \coopinfer{TyKernel-Kill}{
+     s \in S
+  }{
+     \Gamma \types \tmkill[X \at C]{s} : \tykernel{X}{(\sig, E, S, C)}
+  }
+
+  \coopinfer{TyKernel-Getenv}{
+    \Gamma, c \of C \types K : \tykernel{X}{(\sig, E, S, C)}
+  }{
+    \Gamma \types \tmgetenv[C]{\tmcont c K} : \tykernel{X}{(\sig, E, S, C)}
+  }
+
+  \coopinfer{TyKernel-Setenv}{
+    \Gamma \types V : C \\
+    \Gamma \types K : \tykernel{X}{(\sig, E, S, C)}
+  }{
+    \Gamma \types \tmsetenv{V}{K} : \tykernel{X}{(\sig, E, S, C)}
+  }
+
+  %%% SELECTED RULE, KEEP IN SYNC WITH fig:typing-selected
+  \coopinfer{TyKernel-User}{
+   \Keff \equiv (\sig, E', S, C) \\
+   \Gamma \types M : \tyuser{X}{(\sig, E)} \\\\
+   \Gamma, x \of X \types K : \tykernel{Y}{\Keff} \\
+   \big(
+     \Gamma \types L_e : \tykernel{Y}{\Keff}
+   \big)_{e \in E}
+  }{
+    \Gamma \types
+    \tmuser{M}{
+      \{ \tmreturn{x} \mapsto K,
+         (\tmraise{e} \mapsto L_e)_{e \in E}
+      \}
+    }
+    : \tykernel{Y}{\Keff}
+  }
+\end{mathpar}
+  \caption{Kernel typing rules.}
+  \label{fig:typing-kernel}
+\end{figure}
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "runners-in-action"
+%%% End:

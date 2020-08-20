@@ -1,0 +1,532 @@
+% !TEX root = runners-in-action.tex
+
+\section{Denotational semantics}
+\label{sec:denotational-semantics}
+
+We provide a coherent denotational semantics for~$\lambdacoop$, and 
+prove it sound with respect to the equational theory given
+in \cref{sect:eqtheory}. Having eschewed all forms of recursion,
+we may afford to work simply over the category of sets and functions, while noting that
+there is no obstacle to incorporating recursion at all levels and switching to domain theory,
+similarly to the treatment of effect handlers in~\cite{Bauer:EffectSystem}.
+
+\subsection{Semantics of types}
+\label{sec:semantics-types}
+
+The meaning of terms is most naturally defined by structural induction on their typing
+derivations, which however are not unique in~$\lambdacoop$ due to subsumption rules.
+Thus we must worry about devising a \emph{coherent} semantics, i.e., one in which all derivations
+of a judgement get the same meaning.
+%
+We follow prior work on the semantics of effect systems for
+handlers~\cite{Bauer:EffectSystem}, and proceed by first giving a \emph{skeletal}
+semantics of~$\lambdacoop$ in which derivations are manifestly unique because the effect
+information is unrefined. We then use the skeletal semantics as the frame upon which rests
+a refinement-style coherent semantics of the effectful types of~$\lambdacoop$.
+
+The \emph{skeletal} types are like $\lambdacoop$'s types, but with all effect information
+erased. 
+In particular, the ground types $A$, and hence the kernel state types $C$, do not change
+as they contain no effect information. The skeletal value types are
+%
+\begin{equation*}
+  P, Q
+   \bnfis A
+   \mid \tyunit
+   \mid \tyempty
+   \mid \typrod{P}{Q}
+   \mid \tysum{P}{Q}
+   \mid \tyfunskel{P}{\tyuserskel{Q}}
+   \mid \tyfunKskel{P}{\tykernelskel{Q}{C}}
+   \mid \tyrunnerskel{C}.
+\end{equation*}
+%
+The skeletal versions of the user and kernel types are $\tyuserskel{P}$ and
+$\tykernelskel{P}{C}$, respectively. It is best to think of the skeletal types as ML-style
+types which implicitly over-approximate effect information by ``any effect is possible'',
+an idea which is mathematically expressed by their semantics, as explained below.
+
+First of all, the semantics of ground types is straightforward. One only needs to provide
+sets denoting the base types $\tybase$, after which the ground types receive the standard
+set-theoretic meaning, as given in \cref{fig:semantics-ground-skeletal-types}.
+
+Recall that $\Ops$, $\Sigs$, and $\Excs$ are the sets of all operations, signals, 
+and exceptions, and that each $\op \in \Ops$ has a signature
+$\op : \tysigop{A_\op}{B_\op}{E_\op}$.
+%
+Let us additionally assume that there is a distinguished operation
+$\rip \in \Ops$ with signature $\rip : \tysigop{\One}{\Zero}{\Zero}$ (otherwise
+we adjoin it to $\Ops$). It ensures that the denotations of skeletal
+user and kernel types are \emph{pointed} sets, while operationally~$\rip$ indicates
+a \emph{runtime error}.
+
+Next, we define the \emph{skeletal user and kernel monads} as
+%
+\begin{align*}
+  \UUskel X &\defeq \UU{\Ops}{\Excs} X= \Tree{\Ops}{X + \Excs}, \\
+  \KKskel{C} X &\defeq \KK{C}{\Ops}{\Excs}{\Sigs} X = (C \expto \Tree{\Ops}{(X + \Excs) \times C + \Sigs}),
+\end{align*}
+%
+and $\RunnerSkel{C}$ as the set of all \emph{skeletal runners $\R$ (with state $C$)}, 
+which are families of co-operations
+%
+$
+  \{\coop_\R : \skelsem{A_\op} \to \KK{C}{\Ops}{E_\op}{\Sigs} \skelsem{B_\op} \}_{\op \in \Ops}
+$.
+%
+%
+Note that $\KK{C}{\Ops}{E_\op}{\Sigs}$ is a coproduct~\cite{Hyland:CombiningEffects} of monads
+$C \expto \Tree{\Ops}{{-} \times C + \Sigs}$ and~$\Exc{E_\op}$, and thus the skeletal
+runners are the effectful runners for the former monad, so long as we read the effectful
+signatures $\op : \tysigop{A_\op}{B_\op}{E_\op}$ as ordinary algebraic ones $\op : A_\op \leadsto B_\op + E_\op$.
+%
+While there is no semantic difference between the two readings, there is one of intention:
+$\KK{C}{\Ops}{E_\op}{\Sigs} \skelsem{B_\op}$ is a kernel computation that (apart from
+using state and sending signals) returns values of type $B_\op$ and raises
+exceptions $E_\op$, whereas $C \expto \Tree{\Ops}{(\skelsem{B_\op} + E_\op) \times C + \Sigs}$ returns values of type
+$B_\op + E_\op$ and raises no exceptions. We prefer the former, as it reflects our treatment of exceptions as a
+control mechanism rather than exceptional values.
+
+These ingredients suffice for the denotation of skeletal types as sets, as given in
+\cref{fig:semantics-ground-skeletal-types}. The user and kernel skeletal types
+are interpreted using the respective skeletal monads, and hence the two function types as Kleisli 
+exponentials.
+
+\begin{figure}[ht]
+  \centering
+  \small
+  \textbf{Ground types}
+  %
+  \begin{gather*}
+    \skelsem{\tybase} \defeq \cdots
+    \qquad\qquad
+    \skelsem{\tyunit} \defeq \One
+    \qquad\qquad
+    \skelsem{\tyempty} \defeq \Zero
+    \\
+    \skelsem{\typrod{A}{B}} \defeq \skelsem{A} \times \skelsem{B}
+    \qquad\qquad
+    \skelsem{\tysum{A}{B}} \defeq \skelsem{A} + \skelsem{B}
+  \end{gather*}
+  %
+  \textbf{Skeletal types}
+  %
+  \begin{gather*}
+    \begin{aligned}
+      \skelsem{\typrod{P}{Q}} &\defeq \skelsem{P} \times \skelsem{Q}
+      &
+      \qquad
+      \skelsem{\tyfun{P}{\tyuser{Q}{}}} &\defeq \skelsem{P} \expto \skelsem{\tyuser{Q}{}}
+      \\
+      \skelsem{\tysum{P}{Q}} &\defeq \skelsem{P} + \skelsem{Q}
+      &
+      \skelsem{\tyfunKskel{P}{\tykernelskel{Q}{C}}} &\defeq \skelsem{P} \expto \skelsem{\tykernelskel{Q}{C}}
+    \end{aligned}
+    \\
+    \skelsem{\tyrunnerskel{C}} \defeq \RunnerSkel{\skelsem{C}}
+    \qquad\quad
+    \skelsem{\tyuserskel{P}} \defeq \UUskel \skelsem{P}
+    \qquad\quad
+    \skelsem{\tykernelskel{P}{C}} \defeq \KKskel{\skelsem{C}} \skelsem{P}
+    \\
+    \skelsem{x_1 : P_1, \ldots, x_n : P_n} \defeq \skelsem{P_1} \times \cdots \times \skelsem{P_n}
+  \end{gather*}
+  %
+  \caption{Denotations of ground and skeletal types.}
+  \label{fig:semantics-ground-skeletal-types}
+\end{figure}
+
+We proceed with the semantics of effectful types. The \emph{skeleton} of a value
+type~$X$ is the skeletal type $\skeleton{X}$ obtained by removing all effect
+information, and similarly for user and kernel types, see \cref{fig:skeletons-and-denotations}.
+%
+% Had to put this one in a figure too, because of page breaks. 
+%
+\begin{figure}[ht]
+  \centering
+  \small
+  %
+  \textbf{Skeletons}
+  %
+  \begin{gather*}
+  \skeleton{A} \defeq A
+  \qquad
+    \skeleton{(\tyrunner{\sig}{\sig'}{S}{C})} \defeq \tyrunnerskel{C}
+  \qquad
+    \skeleton{(\typrod{X}{Y})} \defeq \typrod{\skeleton{X}}{\skeleton{Y}}
+  \\
+  \skeleton{(\tyfun{X}{\tyuser{Y}{\Ueff}})} \defeq \tyfunskel{\skeleton{X}}{\skeleton{(\tyuser{Y}{\Ueff})}}
+  \qquad
+    \skeleton{(\tysum{X}{Y})} \defeq \tysum{\skeleton{X}}{\skeleton{Y}}
+  \\
+  \skeleton{(\tyfunK{X}{\tykernel{Y}{\Keff}})} \defeq
+                                                     \tyfunKskel{\skeleton{X}}{\skeleton{(\tykernel{Y}{\Keff})}}
+  \qquad
+    \skeleton{(\tyuser{X}{\Ueff})} \defeq \tyuserskel{\skeleton{X}}
+  \\
+  \skeleton{(x_1 : X_1, \ldots, x_n : X_n)} \defeq (x_1 : \skeleton{X}_1, \ldots, x_n : \skeleton{X}_n)
+  \qquad
+    \skeleton{(\tykernel{X}{(\Sigma, E, S, C)})} \defeq \tykernelskel{\skeleton{X}}{C}
+  \end{gather*}
+  %
+  %
+  \abovedisplayskip=4pt % to keep the definition of $\coop$ on page 19
+  \textbf{Denotations}
+  %
+  \begin{gather*}
+    \begin{aligned}
+    \sem{A} &\defeq \skelsem{A}
+    &
+    \sem{\typrod{X}{Y}} &\defeq \sem{X} \times \sem{X}
+    \\
+    \sem{\tyrunner{\sig}{\sig'}{S}{C}} &\defeq \Runner{\sig}{\sig'}{S}{\sem{C}}
+    &
+    \qquad\qquad
+    \sem{\tysum{X}{Y}} &\defeq \sem{X} + \sem{X}
+    \end{aligned}
+    \\
+    \begin{aligned}
+      \sem{\tyfun{X}{\tyuser{Y}{\Ueff}}} &\defeq
+      (\sem{X}, \skelsem{\skeleton{X}}) \subexpto (\sem{\tyuser{Y}{\Ueff}}, \skelsem{\skeleton{(\tyuser{Y}{\Ueff})}})
+    \\
+      \sem{\tyfunK{X}{\tykernel{Y}{\Keff}}} &\defeq
+      (\sem{X}, \skelsem{\skeleton{X}}) \subexpto (\sem{\tykernel{Y}{\Keff}}, \skelsem{\skeleton{(\tykernel{Y}{\Keff})}})
+    \end{aligned}
+    \\
+    \begin{aligned}
+      \sem{\tyuser{X}{(\sig,E)}} &\defeq \UU{\sig}{E} \sem{X}
+      &
+      \sem{\tykernel{X}{(\sig, E, S, C)}} &\defeq \KK{\skelsem{C}}{\sig}{E}{S} \sem{X}
+    \end{aligned}
+    \\
+    \sem{x_1 : X_1, \ldots, x_n : X_n} \defeq \sem{X_1} \times \cdots \times \sem{X_n}
+  \end{gather*}
+  %
+  %
+  \caption{Skeletons and denotations of types.}
+  \label{fig:skeletons-and-denotations}
+\end{figure}
+%
+% NOTE: no paragraph here, please.
+%
+We interpret a value type~$X$ as a subset
+$\sem{X} \subseteq \skelsem{\skeleton{X}}$ of the denotation of its skeleton,
+and similarly for user and computation types. In other words, we treat the
+effectful types as \emph{refinements} of their skeletons. For this,
+we define the operation $(X_0, X_1) \subexpto (Y_0, Y_1)$, for any  
+$X_0 \subseteq X_1$ and $Y_0 \subseteq Y_1$, as the set of maps $X_1 \to Y_1$
+restricted to $X_0 \to Y_0$: 
+%
+\begin{equation*}
+  (X_0, X_1) \subexpto (Y_0, Y_1) \defeq
+  \{ f : X_1 \to Y_1 \mid \forall x \in X_0 \,.\, f(x) \in Y_0 \}.
+\end{equation*}
+%
+Next, observe that the user and the kernel monads preserve subset inclusions, in
+the sense that $\UU{\sig}{E} X \subseteq \UU{\sig'}{E'} X'$ and
+$\KK{C}{\sig}{E}{S} X \subseteq \KK{C}{\sig'}{E'}{S'} X'$ if
+$\sig \subseteq \sig'$, $E \subseteq E'$, $S \subseteq S'$, and
+$X \subseteq X'$. In particular, we always have
+$\UU{\sig}{E} X \subseteq \UUskel X$ and
+$\KK{C}{\sig}{E}{S} X \subseteq \KKskel{C} X$.
+%
+Finally, let $\Runner{\sig}{\sig'}{S}{C} \subseteq \RunnerSkel{C}$ be the subset of those
+runners~$\R$ whose co-operations for $\sig$ factor through $\KK{C}{\sig'}{E_\op}{S}$,
+i.e.,
+%
+$
+  \coop_\R : \skelsem{A_\op} \to \KK{C}{\sig'}{E_\op}{S} \skelsem{B_\op}
+  \subseteq \KK{C}{\Ops}{E_\op}{\Sigs} \skelsem{B_\op}, 
+$
+%
+for each $\op \in \sig$.
+
+Semantics of effectful types is given in \cref{fig:skeletons-and-denotations}.
+%
+From a category-theoretic viewpoint, it assigns meaning in the category $\Sub(\Set)$
+whose objects are subset inclusions $X_0 \subseteq X_1$ and morphisms from
+$X_0 \subseteq X_1$ to $Y_0 \subseteq Y_1$ those maps $X_1 \to Y_1$ that restrict to
+$X_0 \to Y_0$. The interpretations of products, sums, and function types are precisely the
+corresponding category-theoretic notions $\times$, $+$, and $\subexpto$ in $\Sub(\Set)$.
+Even better, the pairs of submonads $\UU{\sig}{E} \subseteq \UUskel$ and
+$\KK{C}{\sig}{E}{S} \subseteq \KKskel{C}$ are the ``$\Sub(\Set)$-variants'' of the user
+and kernel monads.
+%
+Such an abstract point of view drives the interpretation of terms, given
+below, and it additionally suggests how our semantics can be set up on top of a
+category other than~$\Set$. For example, if we replace $\Set$ with the category $\Cpo$ of
+$\omega$-complete partial orders, we obtain the domain-theoretic semantics
+of effect handlers from~\cite{Bauer:EffectSystem} that models recursion and operations whose
+signatures contain arbitrary types.
+
+\subsection{Semantics of values and computations}
+\label{sec:semant-valu-comp}
+
+To give semantics to $\lambdacoop$'s terms, we introduce \emph{skeletal
+  typing} judgements
+%
+\begin{align*}
+  &\Gamma \typesskel V : P,
+& &\Gamma \typesskel M : \tyuserskel{P},
+& &\Gamma \typesskel K : \tykernelskel{P}{C}, 
+\end{align*}
+%
+which assign skeletal types to values and computations.
+%
+In these judgements, $\Gamma$ is a \emph{skeletal context} which assigns skeletal types to variables.
+
+The rules for these judgements are
+obtained from $\lambdacoop$'s typing rules, by \emph{excluding} subsumption rules and by relaxing restrictions on effects. For example, 
+the skeletal versions of the rules \textsc{TyValue-Runner} and \textsc{TyKernel-Kill} are
+%
+\begin{equation*}
+  \infer{
+    \big(
+      \Gamma, x \of A_\op \typesskel K_\op : \tykernelskel{B_\op}{C}
+    \big)_{\op \in \sig}
+  }{
+    \Gamma \typesskel
+    \tmrunner{(\tm{op}\,x \mapsto K_{\tm{op}})_{\tm{op} \in \Sigma}}{C} :
+    \tyrunnerskel{C}
+  }
+  %
+  \qquad\qquad
+  %
+  \infer{
+     s \in \Sigs
+  }{
+     \Gamma \typesskel \tmkill[X \at C]{s} : \tykernelskel{\skeleton X}{C}
+  }
+\end{equation*}
+The relationship between effectful and skeletal typing is summarised as follows:
+
+\begin{proposition}
+\label{prop:skeletaltypes}
+(1) Skeletal typing derivations are unique.
+(2) If $\subty X Y$, then $\skel X = \skel Y$, and analogously for subtyping of user and kernel types.
+(3) If ${\Gamma \types V : X}$, then ${\skeleton{\Gamma} \typesskel V : \skeleton{X}}$, and
+analogously for user and kernel computations.
+\end{proposition}
+
+\begin{proof}
+  We prove (1) by induction on skeletal typing derivations, and
+  (2) by induction on subtyping derivations. 
+  %
+  For (1), we further use the occasional type annotations, and the 
+  absence of skeletal subsumption rules.
+  %
+  For proving (3), suppose that $\mathcal{D}$ is a derivation of
+  $\Gamma \types V : X$. We
+  may translate $\mathcal{D}$ to its \emph{skeleton} $\skeleton{\mathcal{D}}$ deriving
+  $\skeleton{\Gamma} \typesskel V : \skeleton{X}$ by replacing typing rules
+  with matching skeletal ones, skipping subsumption rules due to (2).
+  Computations are treated similarly. \qed
+\end{proof}
+
+To ensure semantic coherence, we first define the \emph{skeletal semantics} of skeletal
+typing judgements, 
+%
+$\skelsem{\Gamma \typesskel V : P} : \skelsem{\Gamma} \to \skelsem{P}$,
+%
+$\skelsem{\Gamma \typesskel M : \tyuserskel{P}} : \skelsem{\Gamma} \to \skelsem{\tyuserskel{P}}$,
+and
+$\skelsem{\Gamma \typesskel K : \tykernelskel{P}{C}} : \skelsem{\Gamma} \to \skelsem{\tykernelskel{P}{C}}$, 
+%
+by induction on their (unique) derivations.
+
+Provided maps $\skelsem{A_1} \times \cdots \times \skelsem{A_n} \to \skelsem{B}$
+denoting ground constants $\tmconst{f}$, 
+values are interpreted in a standard
+way, using the bi-cartesian closed structure of sets, except for a runner
+$\tmrunner{(\op\, x \mapsto K_\op)_{\op \in \sig}}{C}$, which is interpreted at
+an environment $\gamma \in \skelsem{\Gamma}$ as the skeletal runner
+$\{\coop : \skelsem{A_\op} \to \KK{\skelsem{C}}{\Ops}{E_\op}{\Sigs} \skelsem{B_\op}\}_{\op
+  \in \Ops}$, given by
+%
+\begin{equation*}
+  \coop\,a \defeq
+  (\cond
+        {\op \in \sig}
+        {\rho(\skelsem{\Gamma, x : A_\op \typesskel K_\op : \tykernelskel{B_\op}{C}}(\gamma, a))}
+        {\rip}).
+\end{equation*}
+%
+Here the map 
+$\rho : \KKskel{\skelsem{C}} \skelsem{B_\op} \to \KK{\skelsem{C}}{\Ops}{E_\op}{\Sigs}
+\skelsem{B_\op}$ is the skeletal kernel theory homomorphism characterised by the equations
+%
+\begin{gather*}
+  \rho (\retTree \, b) = \retTree \, b, 
+  \qquad
+  \rho (\op'(a', \kappa, (\nu_e)_{e \in E_{\op'}})) =
+     \op'(a', \rho \circ \kappa, (\rho(\nu_e))_{e \in E_{\op'}}), 
+  \\
+  \begin{aligned}
+    \rho (\siggetenv\,\kappa) &= \siggetenv (\rho \circ \kappa), 
+    &
+    \rho (\sigraise\,e) &= (\cond {e \in E_\op} {\sigraise\, e} {\rip}), 
+    \\
+    \rho (\sigsetenv (c, \kappa)) &= \siggetenv (c, \rho \circ \kappa), 
+    &
+    \rho (\sigkill\,s) &= \sigkill\,s.
+  \end{aligned}
+\end{gather*}
+%
+The purpose of $\rip$ in the definition of $\coop$ is to model a runtime error
+when the runner is asked to handle an unexpected operation, while~$\rho$ makes sure
+that~$\coop$ raises at most the exceptions~$E_\op$, as prescribed by the 
+signature of $\op$.
+
+User and kernel computations are interpreted as elements of the corresponding skeletal
+user and kernel monads. Again, most constructs are interpreted in a standard way:
+$\tmkw{return}$s as the units of the monads; the operations $\tmkw{raise}$,
+$\tmkw{kill}$, $\tmkw{getenv}$, $\tmkw{setenv}$, and $\tm{op}$s as the corresponding
+algebraic operations; and $\tmkw{match}$ statements as the corresponding semantic
+elimination forms. The interpretation of exception handling offers no surprises, e.g., as
+in~\cite{Plotkin:HandlingEffects}, as long as we follow the strategy of treating
+unexpected situations with the runtime error~$\rip$.
+
+The most interesting part of the interpretation is the semantics of
+%
+\begin{align}
+  \label{eq:semantics-run}
+  & {\Gamma \typesskel (\tmrun{V}{W}{M}{F}) : \tyuserskel{Q}}, 
+\end{align}
+where $ F \defeq \{ \tmreturn{x} \at c \mapsto N, 
+             (\tmraise{e} \at c \mapsto N_e)_{e \in E},
+             (\tmkill{s} \mapsto N_s)_{s \in S} \}$.
+%
+At an environment $\gamma \in \skelsem{\Gamma}$, $V$ is interpreted as a skeletal runner
+with state $\skelsem{C}$, which induces a monad morphism
+$\runh : \Tree{\Ops}{-} \to (\skelsem{C} \expto \Tree{\Ops}{{-} \times \skelsem{C} + \Sigs})$, 
+as in the proof of \cref{prop:monadmorphism}. 
+Let
+$f : \KKskel{\skelsem{C}} \skelsem{P} \to (\skelsem{C} \expto \UUskel \skelsem{Q})$ be the skeletal
+kernel theory homomorphism characterised by the equations
+%
+\begin{gather}
+  \label{eq:finally-map}
+  \begin{aligned}
+    f(\retTree{p}) &= \lam{c} \skelsem{\Gamma, x \of P, c \of C \typesskel N : Q}(\gamma, p, c), 
+    \\
+    f(\op(a, \kappa, (\nu_e)_{e \in E_\op})) &= \lam{c} \op(a, \lam{b} f (\kappa \, b) \, c, (f(\nu_e)\, c)_{e \in E_\op}), 
+    \\
+    f(\sigraise\,e) &= \lam{c}
+      (\cond
+        {e \in E}
+        {\skelsem{\Gamma, c : C \typesskel N_e : Q}(\gamma, c)}
+        {\rip}), 
+    \\
+    f(\sigkill\,s) &= \lam{c}
+      (\cond
+        {s \in S}
+        {\skelsem{\Gamma \typesskel N_s : Q}\,\gamma}
+        {\rip}), 
+  \end{aligned} 
+  \\
+ \notag
+  f(\siggetenv\,\kappa) = \lam{c} f (\kappa \, c) \, c, 
+  \qquad\qquad
+  f(\sigsetenv(c', \kappa)) = \lam{c} f \, \kappa \, c'.
+\end{gather}
+%
+The interpretation of~\eqref{eq:semantics-run} at $\gamma$ is
+%
+$
+  f(\runh_{\skelsem{P} + \Excs} (\skelsem{\Gamma \typesskel M : \tyuserskel{P}} \, \gamma))
+  \, (\skelsem{\Gamma \typesskel W : C} \, \gamma)
+$,
+%
+which reads: map the interpretation of $M$ at~$\gamma$ from the skeletal user
+monad to the skeletal kernel monad using~$\runh$ (which models the operations of $M$ by the
+cooperations of~$V$), and from there using~$f$ to a map
+$\skelsem{C} \expto \UUskel \skelsem{Q}$, that is then applied to the initial kernel state, namely, the
+interpretation of $W$ at~$\gamma$.
+
+We interpret the context switch $\Gamma \typesskel \tmkernel{K}{W}{F} : \tyuserskel{Q}$
+at an environment $\gamma \in \skelsem{\Gamma}$
+as $f(\skelsem{\Gamma \typesskel K : \tykernelskel{P}{C}} \, \gamma)\,
+  (\skelsem{\Gamma \typesskel W : C} \, \gamma)$, where $f$ is the map~\eqref{eq:finally-map}. 
+Finally, $\tmkw{user}$ context switch is interpreted much like exception handling.
+
+We now define coherent semantics of $\lambdacoop$'s typing derivations by passing
+through the skeletal semantics. Given a derivation $\mathcal{D}$ of $\Gamma \types V : X$,
+its skeleton $\skeleton{\mathcal{D}}$ derives
+$\skeleton{\Gamma} \typesskel V : \skeleton{X}$.
+We identify the denotation of~$V$ with the skeletal one,
+%
+\begin{equation*}
+  \sem{\Gamma \types V : X} \defeq \skelsem{\skeleton{\Gamma} \typesskel V : \skeleton{X}} :
+  \skelsem{\skeleton{\Gamma}} \to \skelsem{\skeleton{X}}.
+\end{equation*}
+%
+All that remains is to check that $\sem{\Gamma \types V : X}$ restricts to
+$\sem{\Gamma} \to \sem{X}$. This is accomplished by induction on~$\mathcal{D}$. 
+The only interesting step is subsumption, which relies on a further
+observation that $\subty{X}{Y}$ implies $\sem{X} \subseteq \sem{Y}$. Typing derivations for user and kernel
+computations are treated analogously.
+
+\subsection{Coherence, soundness, and finalisation theorems}
+\label{sec:finalisation-theorem}
+
+We are now ready to prove a theorem that guarantees execution of finalisation code. But
+first, let us record the fact that the semantics is coherent and sound.
+
+\begin{theorem}[Coherence and soundness]
+  \label{thm:soundness-coherence}%
+  The denotational semantics of $\lambdacoop$ is coherent, and it is sound for the equational
+  theory of~$\lambdacoop$ from \cref{sect:eqtheory}.
+\end{theorem}
+
+\begin{proof}
+  Coherence is established by construction: any two derivations of the same
+  typing judgement have the same denotation because they are both
+  (the same) restriction of skeletal semantics.
+  %
+  For proving soundness, one just needs to unfold
+  the denotations of the left- and right-hand sides of equations from \cref{sect:eqtheory},
+  and compare them, where some cases rely on suitable substitution lemmas. \qed
+\end{proof}
+
+To set the stage for the finalisation theorem, let us 
+consider the 
+computation $\tmrun{V}{W}{M}{F}$, well-typed by the rule \textsc{TyUser-Run} from
+\cref{fig:typing-selected}. At an environment $\gamma \in \sem{\Gamma}$, the finalisation
+clauses~$F$ are captured semantically by the \emph{finalisation map}
+$\phi_\gamma : (\sem{X} + E) \times \sem{C} + S \to \sem{\tyuser{Y}{(\sig',E')}}$, given by
+%
+\begin{align*}
+    \phi_\gamma(\iota_1(\iota_1\, x, c)) &\defeq \sem{\Gamma, x \of X, c \of C \types N : \tyuser{Y}{(\sig',E')}}(\gamma, x, c),  \\
+    \phi_\gamma(\iota_1(\iota_2\, e, c)) &\defeq \sem{\Gamma, c \of C \types N_e : \tyuser{Y}{(\sig',E')}}(\gamma, c),  \\
+    \phi_\gamma(\iota_2(s)) &\defeq \sem{\Gamma \types N_s : \tyuser{Y}{(\sig',E')}} \, \gamma.
+\end{align*}
+%
+With~$\phi$ in hand, we may formulate the finalisation theorem for $\lambdacoop$,
+stating that the semantics of~$\tmrun{V}{W}{M}{F}$ is a computation tree all of
+whose branches end with finalisation clauses from~$F$. Thus, unless some enveloping
+runner sends a signal, finalisation with $F$ is guaranteed to take place.
+
+\begin{theorem}[Finalisation]
+  \label{thm:finalisation}%
+  A well-typed $\tmkw{run}$ factors through finalisation:
+  %
+  \begin{equation*}
+    \sem{\Gamma \types (\tmrun{V}{W}{M}{F}) : \tyuser{Y}{(\sig',E')}}\,\gamma = \lift{\phi_\gamma}\,t, 
+  \end{equation*}
+  %
+  for some $t \in \Tree{\sig'}{(\sem{X} + E) \times \sem{C} + S}$.
+\end{theorem}
+
+\begin{proof}
+  We first prove that $f \, u \, c = \lift{\phi_\gamma}(u\,c)$ holds for all
+  $u \in \KK{\sem{C}}{\sig'}{E}{S} \sem{X}$ and $c \in \sem{C}$, where $f$ is the
+  map~\eqref{eq:finally-map}. The proof proceeds by computational induction
+  on~$u$~\cite{Plotkin:Logic}. The finalisation statement is then just the special case with
+  $u \defeq \runh_{\sem{X} + E} (\sem{\Gamma \types M : \tyuser{X}{(\sig,E)}} \, \gamma)$ and
+  $c \defeq \sem{\Gamma \types W : C} \, \gamma$. \qed
+\end{proof}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "runners-in-action"
+%%% End:
