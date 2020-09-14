@@ -1,0 +1,395 @@
+\subsection{Elimination of substitution}
+\label{sec:elimination-substitution}
+
+In this section we show that over an acceptable type theory, the substitution rules (\cref{def:substitution-rule,def:equality-substitution-rule}) can be eliminated: anything derivable with them is derivable without.
+%
+At least, this will hold over a strict scope system;
+%
+for a general scope system, it can be almost eliminated but not quite entirely.
+
+\begin{definition}
+  An instance of the substitution rule (\cref{def:substitution-rule}) is a \defemph{trivial renaming}, or just \defemph{trivial}, if its substitution $f : \Delta \to \Gamma$ corresponds to a renaming on underlying scopes of the form $\inlscope^{-1} : \position{\Gamma} = \sumscope{\position{\Delta}}{\emptyscope} \to \position{\Delta}$, acting trivially at all positions.
+\end{definition}
+
+Typically these arise with $\Gamma = \act{(I,\Delta)}\emptycxt$, an instantiation of the empty context;
+  %
+a trivial renaming is therefore of the form
+\[
+  \infer{
+      \act{(I,\Delta)}\emptycxt \typesjudgement J
+    }{
+      \Delta \typesjudgement \act{(\inlscope^{-1})} J.
+    }
+\]
+%
+In a \emph{strict} scope system, trivial renamings are identities and hence redundant.
+
+To avoid ambiguity with variance, we will in this section distinguish more carefully than usual between a renaming function $r : \position{\Gamma} \to \position{\Delta}$ and its associated substitution $\bar{r} : \Delta \to \Gamma$.
+
+\begin{definition}
+  Call a derivation over a raw type theory~$T$ \defemph{substitution-free} if it uses only trivial instances of the substitution rule, and does not use the equality substitution rule.
+  %
+  Equivalently, it uses just the variable rule, equality rules, conversion rules, trivial renamings, and the specific rules of~$T$.
+\end{definition}
+
+The core of this section, \cref{lem:admissibility-substitution}, will be that substitution is admissible for substitution-free derivations; this can be seen as defining an action of substitution on such derivations.
+%
+We first need an analogous action of renaming, paralleling how substitution on expressions needed renaming to be defined first.
+
+\begin{lemma}[Admissibility of renaming]
+  \label{lem:admissibility-renaming}%
+  Let $T$ be a substitutive type theory, with signature $\Sigma$.
+  %
+  Let $\Gamma$ and $\Gamma'$ be contexts over $\Sigma$, and $r : \position{\Gamma} \to \position{\Gamma'}$ a renaming acting trivially at all positions in the sense of~\cref{def:substitution-rule}, i.e.\ such that $\Gamma'_{r(i)} = \act{r}\Gamma_i$ for all $i \in \Gamma$.
+  %
+  Then given a substitution-free derivation $D$ of $\Gamma \types J$ in $T$, there is a substitution-free derivation $\act{r}D$ of $\Gamma' \types \act{r} J$.
+\end{lemma}
+
+\begin{proof}
+  For this proof, we say a renaming \defemph{respects types} when it acts trivially at all positions; and say a derivation $D$ with conclusion $\Gamma \types J$ is \defemph{renameable} if we have an operation giving, for every $\Gamma'$ and renaming $r : \position{\Gamma} \to \position{\Gamma'}$ respecting types, a derivation $\act{r}D$ of $\Gamma' \types \act{r} J$.
+  
+  We show by induction that every derivation is renameable.
+  %
+  Call the derivation under consideration $D$, and suppose given in each case suitable $\Gamma'$, $r$.
+  
+  If $D$ concludes with a variable rule, giving $\isterm{\Gamma}{\synvar{i}}{\Gamma_i}$, then by induction, we can rename the derivation of the premise ${\istype{\Gamma}{\Gamma_i}}$ to a derivation of $\istype{\Gamma'}{\Gamma'_{r(i)}}$,
+  %
+  and then apply the variable rule to derive $\isterm{\Gamma'}{\synvar{r(i)}}{\Gamma'_{r(i)}}$, which is the desired judgement since~$r$ respects types.
+
+  If $D$ concludes with a trivial renaming $s : \Gamma \to \Delta$,
+  %
+  then by induction, the derivation of the premise is renameable; so renaming it along $r \circ s$, we are done.
+
+  Otherwise, $D$ concludes with an instantiation $\act{(I,\Theta)} R$, where $I \in \Inst{\Sigma}{\Theta}{\arity{R}}$ is an instantiation, and~$R$ is either an equality rule, a conversion rule, or a specific rule of~$T$.
+  % R has conclusion ⊢ J' and a typical premise Δ ⊢ J''
+  % I ∈ Inst Σ Θ α_R
+  % I_* R has conclusion Θ + ∅ ⊢ I_* J', J', but this must be Γ ⊢ J.
+  % So: I ∈ Inst Σ Γ α_R
+  % A typical premise of I_* R is Γ ⊕ I_* Δ ⊢ I_* J''.
+  %
+  In each cases the conclusion of~$R$ is of the form $\typesjudgement J'$, with empty context; so $\Gamma$ is exactly $\act{(I,\Theta)}\emptycxt$, and $J$ is has the form $\act{I} J'$.
+  %
+  % r : |Γ| → |Γ'|
+  % r_* I ∈ Inst Σ Γ' α_R
+  % (r_* I)_* R has conclusion Γ' ⊢ (r_* I)_* J' and typical premise Γ' ⊕ (r_* I)_* Δ ⊢ (r_* I)_* J''.
+  %
+  So now to derive $\Gamma' \types \act{r}{(\act{I} J')}$, we will apply the same raw rule~$R$ with the instantiation $I' \defeq \act{(r \circ \inlscope)}{I}$.
+  %
+  Computing with renamings and instantiations according to (\cref{prop:instantiation-boilerplate}) shows that the conclusion of $\act{(I',\Gamma')} R$ is not quite $\Gamma' \typesjudgement \act{r}J$, but is the same modulo a trivial renaming, according to the following commutative square:
+  \[
+    \xymatrix@C=3em{
+      \Gamma' \ar[r]^{\overline{\inlscope} \circ {\bar{r}}} \ar[dr]^{\bar{r}} & \Theta \\
+      \act{(I',\Gamma')} \emptycxt \ar[r]  \ar[u]^{\overline{\inlscope}} & \Gamma \mathrlap{{} = \act{(I,\Theta)} \emptycxt} \ar[u]_{\overline{\inlscope}}
+    }
+    \phantom{\act{(\Theta)} } % to take above \mathrlap into account for centering
+  \]
+  We can therefore conclude the derivation of $\act{r}D$ by the rule $\act{(I',\Gamma')} R$ followed by a trivial renaming.
+
+  It remains to derive the premises of $\act{(I',\Gamma')} R$.
+  %
+  Each such premise is linked to a corresponding premise of $\act{(I,\Theta)} R$ by a renaming repecting types --- specifically, a context extension of $r \circ \inlscope$.
+  %
+  But by induction, we have renameable derivations of the premises of $\act{(I,\Theta)} R$; so we are done.
+\end{proof}
+
+It is worthwhile to record a special case of admissibility of renaming.
+
+\begin{corollary}[Admissibility of weakening]
+  \label{cor:admissibility-weakening}%
+  If a substitutive raw type theory derives $\Gamma \types J$ substitution-free, then it also derives $\Delta \types \act{w} J$ substitution-free for any \defemph{weakening} $w : \Gamma \to \Delta$, i.e., an injective variable renaming such that $\Delta_{w(i)} = \act{w} \Gamma_i$ for all $i \in \position{\Gamma}$. \qed
+\end{corollary}
+
+We can now give the action of substitution on derivations.
+
+\begin{lemma}[Admissibility of substitution]%
+  \label{lem:admissibility-substitution}%
+  Let $T$ be a substitutive raw type theory over signature~$\Sigma$.
+  %
+  Let $f : \Delta \to \Gamma$ be a raw substitution over~$\Sigma$, and $K \subseteq \position{\Gamma}$ a complemented subset such that:
+  %
+  \begin{enumerate}
+  %
+  \item \label{item:subst-trivial-case} $f$ acts trivially at each $i \in K$ in the sense of~\cref{def:substitution-rule}, i.e., for some $j \in \Delta$, $f(i) = \synvar{j}$ and $\Delta_j = f^*\Gamma_i$
+  %
+  \item \label{item:subst-nontrivial-case} for each $i \in \position{\Gamma} \setminus K$, $T$ derives $\isterm{\Delta}{f(i)}{f^*\Gamma_i}$ without substitutions.
+  \end{enumerate}
+  %
+  Given a substifution-free derivation $D$ of $\Gamma \types J$ over $T$, there is a substitution-free derivation $\tca{f}D$ of $\Delta \types \tca{f} J$.
+\end{lemma}
+
+Before proceeding with the proof, we take a moment to comment on the condition the lemma assumes on~$f$. It matches the condition used in the premises of the substitution rule, skipping type-checking on a set of indices~$K$ on which~$f$ acts trivially, and requiring derivability of $\isterm{\Delta}{f(i)}{\tca{f} \Gamma_i}$ only for $i \in \position{\Gamma} \setminus K$.
+%
+An alternative, maybe more conventional condition would be to require $\isterm{\Delta}{f(i)}{\tca{f} \Gamma_i}$ for all $i \in \position{\Gamma}$.
+
+There are a couple of reasons to weaken the condition as we do, thus strengthening the statement of the lemma. The superficial one is its applicability to raw substitutions that potentially contain ill-formed type expressions.
+%
+The more essential one is that strengthened formulation is needed to keep the proof structurally inductive, allowing us to descend under a premise with a non-empty context, without needing to check that in the process the domain of $\tca{f}$ is extended with well-formed types.
+%
+Even if they are in fact well formed, we cannot show this by appealing to an induction hypothesis, because the derivations involved are not structural subderivations of the one we are recursing over.
+%
+What happens instead is that verification of well-formedness of types in contexts is deferred until their variables are accessed, at which point the variable rule provides the desired structural subderivations.
+%
+This phenomenon seems to be a genuine consequence of spelling out the proof for a \emph{general} class of type theories.
+%
+For any specific type theory, only certain concrete type-schemes will occur in contexts of premises of rules; and
+these specific type-schemes are always designed by their authors in such a way that they can be shown well-formed individually, so that the inductive arguments do not break.
+
+\begin{proof}[Proof of \cref{lem:admissibility-substitution}]
+  %
+  Within this proof, all derivations are assumed substitution-free, and a (substitution-free) derivation~$D$ of a judgement $\Gamma \types J$ is called \defemph{substitutable} when, for all~$\Delta$, $f$ and $K$ satisfying the condition of the lemma, we have a (substitution-free) derivation of $\Delta \types f^*J$.
+  %
+  We prove by induction that every derivation $D$ is substitutable.
+  %
+  Much of the proof parallels that of \cref{lem:admissibility-renaming}.
+
+  Suppose $D$ concludes with a variable rule showing $\isterm{\Gamma}{\synvar{i}}{\Gamma_i}$, and $f : \Delta \to \Gamma$ is a suitable substitution, acting trivially on $K \subseteq \position{\Gamma}$.
+  %
+  When $i \in K$, we work just as in \cref{lem:admissibility-renaming}:
+  %
+  given a suitable substitution into the conclusion, we inductively substitute the premise derivation along the same substitution, and then conclude with the variable rule.
+  %
+  Otherwise, for $i \in \position{\Gamma}\setminus K$, we use the derivation of $\isterm{\Delta}{f(i)}{\tca{f}\Gamma_i}$ given by assumption. 
+  
+  Next, if $D$ concludes with a trivial renaming $\overline{\inlscope^{-1}} : \Gamma \to \Gamma'$, to conclude $\Gamma \typesjudgement J$, then suppose $f : \Delta \to \Gamma$ is a substitution acting trivially on $K$ and with derivations of $\isterm{\Delta}{f(i)}{\tca{f}\Gamma_i}$ for $i \in \position{\Gamma} \setminus K$.
+  %
+  Then the substitution $\overline{\inlscope^{-1}} \circ f : \Delta \to \Gamma'$ acts trivially on $\inlscope(K) \subseteq \position{\Gamma'}$, and the same derivations witness that $\isterm{\Delta}{f(\inlscope^{-1}i)}{\tca{f}\Gamma'_i}$ for $i \in \position{\Gamma'} \setminus \inlscope{(K)}$.
+  %
+  So by induction, we can substitute the derivation of the premise along $\overline{\inlscope^{-1}} \circ f $ to derive $\Delta \types \tca{f}J$as required.
+  
+  Otherwise, $D$ must conclude with an instantiation $\act{(I,\Theta)} R$, for some instantiation $I \in \Inst{\Sigma}{\Theta}{\arity{R}}$ and~$R$ a flat rule (structural or specific) with empty-context conclusion $\typesjudgement J$.
+  %
+  So, suppose given a suitable substitution $f : \Delta \to \act{(I,\Theta)}\emptycxt$, acting trivially on $K \subseteq \position{\act{(I,\Theta)}\emptycxt} = \sumscope{\Theta}{\emptyscope}$; we need to derive $\Delta \typesjudgement f^*\act{I}J$.
+
+  Just as in \cref{lem:admissibility-renaming}, we substitute $I$ along $\overline{\inlscope} \circ f : \Delta \to \Theta$ to get another instantiation $I'$ of $\arity{R}$ over $\Delta$, such that the conclusion of $\act{(I',\Delta)}R$ is just a trivial renaming away from $\Delta \typesjudgement f^*\act{I}J$.
+  %
+  So it remains just to derive the premises of $\act{(I',\Delta)}R$.
+  
+  Again as in \cref{lem:admissibility-renaming}, by induction we have substitutable derivations of all premises of $\act{(I,\Theta)}R$.
+  %
+  So it suffices to give, for each premise $\act{(I',\Delta)} \Psi \typesjudgement \act{I'}J'$ of $\act{(I',\Delta)}R$, a substitution $g : \act{(I',\Delta)} \Psi  \to \act{(I,\Theta)} \Psi$ to the corresponding premise of $\act{(I,\Theta)}R$, with $g^* \act{I}J' = \act{I'}J'$, and with $g$ satisfying the conditions of the lemma.
+  %
+  (Recall that $\act{(I,\Theta)} \Psi$ is the context extension of $\Theta$ by the instantiations of types from $\Psi$, with positions $\sumscope{\position{\Theta}}{\position{\Psi}}$, and $\act{(I',\Delta)}$ similarly.)
+  %
+  We define:
+  \[ g \defeq \sumscope{(\overline{\inlscope} \circ f)}{\position{\Psi}} : \act{(I',\Delta)} \to \act{(I,\Theta)} \Psi. \]
+  
+  Now $g^* \act{I}J' = \act{I'}J'$ follows directly from \cref{prop:instantiation-boilerplate} (which we will continue to use without further comment), the definitions of $I'$ and $g$, and the following commuting diagram.
+  %
+  \[
+    \xymatrix@C=3em{
+      \act{(I',\Delta)} \Psi \ar[d]_{\overline{\inlscope}} \ar[r]^{g} & \act{(I,\Theta)} \Psi \ar[d]^{\overline{\inlscope}} \\   
+      \Delta \ar[r]^{\overline{\inlscope} \circ f} \ar[dr]^{f} & \Theta \\
+      \act{(I',\Delta)} \emptycxt \ar[r] \ar[u]^{\overline{\inlscope}} & \act{(I,\Theta)} \emptycxt \ar[u]_{\overline{\inlscope}} 
+    }
+  \]
+ 
+  Next, $g$ clearly acts trivially on $\act{\inrscope}\position{\Psi} \subseteq \position{\act{(I,\Theta)} \Psi}$.
+  %
+  It also acts trivially on the subset of $\act{\inlscope}{\position{\Theta}}$ corresponding to the given $K \subseteq \sumscope{\position{\Theta}}{\emptyscope}$ on which $f$ acts trivially.
+  
+  Taking the union of these as the trivial set for $g$, it remains to show that for $i$ in the subset of $\act{\inlscope}{\position{\Theta}}$ corresponding to $\sumscope{\position{\Theta}}{\emptyscope} \setminus K$, we have $\isterm{\act{(I',\Delta)}\Psi}{g(i)}{\tca{g}(\act{(I,\Theta)} \Psi)_i}$.
+  % 
+  But this judgement is just the renaming of $\isterm{\Delta}{f(j)}{\tca{f}(\act{(I,\Theta)}\emptyset)_i}$ along the evident map $\sumscope{\position{\Delta}}{\emptyscope} \to \sumscope{\position{\Delta}}{\position{\Psi}}$. 
+  % 
+  So using \cref{lem:admissibility-renaming} to rename the derivation of $\isterm{\Delta}{f(j)}{\tca{f}(\act{(I,\Theta)}\emptycxt)_i}$ supplied with $f$, we are done.
+\end{proof}
+
+Next, we show that substitution respects judgemental equality of raw substitutions.
+%
+For this, we introduce a handy notation: for raw substitutions $f, g : \Gamma' \to \Gamma$ and an object judgement $J$, with head expression $e$ and boundary $B$, we write $\tca{(f \equiv g)} J$ for the equality judgement asserting that $\tca{f} e$ and $\tca{g} e$ are equal over the boundary $\tca{f} B$. Thus $\Gamma' \types \tca{(f \equiv g)} (A \type)$ stands for $\eqtype{\Gamma'}{\tca{f} A}{\tca{g} A}$ and $\Gamma' \types \tca{(f \equiv g)} (e : A)$ stands for $\eqterm{\Gamma'}{\tca{f} e}{\tca{g} e}{\tca{f} A}$.
+
+\begin{lemma}[Admissibility of equality substitution]
+  \label{lem:admissibility-equality-substitution}
+  Let $T$ be a substitutive and congruous raw type theory over~$\Sigma$.
+  %
+  Let $f, g : \Gamma' \to \Gamma$ be raw substitutions over~$\Sigma$,
+  and $K \subseteq \position{\Gamma}$ a complemented subset such that:
+  %
+  \begin{enumerate}
+
+  \item \label{item:adm-subst-eq-trivial-case}%
+    for each $i \in K$ there exists some (necessarily unique) $j \in \position{\Gamma'}$ such that
+    $f(i) = g(i) = \synvar{j}$, and $\Gamma'_j = \tca{f} \Gamma_i$ or $\Gamma'_j = \tca{g} \Gamma_i$,
+
+  \item \label{item:adm-subst-eq-nontrivial-case}%
+    for each $i \in \position{\Gamma} \setminus K$,
+    $T$ derives $\isterm{\Gamma'}{f(i)}{ \tca{f} \Gamma_i}$ and $\isterm{\Gamma'}{g(i)}{\tca{g} \Gamma_i}$ and $\eqterm{\Gamma'}{f(i)}{g(i)}{\tca{f} \Gamma_i}$ without substitutions.
+  \end{enumerate}
+  %
+  If $T$ derives $\Gamma \types J$ without substitutions, then $T$ derives $\Gamma' \types \tca{f} J$, $\Gamma' \types \tca{g} J$, and (if $J$ is an object judgement) $\Gamma' \types \tca{(f \equiv g)} J$, still without substitutions.
+\end{lemma}
+
+The assumption on~$f$ and~$g$ is perhaps a little surprising, especially the last ``or'' in case~\eqref{item:adm-subst-eq-trivial-case}. Another peculiarity is the fact that we include $\Gamma' \types \tca{f} J$ and $\Gamma' \types \tca{g} J$ in the conclusion rather than obtaining them by elimination of substitution.
+%
+The point is that the induction arguments need to work when we pass into extended contexts of premises, whereby types of the form $\tca{f} A$ \emph{or} $\tca{g} A$ are introduced; so we cannot assume either~$f$ or~$g$ satisfying the conditions of \cref{thm:elimination-substitution} individually, but need to give a condition on them together that is preserved.
+%
+And since this condition is too weak for applying elimination of substitution to~$f$ or~$g$, we carry the conclusion of that along as well.
+
+\begin{proof}[Proof of \cref{lem:admissibility-equality-substitution}]
+  %
+  The proof proceeds by induction on the derivation $D$ of $\Gamma \types J$.
+  %
+  The details are closely analogous to elimination of substitution, so we spell out fewer.
+
+  Consider the case when $D$ ends with a variable rule
+  %
+  \begin{equation*}
+    \infer{
+      \istype{\Gamma}{\Gamma_i}
+    }{
+      \isterm{\Gamma}{\synvar{i}}{\Gamma_i}
+    }
+  \end{equation*}
+  %
+  If case~\eqref{item:adm-subst-eq-nontrivial-case} applies for~$i$, we are done immediately.
+  %
+  If case~\eqref{item:adm-subst-eq-trivial-case} applies, we obtain derivations of $\istype{\Gamma'}{\act{f} \Gamma_i}$, $\istype{\Gamma'}{\act{g} \Gamma_i}$, and $\eqtype{\Gamma'}{\act{f} \Gamma_i}{\act{g} \Gamma_i}$ by induction hypothesis.
+  If $\Gamma'_j = \act{f} \Gamma_i$ then $\isterm{\Gamma'}{\synvar{j}}{\act{f} \Gamma_i}$ follows by the variable rule and $\isterm{\Gamma'}{\synvar{j}}{\act{g} \Gamma_i}$ from it by conversion. And of course, $\eqterm{\Gamma'}{\synvar{j}}{\synvar{j}}{\Gamma'_j}$ is derivable by reflexivity. If $\Gamma'_j = \act{g} \Gamma_i$, the situation is symmetric.
+
+  Otherwise, $D$ concludes with an instantiation $\act{I} R$ where $I \in \Inst{\Sigma}{\Gamma}{\arity{R}}$ and~$R$ is either an equality rule, a conversion rule, or a specific rule of~$T$. The conclusion of $\act{I} R$ has the form $\Gamma \types \act{I} J'$.
+  %
+  We need to derive $\Gamma' \types \tca{f} (\act{I} J')$, $\Gamma' \types \tca{g} (\act{I} J')$, and if $R$ is an object rule then also $\Gamma' \types \tca{(f \equiv g)} (\act{I} J')$.
+
+  Let us first verify that the raw substitutions $f' \defeq \sumscope f {\position{\Delta}} : \ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} \to \ctxextend \Gamma {\act{I} \Delta}$ and $g' \defeq \sumscope g {\position{\Delta}} : \ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} \to \ctxextend \Gamma {\act{I} \Delta}$ satisfy the conditions~\eqref{item:adm-subst-eq-trivial-case} and~\eqref{item:adm-subst-eq-nontrivial-case} of the lemma for the complemented subset $K' \subseteq \position{\ctxextend{\Gamma}{\act{I} \Delta}} = \position{\Gamma} + \position{\Delta}$, given by
+  %
+  $
+    K' = \set{\inl(i) \such i \in K} \cup \set{\inr(k) \such k \in \position{\Delta}}
+  $:
+  %
+  \begin{enumerate}
+
+  \item
+    %
+    For $\inl(i) \in K'$, there is $j \in \Gamma'$ such that $f(i) = g(i) = \synvar{j}$ and either $\Gamma'_j = \tca{f} \Gamma_i$ or $\Gamma'_j = \tca{g} \Gamma_i$.
+    %
+    Now $f'$ and $g'$ satisfy condition~\eqref{item:subst-trivial-case} because $f'(\inl(i)) = \synvar{\inl(j)} = g'(\inl(i))$ and
+    $(\ctxextend{\Gamma'}{\act{(\tca{f} I) \Delta}})_{\inl(j)} = \act{{\inl}} \Gamma'_j$, which is equal either to $\act{{\inl}} (\tca{f} \Gamma_i) = \tca{f'} (\ctxextend \Gamma {\act{I} \Delta})$ or to $\act{{\inl}} (\tca{g} \Gamma_i) = \tca{g'} (\ctxextend \Gamma {\act{I} \Delta})$, as the case may be.
+
+  \item
+    %
+    For $\inr(k) \in K'$, condition~\eqref{item:subst-trivial-case} is satisfied by $f'$ and $g'$: it is clear that
+    %
+    $
+    f'(\inr(k)) = \synvar{\inr(k)} = g'(\inr(k))
+    $,
+    %
+    while
+    %
+    $
+    \tca{f'} (\ctxextend \Gamma {\act{I} \Delta})_{\inr(k)}
+    = \tca{f'} (\act{I} \Delta_k)
+    = \act{(\tca{f} I)} \Delta_k
+    = (\ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta})_{\inr(k)}
+    $
+    %
+    holds, where we used \cref{prop:instantiation-boilerplate} in the second step.
+
+  \item
+    %
+    For $\inl(j) \in (\position{\Gamma} + \position{\Delta}) \setminus K'$, $f'$ and $g'$ satisfy \eqref{item:subst-nontrivial-case} because the desired judgements
+    %
+    \begin{align*}
+      \isterm
+        {\ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} &}
+        {f'(\inl(j))}
+        {\tca{f'} (\ctxextend \Gamma {\act{I} \Delta})_{\inl(j)}}
+      \\
+      \isterm
+        {\ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} &}
+        {g'(\inl(j))}
+        {\tca{g'} (\ctxextend \Gamma {\act{I} \Delta})_{\inl(j)}}
+      \\
+      \eqterm
+        {\ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} &}
+        {f'(\inl(j))}
+        {g'(\inl(j))}
+        {\tca{f'} (\ctxextend \Gamma {\act{I} \Delta})_{\inl(j)}}
+      \\
+      \intertext{are respectively equal to}
+      \isterm
+        {\ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} &}
+        {\act{{\inl}} (f(j))}
+        {\act{{\inl}} (\tca{f} \Gamma_j)}
+      \\
+      \isterm
+        {\ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} &}
+        {\act{{\inl}} (g(j))}
+        {\act{{\inl}} (\tca{g} \Gamma_j)}
+      \\
+      \eqterm
+        {\ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} &}
+        {\act{{\inl}} (f(j))}
+        {\act{{\inl}} (g(j))}
+        {\act{{\inl}} (\tca{f} \Gamma_j)}
+    \end{align*}
+    %
+    and these are derivable by \cref{lem:admissibility-renaming} applied to the renaming $\inl$ and the assumptions~\eqref{item:subst-nontrivial-case} for~$f$ and~$g$.
+  \end{enumerate}
+
+  We similarly check that the raw substitutions $f'' \defeq \sumscope f {\position{\Delta}} : \ctxextend {\Gamma'} {\act{(\tca{g} I)} \Delta} \to \ctxextend \Gamma {\act{I} \Delta}$ and $g'' \defeq \sumscope g {\position{\Delta}} : \ctxextend {\Gamma'} {\act{(\tca{g} I)} \Delta} \to \ctxextend \Gamma {\act{I} \Delta}$ satisfy the conditions of the lemma with the same set $K'$, too. The verification is similar to the case of $f'$ and $g'$ above, and at this point the disjunction in~\eqref{item:subst-trivial-case} lets us exchange the role of~$g$ and~$f$.
+
+  We may now derive $\Gamma' \types \tca{f} (\act{I} J')$ by the closure rule $\act{(\tca{f}I)} R$, as it has the correct conclusion by \cref{prop:instantiation-boilerplate}. To see that its premises are derivable, we verify that for any premise $\Delta \types J''$ of~$R$, the instantiation by $\tca{f} I$, namely
+  %
+  \begin{equation}
+    \label{eq:adm-subst-eq-1}
+    \ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} \types \act{(\tca{f} I)} J''
+  \end{equation}
+  %
+  is derivable. The corresponding premise of $\act{I} R$, which is
+  %
+  \begin{equation}
+    \label{eq:adm-subst-eq-2}
+    \ctxextend{\Gamma} {\act{I} \Delta} \types \act{I} J'',
+  \end{equation}
+  %
+  is derivable by assumption, and so we obtain~\eqref{eq:adm-subst-eq-1} by the induction hypothesis for~\eqref{eq:adm-subst-eq-2} applied to $f'$ and $g'$.
+
+  By a similar argument $\Gamma' \types \tca{g} (\act{I} J')$ is derivable by the closure rule $\act{(\tca{g} I)} R$, we only need to use $f''$ and $g''$ instead of $f'$ and $g'$ to derive the premise
+  %
+  \begin{equation}
+    \label{eq:adm-subst-eq-3}
+    \ctxextend {\Gamma'} {\act{(\tca{g} I)} \Delta} \types \act{(\tca{g} I)} J''.
+  \end{equation}
+
+  It remains to be checked that $\Gamma' \types \tca{(f \equiv g)} (\act{I} J')$ is derivable when~$R$ is an object rule. Because $T$ is congruous, the congruence rule~$C$ associated with~$R$ is a specific rule of~$T$. Let $\ell, r : \mvextend{\Sigma}{\arity{R}} \to \mvextend{\Sigma}{\arity{C}}$ be the signature maps from \cref{def:congruence-rule}
+  and $I' \defeq \tca{f} I + \tca{g} I \in \Inst{\Sigma}{\Gamma'}{\arity{R} + \arity{R}}$. Note that $\act{I'} \circ \act{\ell} = \tca{f} I$ and $\act{I'} \circ \act{r} = \tca{g} I$.
+  %
+  The instantiation $\act{I'} C$ is a closure rule whose conclusion is precisely $\Gamma' \types \tca{(f \equiv g)} (\act{I} J')$, so we only have to establish that its premises are derivable, of which there are three kinds:
+  %
+  \begin{enumerate}
+  \item For each premise $\Delta \types J''$ of $R$, there is a corresponding premise $\act{I'}(\act{\ell}(\Delta \types J''))$, which is equal to~\eqref{eq:adm-subst-eq-1}.
+    We have already seen that it is derivable.
+  \item For each premise $\Delta \types J''$ of $R$, there is a corresponding premise $\act{I'}(\act{r}(\Delta \types J''))$, which is equal to~\eqref{eq:adm-subst-eq-3}.
+    Its derivability has been established, too.
+  \item For each object premise $\Delta \types J''$ of $R$, there is a corresponding premise, namely the associated equality judgement (\cref{def:judgement-associated-congruence}) instantiated by~$I'$. A short calculation relying on \cref{prop:instantiation-boilerplate} shows that the judgement is
+    %
+    \begin{equation*}
+      \ctxextend {\Gamma'}{\act{(\tca{f} I)} \Delta} \types \tca{(f' \equiv g')} J'',
+    \end{equation*}
+    %
+    which is one of the consequences of the induction hypothesis for~\eqref{eq:adm-subst-eq-2} applied to $f'$ and $g'$. \qedhere
+  \end{enumerate}
+\end{proof}
+
+We can now put these together into the main theorem of this section.
+
+\begin{theorem}[Elimination of substitution]
+  \label{thm:elimination-substitution}%
+  Let $T$ be a substitutive and congruous raw type theory; then every derivable judgement over $T$ has a substitution-free derivation.
+\end{theorem}
+
+\begin{proof}
+  Work by induction over the original derivation.
+  %
+  At substitution rules, apply \cref{lem:admissibility-substitution}; and at equality substitution rules, \cref{lem:admissibility-equality-substitution}.
+\end{proof}
+
+% In the presence of Π types, substitution can be replaced by λ-abstraction
+% followed by application. However, this means that the β rule, concluding
+% app(λs,t)≡s[t] : B[t]) violates presuppositivity in the absence of a
+% substitution rule.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% End:

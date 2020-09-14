@@ -1,0 +1,510 @@
+
+\section{Well-founded presentations}
+\label{sec:well-founded-type-theories}
+
+So far, our type theories have omitted one typical characteristic occurring in practice: the \emph{ordering} of the presentation of the theory.
+%
+This ordering appears, implicitly or explicitly, at three levels:
+\begin{enumerate}
+\item The \emph{positions of a context} usually form a finite sequence, and each type depends only on the preceding part of the context.
+\item The \emph{premises of each rule} typically follow some well-founded order, usually simply a finite sequence, and the boundary of each premise depends only on the earlier ones.
+\item The \emph{rules of the theory} are themselves well-founded, and each rule depends only on the earlier rules. This order is quite often infinite, in for instance theories with hierarchies of universes, and need not be total, as seen in the example below.
+\end{enumerate}
+
+At each of these three levels, the “depends only on” holds in two senses:
+\begin{enumerate}
+\item \emph{Raw expressions}: each type expression of a context uses only the preceding variables; in a rule, the expressions of each premise boundary only use previously-introduced metavariables; and in a theory, the raw premises and boundary of a rule only use previously-introduced symbols of the theory.
+\item \emph{Derivations for presuppositivity}: each type expression in a context is a derivable type over just the preceding part of the context; each premise of a rule can be checked well-formed using just the preceding premises; and so can each rule using just the earlier rules.
+\end{enumerate}
+
+\begin{example}
+The $\symPi$-formation rule uses no symbols of the signature in its premises or boundary, and relies only on structural rules for its well-formedness.
+%
+The rules for $\lambda$-abstraction and function application both use $\symPi$ in their raw expressions, and depend on the $\symPi$-formation rule for their reasonability, but not on any other earlier symbols or rules.
+%
+And the $\beta$-reduction rule in turn depends on all three of these.
+
+Similarly, there is a natural order within the rules for $\symSigma$-types.
+%
+On the other hand, neither of the $\symSigma$- or $\symPi$-type groups naturally precedes the other, and it would be unnatural to force them into a total order.
+\end{example}
+
+Traditionally, well-foundedness is treated in two different ways, depending on the levels.
+%
+Since the class of all contexts of a theory is formally defined --- contexts are ``user-definable'' --- their well-foundedness must be explicitly mandated somehow; and so it is, usually by the context judgement $\iscxt{ \Gamma }$.
+
+Rules and theories by contrast are not “user-definable”: each development usually presents a single theory, or a few, with a specific collection of rules.
+%
+The ordering on these can therefore be left entirely unstated,
+%
+but it is almost always clearly present.
+%
+The writer ensures it when setting up the theory; the reader follows it when understanding the theory, and convincing themself of its reasonableness; and it is respected in later proofs and constructions.
+
+It would be jarring, for instance, and often logically impossible, to give the semantics of $\beta$-reduction before that of $\lambda$-abstraction.
+%
+On the other hand, it would be unsurprising if a writer introduced the rules for $\symPi$-types before those for $\symSigma$-types, but then gave semantics with $\symSigma$-types first.
+%
+Overall, the implicit partial order on rules is always respected, but no particular total extension of it is.
+
+Defining what it means for a presentation to be ordered is a little subtler than one might expect;
+%
+we work up to it gradually, considering contexts first, then rules, and finally theories.
+
+\subsection{Sequential contexts}
+\label{sec:sequential-contexts}
+
+In our setting, with scoped syntax, and with contexts as maps from positions to types (we henceforth refer to these as \emph{flat} contexts), traditional sequential contexts may be recovered in various ways.
+%
+They are all straightforwardly equivalent --- indeed, a sufficiently informal statement of the traditional definition could be read as any of them --- but explicitly comparing them provides a useful warmup for the less straightforward cases with rules and type theories later.
+
+Recall that $\numscope{n}$ denotes the sum of $n \in \N$ copies of $\numscope{1}$.
+%
+When working with sequential contexts, we will identify the positions of $\numscope{n}$ with $\{0, \ldots, n-1\}$, and denote the evident “subscope inclusion” maps by $\numscopemap{i}{j} : \numscope{i} \to \numscope{j}$.
+
+\begin{definition}[Sequential context I]
+  \label{def:seq-cxt-as-wellpresentedness}
+  A \defemph{raw sequential context} over a signature $\Sigma$ is a list $\Gamma
+  = [\Gamma_0,\ldots,\Gamma_{n-1}]$, where $\Gamma_i \in \ExprTy{\Sigma}{\numscope{i}}$, for each $i \in \numscope{n}$.
+  %
+  We write $\Gamma_{<i}$ for the initial segment $[\Gamma_0, \ldots, \Gamma_{i-1}]$.
+  %
+  The \defemph{flattening} of a raw sequential context is the raw flat context of scope $\numscope{n}$ whose $i$-th type is the weakening $\rename{{\numscopemap{i}{n}}}(\Gamma_i)$.
+  %
+  We typically leave flattening implicit, writing $\Gamma$ both for a sequential context and its flattening.
+  
+  Given a signature $\Sigma$ and a raw type theory $T$ over it,
+  a raw sequential context $\Gamma$ over $\Sigma$ is \defemph{well-formed over~$T$} if for each $i \in \Gamma$, the judgement $\istype{\Gamma_{<i}}{\Gamma_i}$ is derivable.
+\end{definition}
+
+Alternately, we can define sequentiality as a property of flat contexts:
+
+\begin{definition}[Sequential context II]
+  \label{def:seq-cxt-by-variable-occurrence}%
+  A raw flat context $\Gamma$ of scope $\numscope{n}$ is \defemph{sequential} if for each $i \in \numscope{n}$, all variables $\synvar{j}$ occurring in $\Gamma_i$ have $j < i$.
+  %
+  Thus each $\Gamma_i$ is uniquely of the form $\rename{{\numscopemap{i}{n}}}(\overline{\Gamma_i})$,
+  from which we define the initial segments $\Gamma_{<i}$ as sequential raw contexts of scope $\numscope{i}$.
+
+  A sequential context $\Gamma$ over $\Sigma$ is \defemph{well-formed over $T$} if for each $i \in \Gamma$, the judgement $\istype{\Gamma_{<i}}{\Gamma_i}$ is derivable.
+\end{definition}
+
+Finally, we can define well-formed flat contexts via the traditional derivation rules,
+without reference to raw sequential contexts.
+
+\begin{definition}[Sequential context III]
+  \label{def:seq-cxt-by-rules}%
+  The property $\iscxt{\Gamma}$, read as “$\Gamma$ is \defemph{sequentially well-formed}” over a given theory, is the inductive predicate on flat contexts defined by the following closure conditions, the latter for all suitable $\Gamma$, $A$:
+\begin{mathpar}
+\infer{{}% do not remove the {} preceding this comment
+}{\iscxt{\emptycxt}}
+\and
+\infer{\iscxt{\Gamma} \\ \istype{\Gamma}{A}}{\iscxt{\ctxextend{\Gamma}{A}}}
+\end{mathpar}
+% % I commented this out because I have no idea what it means, and I understand the definition without it.
+% where by “$\iscxt{\ctxextend{\Gamma}{A}}$” we mean derivability of this judgement over $T$.
+\end{definition}
+
+Each of the above definitions moreover has two possible readings: \emph{proof-relevant}, where by derivability of a judgement $\istype{\Gamma}{A}$ we mean that a specific derivation is given, and \emph{proof-irrelevant}, where we merely mean that some derivation exists.
+%
+We take the proof-relevant reading in all cases.
+
+\begin{proposition}  \Cref{def:seq-cxt-as-wellpresentedness,def:seq-cxt-by-variable-occurrence,def:seq-cxt-by-rules} are all equivalent, as predicates on flat contexts, in both their proof-relevant and -irrelevant forms.
+\end{proposition}
+
+\begin{proof}
+Essentially straightforward, given the fact, already mentioned in \cref{def:seq-cxt-by-variable-occurrence}, that the variable-occurrence constraint there precisely characterises the images of the weakenings $\rename{{\numscopemap{i}{n}}} : \ExprTy{\Sigma}{\numscope{i}} \injto \ExprTy{\Sigma}{\numscope{n}}$.
+\end{proof}
+
+Of these definitions, \cref{def:seq-cxt-by-variable-occurrence} is the simplest to state, especially if one sweeps under the rug the inverse-weakening required for defining initial segments.
+%
+However, when spelling out details carefully, this inverse-weakening is tedious to keep track of.
+%
+When we bump these definitions up to sequential rules or type theories, therefore, we will focus on approaches based on \cref{def:seq-cxt-as-wellpresentedness,def:seq-cxt-by-rules}.
+
+\subsection{Sequential rules}
+\label{sec:sequential-rules}
+
+
+Next, we wish to define sequential \emph{rules}, in which premises form a finite sequence, and each refers only to the previous ones.
+%
+Analogously to \cref{def:seq-cxt-by-variable-occurrence}, the easiest version to state is to start from an ordinary raw rule, and add desirable properties, together with restrictions on how earlier parts can be used in later parts:
+
+\begin{definition}[Sequential rule, provisional]
+  Let $R$ be a tight raw rule over a signature~$\Sigma$, with premises indexed by $\numscope{n}$, and $\beta$ the bijection witnessing its tightness.
+  %
+  We say that $R$ is \defemph{sequential} if for all $i \in \numscope{n}$ and $j \in \arity{R}$, if $\synmeta{j}$ appears in the $i$-th premise, then $\beta(j) < i$.
+
+  Moreover, say that $R$ is \defemph{(sequentially) well-formed}
+  over a raw type theory~$T$, also over~$\Sigma$,
+  when for all $i \in [n]$, the presuppositions of the $i$-th premise of~$R$
+  can be derived from the premises indexed by~$[i]$.
+\end{definition}
+
+This definition is adequate, but is in several regards somewhat unsatisfying:
+%
+\begin{enumerate}
+\item
+  We have said here, as in \cref{def:seq-cxt-by-variable-occurrence}, that the premises are formed over the extension by all the metavariables, and their presuppositions derived from all the premises, but use only the preceding ones.
+  %
+  When applying this condition, one typically wants to consider them as formed, or derived, over the extension by just the preceding initial segment. So rather than restricting them back there, and having to keep track of such restriction, it is simpler to say from the start, as in \cref{def:seq-cxt-as-wellpresentedness}, that they are formed, or derived, over those initial segments.
+  
+\item “Tightness” gives a redundancy of data in two ways.
+  %
+  Firstly, the heads of all object-judgement premises are redundant: each head must be the corresponding metavariable, applied to all variables of its scope.
+  %
+  Besides this, the arity itself is determined by the indexing family of the rule together with the scopes and forms of the premises.
+\end{enumerate}
+
+These issues can be remedied by defining sequential presentations inductively, analogously to \cref{def:seq-cxt-by-rules}, and adding each premise not as a full judgement but just its \emph{boundary}, whose head, if any, will be filled in automatically to ensure tightness by construction.
+
+\begin{definition}
+  \label{def:sequential-premise-family}%
+  %
+  Given a signature $\Sigma$ and a raw type theory $T$ over it, we define inductively the \defemph{sequential premise-families} $P$ with arities $\arity{P}$, and simultaneously their \defemph{flattenings} as families of judgements over $\mvextend{\Sigma}{\arity{P}}$, as follows.
+
+  \begin{enumerate}
+  \item
+    %
+    The \defemph{empty sequential premise-family} $\emptyfam$ has empty arity $\arity{\emptyfam}$, and its flattening is the empty family.
+    
+  \item
+    %
+    Let $P$ be a sequential premise-family, with arity $\arity{P}$ and flattening $F$.
+    % 
+    Let $\Delta \typesboundary B$ be a boundary over $\mvextend{\Sigma}{\arity{P}}$, such that all presuppositions of $\Delta \typesboundary B$ are derivable over $\mvextend{(T+F)}{\arity{P}}$ (i.e.\ the translation of $T+F$ from $\Sigma$ to $\mvextend{\Sigma}{\arity{P}}$), and $\Delta$ is a well-formed sequential context over the same theory.
+
+    Then there is an \defemph{extension sequential premise-family} $P;(\Delta \typesboundary B)$.
+    
+    If $\Delta \typesboundary B$ is an object boundary of class~$c$, then the associated arity $\arity{P;(\Delta \typesboundary B)}$ is $\arity{P} + \singletonfamily{(c,\position{\Delta})}$; or if $\Delta \typesboundary B$ is an equality boundary, $\arity{P;(\Delta \typesboundary B)}$ is just $\arity{P}$.
+    
+    The flattening of $P;(\Delta \typesboundary B)$ is $\famtuple{\act{\iota}(\Gamma_i \typesjudgement J_i)}{i \in I} + \singletonfamily{(\act{\iota}{\Delta}) \typesjudgement J}$, where $\iota$ is the inclusion $\arity{P} \to \arity{P;(\Delta \typesboundary B)}$, and $J$ is $\act{\iota}B$
+    with the head, if any, filled by the expression $\synmeta{\star}(\fammap{\synvar{i}}{i \in \delta})$, where $\star$ is the new argument adjoined to the arity.
+  \end{enumerate}
+\end{definition}
+
+\noindent%
+Notationally, we will not distinguish the flattening from the sequential premise-family itself.
+
+\begin{definition}
+  \label{def:sequential-rule}%
+  A \defemph{sequential rule} $\SequentialRule{P}{J}$ over $\Sigma$ and $T$ is a sequential premise-family~$P$, together with a judgement $ \Gamma \typesjudgement J$ over $\mvextend{\Sigma}{\arity{P}}$,
+  the \defemph{conclusion}, whose presuppositions are derivable over $T + P$ (with $T$ translated to the metavariable extension).
+  %
+  A sequential rule has an evident flattening as a raw rule.
+\end{definition}
+
+\noindent%
+Again, we do not notate the flattening explicitly.
+%
+Note that as in the definition of raw rules the conclusion~$J$ has an empty context.
+
+The addition of a boundary in the extension step of  \cref{def:sequential-premise-family} is precisely analogous to the traditional context extension rule, as in \cref{def:seq-cxt-by-rules}.
+%
+There, the extension is \emph{specified} just by a type $A$, but its \emph{effect} is to add a term-of-type judgement $\synvar{i} \of A$,
+%
+where the term is automatically determined to be a (fresh) variable, rather than specified as input to the extension.
+
+Reading \cref{def:sequential-premise-family} with an eye towards computer-formalisation, one may note it can be formalized in several ways: as an inductive-recursive definition of a set with functions to arities and families of judgements; as an inductive family of sets indexed over pairs of an arity and a family of judgements; or an $\N$-indexed sequence of sets together with functions to arities and families, by induction on $n \in \N$, the length of the family.
+%
+These are all equivalent, by standard generalities about inductive definitions.
+
+\begin{proposition}
+  The flattening of a sequential rule with empty conclusion context is acceptable.
+\end{proposition}
+
+\begin{proof}
+  Tightness is immediate, by construction of the arity of the premise-family and the heads of its object-judgement premises.
+  %
+  Presuppositivity is similarly by construction, from the well-formedness conditions in the definitions of sequential rules and premise-families, with the latter inductively translated along metavariable extensions as the premise-family is built up.
+\end{proof}
+
+As we defined premise-families using just boundaries rather than complete judgements, similarly when we define well-founded type theories we will specify them using sequential rules whose conclusions have no heads.
+%
+We will also (for substitutivity) restrict attention to empty conclusion contexts.
+
+\begin{definition}
+  \label{def:rule-boundary}%
+  A \defemph{sequential rule-boundary} $\RuleBoundary{P}{B}$ over $\Sigma$ and $T$ is a sequential premise-family~$P$, together with a boundary $\Gamma \typesboundary B$ over $\mvextend{\Sigma}{\arity{P}}$ with empty context, whose presuppositions are derivable over $T + P$.
+\end{definition}
+
+Rule-boundaries can of course be completed to rules, by filling in a head if required.
+
+\begin{definition}
+  \label{def:rule-boundary-realisation}%
+  The \defemph{realisation} of a sequential rule-boundary $R = (\RuleBoundary{P}{B})$ as a sequential rule (or, via flattening, a raw rule) is
+  defined according to the form of $B$:
+  %
+  \begin{enumerate}
+  \item
+    %
+    If $B$ is an object boundary of class~$c$, then given a symbol $\symS \in \Sigma$ with arity $\arity{P}$ and class~$c$, the \defemph{realisation $\plug{R}{\symS}$ of $R$ with $\symS$} is the sequential rule
+    %
+    \begin{equation*}
+      \SequentialRule
+      {P}
+      {\plug{B}{\genapp{S}}}
+    \end{equation*}
+    %
+    given by completing $B$ with the generic application of~$S$.
+
+    \item
+    %
+    If $B$ is an equality, no further input is required: the \defemph{realisation of $R$} is just $\RuleBoundary{P}{B}$ with $B$ viewed as a judgement.
+\end{enumerate}
+\end{definition}
+
+This gives, by construction:
+
+\begin{propositionwithqed}
+  The realisation of an object rule-boundary for~$\symS$ yields a symbol rule for~$\symS$.
+\end{propositionwithqed}
+
+\begin{example}
+  The sequential rule-boundary
+  %
+  \begin{equation*}
+    \RuleBoundary{
+      (\istype{}{\symA}) ;
+      (\istype{x \of \symA}{\symB(x)})
+    }{
+      (\istypebdry{})
+    }
+  \end{equation*}
+  %
+  realised with the symbol $\symPi$ gives the sequential rule
+  %
+  \begin{equation*}
+    \SequentialRule{
+      (\istype{}{\symA}) ;
+      (\istype{x \of \symA}{\symB(x)})
+    }{
+      (\istype{}{\symPi(\symA, \symB(x))})
+    }
+  \end{equation*}
+  %
+  whose flattening is the usual formation rule for dependent products, as in \cref{ex:pi-congruence-rule}.
+  %
+  With $\symSigma$ instead of $\symPi$, it gives the formation rule for dependent sums.
+\end{example}
+
+\subsection{Well-presented rules}
+\label{sec:well-presented-rules}
+
+Sequential rules and rule-boundaries give a satisfactory treatment covering most example theories, and sufficing for many purposes, including implementation in proof assistants.
+%
+For instance, the Andromeda proof assistant~\citep{andromeda,bauer19} implements a variant of sequential rules and rule boundaries in the trusted nucleus.
+
+Here we consider the generalisation from finite sequences to arbitrary well-founded orders, partly to encompass infinitary rules, but mainly as a warm-up for well-founded theories.
+
+\Cref{def:well-founded-premises-shape,def:well-founded-premise-family,def:realisation-well-presented-rule} given below are rather long and pedantic, so we give first a guiding overview.
+%
+We follow the pattern first seen in \cref{def:seq-cxt-as-wellpresentedness}, where the components of the definitions must be stratified into several stages, with each stage making use of functions defined on earlier stages.
+
+\begin{enumerate}
+\item
+  At the first stage, we can specify just the \emph{shape} of the family of premises.
+  %
+  This consists of a well-ordered set $(P,<)$, to index the premises,
+  %
+  along with for each $i \in P$, the judgement form~$\varphi_i$ and scope~$\gamma_i$ for the $i$-th premise.
+
+  Form this data we can compute the arity of the rule, $\arity{P}$, and more generally the arity $\arity{P_{<i}}$, specifying what metavariables may occur in the $i$-th premise.
+  
+\item
+  At the second stage, with the arities $\arity{P_{<i}}$ available, we can specify the \emph{raw syntax} of the premises.
+  %
+  The $i$-th premise $P_i$ is given by a boundary $\Gamma_i \typesboundary B_i$ of form~$\varphi_i$, scope~$\gamma_i$, and written over $\mvextend{\Sigma}{\arity{P_{<i}}}$.
+
+  From these, filling in heads of object premises as required for tightness, we can construct the flattening of $P$ as family of judgements over $\mvextend{\Sigma}{\arity{P}}$, and more generally the flattening of $P_{<i}$ over $\mvextend{\Sigma}{\arity{P_{<i}}}$.
+
+\item
+  At the third stage, with the flattenings available, we can now specify the \emph{well-formedness} conditions.
+  % 
+  Derivations of presuppositions of $P_i$ should be given over the ambient theory~$T$, translated up to $\mvextend{\Sigma}{\arity{P_{<i}}}$, and with (the flattenings of) preceding premises $P_{<i}$ available as hypotheses.
+
+\item
+  We are now done with the hard part.
+  %
+  Having specified the premises, the conclusion is given as in the sequential case, as a well-formed boundary $B$ over $\mvextend{\Sigma}{\arity{P}}$, whose head (if $B$ is of object form) will later be filled in to yield a symbol rule.
+\end{enumerate}
+
+While the above explanation sounds plausible, it sweeps several technical subtleties under the rug.
+%
+Most importantly, since each premise is specified over its own signature $\mvextend{\Sigma}{\arity{P_{<i}}}$, we need to handle the translations between these extensions, and up to the overall extension $\mvextend{\Sigma}{\arity{P}}$.
+%
+Spelling out all details in full, we have the following definitions.
+
+\begin{definition}
+  \label{def:well-founded-premises-shape}%
+  A \defemph{well-founded premises-shape} $(I, S)$ is given by
+  %
+  a well-founded set $(I, {<})$, and
+  %
+  a family $S = \fammap{(\varphi_i,\gamma_i)}{i \in I}$, where $\varphi_i$ is a judgement form and $\gamma_i$ a scope.
+  %
+  Given these, we define:
+  %
+  \begin{enumerate}
+  \item
+    %
+    The arity $\arity{S}$ of $S$ is the subfamily $\fammap{(\varphi_i, \gamma_i)}{\set{i \in I \such \varphi_i \in \set{\Ty, \Tm}}}$ of the object forms of~$S$.
+
+  \item
+    %
+    For each $i \in I$, the initial segment $S_{<i} \defeq \fammap{(\varphi_j, \gamma_j)}{j < i}$ is itself a well-founded premises-shape indexed by the initial segment $\initialSegment{i} \subseteq I$, and hence it also has an associated arity $\arity{S_{< i}}$.
+
+  \item
+    %
+    For each $i < j \in I$, there are evident family maps $\arity{S_{<i}} \to \arity{S_{<j}}$ and hence $S_{<i} \to S_{<j}$, satisfying evident composition conditions with each other and with the subfamily inclusions $S_{<j} \to S$.
+  \end{enumerate}
+\end{definition}
+
+\begin{definition}
+  \label{def:well-founded-premise-family}%
+  %
+  Given a signature~$\Sigma$ and a well-founded premises-shape~$(I, S)$ as in \cref{def:well-founded-premises-shape}, a \defemph{well-founded premise-family~$P$} is given by
+  %
+  a family $B = \fammap{B_i}{i \in I}$ where $B_i$ is a boundary of form $\varphi_i$ in scope $\gamma_i$, and over $\mvextend{\Sigma}{\arity{S_{<i}}}$.
+  %
+  Given these, we define:
+  %
+  \begin{enumerate}
+  \item
+    % 
+    The \defemph{flattening~$P^\flat$} is the family of judgements $\fammap{P_i}{i \in I}$ over $\mvextend{\Sigma}{\arity{S}}$, where $P_i$ is the boundary $B_i$ translated along the inclusion $\mvextend{\Sigma}{\arity{S_{<i}}} \to \mvextend{\Sigma}{\arity{S}}$, and when $\varphi_i \in \set{\Ty, \Tm}$ completed with the head expression $\synmeta{i}(\fammap{\synvar{j}}{j \in \gamma_i})$.
+
+  \item
+    %
+    For each $i \in I$, the initial segment $B_{<i}$ yields a well-founded premise family $P_{<i}$ with respect to the well-founded premises-shape $S_{<i}$ indexed by the initial segment $\initialSegment{i}$. Thus it has its own flattening~$P_{<i}^\flat$.
+
+  \item
+    %
+    For each $j < i$, the judgement $P_j$ as a member of the flattening $P_{<i}^\flat$ translated along the signature inclusion $\mvextend{\Sigma}{\arity{S_{<i}}} \to \mvextend{\Sigma}{\arity{S}}$ yields the same flattening~$P_j$, but as a member of~$P^\flat$.
+
+    This exhibits the translation of $P_{<i}^\flat$ along the inclusion $\mvextend{\Sigma}{\arity{S_{<i}}} \to \mvextend{\Sigma}{\arity{S}}$ as a subfamily of~$P^\flat$.
+
+  \item
+    %
+    Similarly, for all $k < j < i$, the judgement $P_k$ as a member of the flattening $P_{<j}^\flat$ translated along the signature inclusion $\mvextend{\Sigma}{\arity{S_{<j}}} \to \mvextend{\Sigma}{\arity{S_{<i}}}$ yields the same flattening~$P_k$, but as a member of~$P_{<i}^\flat$.
+
+    This exhibits the translation of $P_{<j}^\flat$ along the inclusion $\mvextend{\Sigma}{\arity{S_{<j}}} \to \mvextend{\Sigma}{\arity{S_{<i}}}$ as a subfamily of $P_{<i}^\flat$.
+  \end{enumerate}
+\end{definition}
+
+\begin{definition} \label{def:well-presented-premise-family}
+  A well-founded premise-family $P$ as in \cref{def:well-founded-premise-family} is
+  \emph{well-formed over $T$} if for each $i \in I$, there are derivations of all presuppositions of~$B_i$ from hypotheses $P_{<i}^\flat$, in the translation of $T$ to $\mvextend{\Sigma}{\arity{S_{<i}}}$.
+
+  A \defemph{well-presented premise-family} is a well-formed well-founded premise-family~$P$.
+  %
+  Its arity $\arity{P}$ is the associated arity $\arity{S}$ of the underlying premises-shape~$S$.
+\end{definition}
+
+\noindent
+%
+When no confusion can occur, we will write the flattening of a well-founded premise-family~$P$ just as $P$, rather than $P^\flat$.
+
+\begin{definition}
+  \label{def:well-presented-rule-boundary}%
+  %
+  A \defemph{well-presented rule-boundary} $\RuleBoundary{P}{B}$ over $\Sigma$, $T$ consists of a well-presented premise-family~$P$ together with a boundary with empty context $\typesboundary B$ over $\Sigma + \arity{P}$, the \defemph{conclusion boundary}, such that all presuppositions of~$B$ derivable from~$P$ in the translation of~$T$ to $\Sigma + \arity{P}$.
+  %
+  The \defemph{arity} of such a rule-boundary is the arity~$\arity{P}$ of its premise-family.
+\end{definition}
+
+\begin{definition}
+  \label{def:realisation-well-presented-rule}%
+  The \defemph{realisation} of a well-presented rule-boundary $R = (\RuleBoundary{P}{B})$ as a raw rule is defined according to the form of $B$.
+  %
+  \begin{enumerate}
+  \item
+    %
+    If $B$ is an object boundary of class~$c$, then given a symbol $\symS \in \Sigma$ of arity $\arity{P}$ and class~$c$, the \defemph{realisation $\plug{R}{\symS}$ of $R$ with $\symS$} has premises the flattening of $P$, and conclusion $\plug{B}{\genapp{S}}$.
+
+  \item
+    %
+    If $B$ is an equality boundary, no extra input is required: the \defemph{realisation of $R$} has premises the flattening of $P$, and conclusion just $B$ viewed as an equality judgement.
+  \end{enumerate}
+\end{definition}
+
+
+\subsection{Well-presented type theories}
+\label{sec:well-presented-theories}
+
+Finally, we reach well-foundedness for type theories.
+%
+Once again, a by now familiar pattern emerges.
+%
+It is fairly straightforward to define well-foundedness as an after-market property of acceptable type theories,
+%
+but a better definition is obtained by putting in a little more work.
+
+We start with the simpler version.
+
+\begin{definition}
+  \label{def:well-founded-theory}%
+  Let $T = \fammap{R_i}{i \in I}$ be an acceptable type theory over a signature $\Sigma$, and let $\beta : |\Sigma| \to I$ the bijection from symbols to their rules.
+  %
+  Then $T$ is \defemph{well-founded} when all its rules are well-founded, and the index set $I$ has a well-founded order~$<$, such that:
+  %
+  \begin{enumerate}
+  \item If $\symS \in \Sigma$ appears in $R_i$ then $\beta(\symS) < i$.
+  \item Each $R_j$ has derivations of presuppositions that only refer to symbols $\symS$ with $\beta(\symS) < j$ and rules~$R_i$ with $i < j$.
+  \end{enumerate}
+\end{definition}
+
+For the more refined version, we follow a similar pattern to what we saw for well-presented rules in \cref{sec:well-presented-rules}, with the definition stratified into three stages:
+
+\begin{enumerate}
+  \item First, the \emph{shape}: a well-founded order (to index the rules), and the premises-shapes and judgement forms of all rules.
+  %
+  This suffices to compute the signature of the theory, and of its initial segments.
+  
+  \item Next, the \emph{raw} part: for each rule of the theory, a well-founded premise-family, and (raw) conclusion boundaries, of the shapes and forms specified in the first stage, and over the signature of the appropriate initial segment.
+  %
+  These suffice to compute the flattening of the theory as a raw type theory, and of its initial segments.
+
+  \item Finally, the \emph{derivations} showing well-formedness of each rule over the preceding initial segment.
+\end{enumerate}
+
+Having previously given \cref{def:well-founded-premises-shape,def:well-founded-premise-family,def:well-presented-premise-family} in rather excruciating detail, we proceed here slightly more concisely, trusting the reader to be able to fill in the elided details along the lines spelled out in those definitions.
+
+\begin{definition} \leavevmode
+  \label{def:well-presented-type-theory}%
+  \begin{enumerate}
+  \item A \defemph{well-founded type theory shape $T$} consists of a well-founded order $(I,<)$, together with for each $i \in I$, a well-founded premises-shape $S_i$ and judgement form $\varphi_i$ (seen as the premises shape and conclusion form of the $i$th rule).
+
+    From these, we can define the total signature $\Sigma_T$ of $T$: its symbols are just $\set{ \symS_i \in I \such \varphi_i \in \set{\Ty,\Tm}}$, with $\symS_i$ having arity $\arity{S_i}$ and class $\varphi_i$.
+    %
+    Similarly, we get signatures for initial segments $\Sigma_{T_{<i}}$, and signature maps between these, and from these to $\Sigma_T$.
+
+  \item A \defemph{well-founded raw type theory $T$} consists of a well-founded type theory shape as above (which we also call $T$), together with for each $i \in I$, a well-founded premise-family $P_i$ of shape $S_i$ and a boundary $B_i$ of form $\varphi_i$ over the signature~$\Sigma_{T_{<i}}$.
+
+    From these, we can define the flattening $T^\flat$ of $T$ as a raw type theory over $\Sigma_T$.
+    %
+    Its rules consist of the realisations of all rule-boundaries $\RuleBoundary{P_i}{B_i}$, using (when $i$ is of object form) the symbol $\symS_i$, together with the associated congruence rules of the object rules thus added.
+    %
+    Similarly, we obtain the flattening $T_{<i}^\flat$ of each initial segments of $T$, as a raw type theory over $\Sigma_{T_{<i}}$.
+
+  \item A \defemph{well-presented type theory $T$} consists of a well-founded raw type theory $T$ as above that is additionally \defemph{well-formed}, in that it is equipped with, for each $i$, derivations exhibiting $\RuleBoundary{P_i}{B_i}$ as a well-formed rule-boundary over $T_{<i}^\flat$.
+  \end{enumerate}
+\end{definition}
+
+\noindent As with well-presented rules, we will not notate flattening, when there is no ambiguity.
+
+\begin{proposition}
+  The flattening of a well-presented type theory $T$ is acceptable and well-founded.
+\end{proposition}
+
+\begin{proof}
+  Well-foundedness, tightness, substitutivity, and congruousness are immediate by construction.
+  %
+  Presuppositivity is almost as direct, requiring just translation of well-formedness of rules from the signatures $\Sigma_{T_{<i}}$ and theories $T_{<i}$ up to the full signature $\Sigma$ and theory~$T$.
+\end{proof}
+
+\input{well-foundedness-theorem.tex}
+
+%%% Local Variables:
+%%% mode: latex
+%%% End:

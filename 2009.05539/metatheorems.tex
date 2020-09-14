@@ -1,0 +1,750 @@
+\section{Well-behavedness properties}
+\label{sec:well-behavedness}
+
+In this section we identify easily-checked syntactic properties of the rules specifying a type theory, and prove basic fitness-for-purpose meta-theorems, which together articulate the rules-of-thumb that researchers habitually use to verify that some collection of inference rules defines a “reasonable” type theory.
+
+\subsection{Acceptable rules}
+\label{sec:acceptable-rules}
+
+Not all raw rules are deemed reasonable from a type-theoretic point of view.
+%
+But what standard of “reasonable” are we aiming to delineate?
+%
+Essentially, the same as for the axioms of a theory in first-order logic: the axioms must be well-formed enough to be given some meaning, although that meaning may be “false”, “wrong”, or otherwise unexpected.
+
+Consider for instance the following possible modifications of the rule for $\symapp$, all written as raw rules:
+\begin{gather}
+\label{eq:example-app-1}
+\inferrule{
+  \istype {} {\symA} \\ 
+  \istype {x \of \symA} {\symB(x)} \\
+  \isterm {} {\symf} {\synPi[\symA,\symB(x)]} \\
+  \isterm {} {\syma} {\symA}
+}{
+  \isterm {} {\symapp{(\symA,\symB(x),\symf,\syma)}} {\symB(\syma)}
+}
+\\[1ex]
+\label{eq:example-app-2}
+\inferrule{
+  \istype {} {\symA} \\ 
+  \istype {x \of \symA} {\symB(x)} \\
+  \isterm {} {\symf} {\symA} \\
+  \isterm {} {\syma} {\symA}
+}{
+  \isterm {} {\symapp{(\symA,\symB(x),\symf,\syma)}} {\symB(\syma)}
+}
+\\[1ex]
+\label{eq:example-app-3}
+\inferrule{
+  \istype {} {\symA} \\ 
+  \istype {x \of \symA} {\symB(x)} \\
+  \isterm {} {\symf} {\synPi[\symA,\symB(x)]} \\
+  \isterm {} {\syma} {\synPi[\symA,\symB(x)]}
+}{
+  \isterm {} {\symapp{(\symA,\symB(x),\symf,\syma)}} {\symB(\syma)}
+}
+\end{gather}
+
+The first is the usual rule for $\symapp$, and should certainly be considered acceptable.
+
+The second asks the argument $\symf$ to be of type $\symA$.
+%
+This is “wrong” under the usual reading of $\symPi$ and $\symapp$, but not entirely meaningless: one can introduce $\symapp$ with this typing rule, and obtain a well-behaved (if bizarre) type theory.
+%
+So this should be accepted as a type-theoretic rule.
+
+The third asks the argument $\syma$ to be of type $\synPi[\symA,\symB(x)]$.
+%
+This is “not even wrong”: the conclusion purports to introduce a term of type $\symB(\syma)$, but that is not a well-formed type, since $\symB$ expects an argument of type $\symA$, so $\syma$ is not suitable (at least in the absence of other rules implying that $\eqtype{}{\symA}{\synPi[\symA,\symB(x)]}$).
+%
+This will therefore \emph{not} be an acceptable rule.
+
+Another unacceptable rule would be:
+%
+\begin{gather}
+  \label{eq:example-app-4}
+  \inferrule{
+    \istype {} {\symA} \\ 
+    \istype {x \of \symA} {\symB(x)} \\
+    \isterm {} {\symf} {\synPi[\symA,\symB(x)]} \\
+    \isterm {} {\syma} {\symA}  \\
+    \isterm {} {\syma} {\synPi[\symA,\symB(x)]} \\
+  }{
+    \isterm {} {\symapp{(\symA,\symB(x),\symf,\syma)}} {\symB(\syma)}
+  }
+\end{gather}
+%
+This is again clearly nonsense: it introduces $\syma$ twice, with two different types.
+
+There are rules which are not uncommon in practice, but which we will not accept directly, such as:
+\begin{gather}
+\label{eq:example-app-5}
+\inferrule{
+   \isterm {} {\symf} {\synPi[\symA,\symB(x)]} \\
+   \isterm {} {\syma} {\symA}
+}{
+   \isterm {} {\symapp{(\symA,\symB(x),\symf,\syma)}} {\symB(\syma)}
+}
+\end{gather}
+%
+While the rule is completely reasonable, making sense of it is rather subtle: checking, for instance, that $\symB(\syma)$ in the conclusion is well-formed requires applying some kind of inversion principle, to the type $\synPi[\symA,\symB(x)]$ from the premises.
+%
+Whether such an inversion principle is available depends on the particularities of the type theory under consideration.
+%
+In general, we want acceptable rules to be more straightforwardly and robustly well-behaved, so we expect that every metavariable used by the rule is explicitly introduced by some (unique) premise.
+
+Finally, some rules have variant forms given by moving simple premises into the context of the conclusion.
+%
+For example, the rule for application is sometimes given as
+%
+\begin{equation}
+\label{eq:example-app-6}
+\inferrule{
+  \istype {} {\symA} \\ 
+  \istype {x \of \symA} {\symB(x)}
+}{
+ \isterm
+   {x \of \symA, y \of \synPi[\symA, \symB(x)]}
+   {\symapp{(\symA,\symB(x),y,x)}}
+   {\symB(x)}
+}
+\end{equation}
+
+This variant has been called the \emph{hypothetical} form, in contrast to the \emph{universal} form~\eqref{eq:example-app-1}.
+%
+With substitution included as a structural rule, the two forms are equivalent: each is derivable from the other.
+%
+In the absence of a substitution rule, they are not equivalent; the hypothetical form is too weak.
+%
+We have also heard it argued that the universal form should be seen as conceptually prior.
+%
+So both forms are arguably reasonable; but the universal form \eqref{eq:example-app-1}, with empty conclusion context, has the clearer claim, and no generality is lost by restricting to such forms.
+
+Summarising the above discussion, there are several simple syntactic criteria commonly used as rules-of-thumb to determine “reasonability” of rules.
+%
+We now formally define these criteria, and collect them into a definition of \emph{acceptability} of rules.
+
+\begin{definition}
+  \label{def:tight-rule}%
+  Suppose $R$ is a raw rule with arity $\arity{R}$ over a signature $\Sigma$. We say that $R$ is \defemph{tight} when
+  there exists a bijection $\beta$ between the arguments of $\arity{R}$ and the object premises of $R$,
+  such that for each argument $i$ of $\arity{R}$,
+  %
+  \begin{enumerate}
+    \item\label{item:tight-rule-ctx} the context of the premise $\beta(i)$ has the scope $\argbinder{\arity{R}}{i}$;
+    \item\label{item:tight-rule-jf} the judgement form of the premise $\beta(i)$ is $\argclass{\arity{R}}{i}$;
+    \item\label{item:tight-rule-hd} the head expression of the premise $\beta(i)$ is $\synmeta{i}(\fammap{\synvar{j}}{j \in \argbinder{\arity{R}}{i}})$.
+  \end{enumerate}
+\end{definition}
+
+Note that the bijection~$\beta$ is unique, if it exists.
+%
+The definition of tightness is admittedly a bit technical, but it captures a well-formedness condition of rules which is familiar but infrequently discussed explicitly. Namely, a rule is tight if its object premises provide the ``typing'' of its metavariable symbols.
+
+Tightness alone does not suffice to make a rule reasonable, e.g., the rule~\eqref{eq:example-app-3} is tight but still broken because the type expression $\symB(\syma)$ is senseless. We need another condition which ensures that the type and term expressions appearing in the rule make sense.
+
+\begin{definition}
+  To each judgement $\Gamma \types J$, we associate the family of \defemph{presuppositions} $\Presup {(\Gamma \types J)}$, defined as the judgements formed over $\Gamma$ by placing the boundary slots of $J$ in the head position as follows:
+  \begin{align*}
+  \Presup {(\istype \Gamma A)} &\defeq [ \; ], \\
+  \Presup {(\isterm \Gamma s A)} &\defeq [ \istype \Gamma A ], \\
+  \Presup {(\eqtype \Gamma A B)} &\defeq [ \istype \Gamma A, \istype \Gamma B ], \\
+  \Presup {(\eqterm \Gamma s t A)} &\defeq [ \istype \Gamma A, \isterm \Gamma s A, \isterm \Gamma t A ].
+  \end{align*}
+\end{definition}
+
+We shall need to know later on that presuppositions are natural with respect to the action of signature maps, instantiations, and raw substitutions.
+
+\begin{proposition}
+  \label{prop:presuppositions-action-signature-map}
+  %
+  Let $\Gamma \types J$ be a judgement over~$\Sigma$, and $F : \Sigma \to \Sigma'$ a signature map. Then $\Presup {(\act{F} \Gamma \types \act{F} J)} = \act{F}(\Presup {(\Gamma \types J)})$.
+\end{proposition}
+
+\begin{proof}
+  This is clear, for instance the presupposition of $\isterm{\act{F} \Gamma}{\act{F} s}{\act{F} A}$ is $\istype{\act{F} \Gamma}{\act{F} A}$, which is precisely what we get when $F$ acts on $\istype{\Gamma}{A}$, the presupposition of $\isterm{\Gamma}{s}{A}$.
+\end{proof}
+
+The reasoning that established the analogous statements about the actions of instantiations and raw substitutions is similarly easy.
+
+\begin{propositionwithqed}
+  \label{prop:presuppositions-action-instantiation}
+  %
+  Let $\Gamma \types J$ be a judgement over a metavariable extension $\mvextend{\Sigma}{\alpha}$ and $I \in \Inst{\Sigma}{\gamma}{\alpha}$ an instantiation.
+  Then $\Presup {(\act{I} \Gamma \types \act{I} J)} = \act{I}(\Presup {(\Gamma \types J)})$.
+\end{propositionwithqed}
+
+\begin{propositionwithqed}
+  \label{prop:presuppositions-action-substitution}
+  %
+  Let $\Gamma \types J$ be a judgement and $f : \Delta \to \Gamma$ a raw substitution. Every presupposition of $\Delta \types \tca{f} J$
+  has the form $\Delta \types \tca{f} J'$, where $\Gamma \vdash J'$ is a presupposition of $\Gamma \types J'$.
+\end{propositionwithqed}
+
+There is a weaker and a stronger condition that we can impose on a rule with regards to the presuppositions of its conclusion.
+
+\begin{definition}%
+  \label{def:weakly-presuppositive-rule}%
+  Let $T$ be a raw type theory over a signature $\Sigma$ and $R$ a raw rule over~$\Sigma$:
+  %
+  \begin{enumerate}
+  \item a raw rule $R$ is \defemph{weakly presuppositive over~$T$} when every presupposition of the conclusion of~$R$ is derivable in $T$ (translated from $\Sigma$ to $\mvextend{\Sigma}{\arity{R}}$) from the premises of~$R$ and the presuppositions of the premises of~$R$,
+
+  \item a raw rule~$R$ is \defemph{presuppositive over~$T$} when all presuppositions of the conclusion and of the premises of~$R$ are derivable in $T$ (translated from $\Sigma$ to $\mvextend{\Sigma}{\arity{R}}$) from the premises of~$R$.
+  \end{enumerate}
+\end{definition}
+
+As far as derivability is concerned, weakly presuppositive rules are good enough, for a rule cannot be applied unless its premises have already been derived, in which case their presuppositions will be derivable as well --- which is the gist of the proof of \cref{thm:presuppositions}.
+%
+However, if we were to give a meaning to a raw rule on its own, we would be hard-pressed to explain what the premises are about, unless their presuppositions were derivable as well, hence we take the stronger variant as the standard one.
+
+
+\begin{definition}
+  \label{def:acceptable-rule}%
+  A raw rule $R$ is \defemph{acceptable} for a raw type theory $T$ if it is tight,
+  presuppositive over~$T$, and has empty conclusion context.
+\end{definition}
+
+\begin{example}
+  \parbox{0pt}{}
+  %
+  \begin{enumerate}
+
+  \item The above rules~\eqref{eq:example-app-1},~\eqref{eq:example-app-2},~\eqref{eq:example-app-3}, and~\eqref{eq:example-app-6} are tight.
+
+  \item The above rules~\eqref{eq:example-app-1},~\eqref{eq:example-app-2},~\eqref{eq:example-app-4}, and~\eqref{eq:example-app-6} are presuppositive.
+
+  \item The rule
+    %
+    \begin{equation*}
+      \infer{ }{\istype{}{\symA}}
+    \end{equation*}
+    %
+    which allows us to infer that every type expression is a type, is not tight.
+
+  \item If $S$ is a type symbol with the empty arity, the rule
+    %
+    \begin{equation*}
+      \infer { } {\istype {} {S ()}}
+    \end{equation*}
+    %
+    is presuppositive and tight.
+
+  \item Symmetry of type equality comes in two versions:
+  %
+  \begin{equation*}
+    \infer{
+      \eqtype{}{\symA}{\symB}
+    }{
+      \eqtype{}{\symB}{\symA}
+    }
+    %
+    \qquad\qquad
+    %
+    \infer{
+      \istype{}{\symA}
+      \\
+      \istype{}{\symB}
+      \\
+      \eqtype{}{\symA}{\symB}
+    }{
+      \eqtype{}{\symB}{\symA}
+    }
+  \end{equation*}
+  %
+  The left-hand one is not tight and is presuppositive, and the right-hand one is tight and presuppositive.
+  \end{enumerate}
+\end{example}
+
+\begin{proposition}
+  The congruence rule associated to an acceptable object rule is acceptable.
+\end{proposition}
+%
+\begin{proof}
+  Let~$R$ be a tight and presuppositive raw object rule over a raw type theory~$T$ with premises $\famtuple{\Gamma_i \types J_i}{i \in I}$.
+  %
+  There exists a bijection~$\beta_R$ between object premises of~$R$ and the arguments of~$\arity R$.
+
+  \cref{def:congruence-rule} lays out the associated congruence rule~$\congrule{R}$. Its arity is $\arity{\congrule{R}} = \arity R + \arity R$ and its premises are indexed by $I + I + I_{\ob}$, where $I_{\ob}$ is the set of object premises of~$R$.
+  The bijection $\beta_{\congrule{R}}$ witnessing tightness of~$\congrule{R}$ is given by
+  %
+  \begin{equation*}
+    \beta_{\congrule{R}} (\inl(i)) \defeq \inl(\beta_R(i))
+    \qquad\text{and}\qquad
+    \beta_{\congrule{R}} (\inr(j)) \defeq \inr(\beta_R(j)).
+  \end{equation*}
+  %
+  Let us verify that the properties for tightness of~$\congrule{R}$ required in \cref{def:tight-rule} follow directly from the tightness of~$R$.
+  %
+  For any $\inl(i) \in  \args {\arity{\congrule{R}}}$:
+  %
+  \begin{enumerate}
+
+  \item[\eqref{item:tight-rule-ctx}] The context of the premise $\beta_{\congrule{R}}(\inl(i)) = \inl(\beta_R(i))$ is $\act \ell \Gamma_i$. The signature map~$\ell : \mvextend{\Sigma}{\arity R} \to \mvextend{\Sigma}{\arity{\congrule{R}}}$ does not change the underlying scope of~$\Gamma_i$, and thus~$\act \ell \Gamma_i$ has the same underlying scope as~$\Gamma_i$, which equals $\argbinder {\arity R} i$ because~$R$ is tight. Furthermore, $\argbinder {\arity R} i = \argbinder {\arity{\congrule{R}}} (\inl(i))$, as required.
+
+  \item[\eqref{item:tight-rule-jf}] The premise~$\beta_{\congrule{R}}(\inl(i))$ has judgement form~$\argclass{\arity{\congrule{R}}}{\inl(i)}$ by the analogous reasoning.
+
+  \item[\eqref{item:tight-rule-hd}] The head of the premise~$\beta_{\congrule{R}}(\iota_i(i))$ is~$\act \ell e$ where $e = \synmeta{i}(\fammap{\synvar{j}}{j \in \argbinder{\arity{R}}{i}})$ by tightness of~$R$. We need to show that $\act \ell e = \synmeta{\inl(i)}(\fammap{\synvar{j}}{j \in \argbinder{\arity{\congrule{R}}}{\inl(i)}})$, but this equation holds by the definitions of~$\ell$ and of~$\arity{\congrule{R}}$.
+  \end{enumerate}
+  %
+  The case of $\inr(j) \in \args {\arity{\congrule{R}}}$ is symmetric.
+
+  We also need to show that all presuppositions of the premises and the conclusion of~$\congrule{R}$ are derivable in~$T_{\congrule{R}}$ from the premises of~$\congrule{R}$, where~$T_{\congrule{R}} = \act {\inl{}} \circ T$ is the translation of~$T$ along $\inl : \Sigma \to \mvextend \Sigma {\arity{\congrule{R}}}$.
+
+  Consider the premise $\Gamma_{\inl(i)} \types J_{\inl(i)}$ at index $\inl(i)$ for some $i \in I$. By \cref{prop:presuppositions-action-signature-map}, a presupposition of this premise is a presupposition $P = (\Gamma_i \types J')$ of the corresponding premise in~$R$, translated along the signature map~$\ell$.
+  %
+  By presuppositivity of~$R$, the judgement~$P$ is derivable from~$T_R = \act {\inl{}} \circ T$, the translation of~$T$ along $\inl{} : \Sigma \to \mvextend \Sigma {\arity R}$. By \cref{cor:derivations-functorial-signature-maps}, we can translate such a derivation of~$P$ along~$\act \ell$, yielding a derivation in~$T' = \act \ell \circ T_R$, where~$T'$ is~$T_R$ translated along~$\ell$. But $T' = \act \ell \circ T_R = \act \ell \circ \act {\inl{}} \circ T = \act {\inl{}} T = T_{\congrule{R}}$, so we obtain a derivation in the correct theory.
+
+  The case of a premise indexed by $\inr(j)$ with $j \in I$ is similar, but the last step requires translation along the signature map $r = id_{\mvextend \Sigma {\arity R}} + \inr$ instead, mapping the metavariable symbols of $\arity R$ to the right-hand side metavariables of~$\congrule{R}$.
+
+  A premise~$P$ indexed by $\iota_2(k)$ is an equality associated to the $k$-th object premise of~$R$. The presuppositions of~$P$ are derived by the corresponding object premises~$\inl(k)$ and~$\inr(k)$, and in the case of a term equation, the presupposition of the left-hand side.
+
+  A presupposition of the conclusion is derivable by appeal to the rule~$R$ itself for left and right hand side of the equation. In case~$\congrule{R}$ is a term equation, the type judgement arising as presupposition of the conclusion of~$R$ is derivable in~$T_R$ by presuppositivity of~$R$, and can be translated along~$\act \ell$ in the same way that we treated the left-hand copies of the premises.
+\end{proof}
+
+\begin{proposition}%
+  \label{prop:structural-rules-acceptable}
+  The raw structural rules, i.e., the equivalence relation rules and the conversion rules are acceptable for any type theory.
+\end{proposition}
+
+\begin{proof}
+  Tightness is obvious. Presuppositivity is obvious for all but the conclusion of the equality conversion rule $\eqterm{}{\symb{s}}{\symb{t}}{\symB}$, which immediately follows from the ordinary conversion rule for term judgements.
+\end{proof}
+
+
+\subsection{Acceptable type theories}
+\label{sec:acceptable-type-theories}
+
+It may happen that a raw type theory is flawed, even though each of its rules is acceptable. For instance, we might simply forget to state a rule governing one of the symbols, or provide two contradicting rules for the same symbol. Thus we also need a notion of acceptability of a raw type theory.
+
+\begin{definition}%
+  \label{def:symbol-rule}%
+  Suppose $\Sigma$ is a signature and $S \in \Sigma$ has arity $\arity{S}$.
+  %
+  The \defemph{generic application of~$S$} is the expression
+  %
+  \begin{equation*}
+     \genapp{S} \defeq
+     S(\fammap
+         {\synmeta{i}(\tuple{\synvar{j}}{j \in \argbinder {\alpha_S} i})}
+         {i \in \args \arity{S}}
+     ).
+  \end{equation*}
+  %
+  We say that an inference rule~$R$ is a \defemph{symbol rule for~$S$} when its arity is $\arity{S}$, the judgement form of the conclusion is the syntactic class of~$S$, and its head is $\genapp{S}$.
+\end{definition}
+
+\begin{definition}
+  \label{def:theory-good-properties}%
+  A raw type theory $T$ over~$\Sigma$ is:
+  %
+  \begin{enumerate}
+  \item \defemph{tight} if its rules are tight and there is a bijection $\beta$ from the index set of~$\Sigma$ to the object rules of~$T$ such that, for every symbol $S$ of~$\Sigma$, $\beta(S)$ is a symbol rule for~$S$;
+  \item \defemph{presuppositive} if all of its rules are presuppositive over $T$;
+  \item \defemph{substitutive} if all its rules have empty conclusion context; and
+  \item \defemph{congruous} if for every object rule of~$T$ the associated congruence rule (cf.~\cref{def:congruence-rule}) is a rule of~$T$.
+  \end{enumerate}
+  %
+  A raw type theory is \defemph{acceptable} if it enjoys all of these properties.
+\end{definition}
+
+% NB: We require that the congruence rules be specific rules of T so that arguments
+% by induction on the derivation may assume congruence rules are there directly.
+% (I don't know if this actually matters.)
+
+The definition omits a common criterion for being ``reasonable'', namely there being a well-founded order that prevents cyclic references between parts of the theory. We address well-foundedness separately in \cref{sec:well-founded-type-theories}, and provide a couple of examples showing how cyclic references may appear in an acceptable type theory.
+
+\begin{example}
+  \label{ex:cyclic-quantifier}%
+  Let $\symb{Q}$ be a quantifier-like type symbol which takes a type and a term, and binds one variable in the term, with the raw rule
+  %
+  \begin{equation*}
+    \infer{
+      \istype{}{\symA}
+      \\
+      \isterm
+        {\synvar{0} \of \symb{Q}(\symA, \symb{t}(\synvar{0}))}
+        {\symb{t}(\synvar{0})}
+        {\symA}
+    }{
+      \istype{}{\symb{Q}(\symA, \symb{t}(\synvar{0}))}
+    }
+  \end{equation*}
+  %
+  The context in the second premise is \emph{not} cyclic because $\symb{Q}$ binds $\synvar{0}$, but the premise itself is cyclic because the term metavariable $\symb{t}$ is introduced in a context that mentions it, and the rule is only presuppositive thanks to itself.
+  %
+  Even so, the rule can still be used to derive judgements. For example, for any
+  $\isterm{}{t}{A}$ we can form the type $\symb{Q}(A, t)$.
+  %
+  It is not clear what one would do with such rules, but we have no reason to banish them outright.
+\end{example}
+
+
+\begin{example}
+  \label{ex:type-in-type}%
+  The second example of cyclic references is a Tarski-style universe that contains itself, formulated as follows.
+  %
+  Let $\symb{u}$ be a term constant and $\symb{El}$ a type symbol taking one term argument, with the raw rules
+  %
+  \begin{mathpar}
+    \infer{
+    }{
+      \isterm{}{\symb{u}}{\symb{El}(\symb{u})}
+    }
+
+    \infer{
+      \isterm{}{\symb{a}}{\symb{El}(\symb{u})}
+    }{
+      \istype{}{{\symb{El}(\symb{a})}}
+    }
+  \end{mathpar}
+  %
+  Think of $\symb{u}$ as the code of the universe $\symb{El}(\symb{u})$ that contains itself, and $\symb{El}$ as the constructor taking codes to types. The rules themselves are not cyclic,
+  and the type theory comprising them and the associated congruence rules is acceptable. However, in order to derive $\istype{}{\symb{El}(\symb{u})}$, which is a presupposition for both rules, we need both rules.
+  %
+  In this case the cycles can be broken easily enough: introduce a type constant $\istype{}{\symb{U}}$ and the equation $\eqtype{}{\symb{U}}{\symb{El}(\symb{u})}$, then use $\symb{U}$ in place of $\symb{El}(\symb{u})$ in the above rules.
+  %
+  In \cref{sec:well-founded-replacement} we shall provide a general method for removing cyclic dependencies between rules by introduction of new symbols.
+\end{example}
+
+
+\subsection{Derivability of presuppositions}
+
+Our first meta-theorem is a fairly easy one, giving a property that is always desired but not often explicitly discussed.
+
+\begin{theorem}[Presuppositions theorem]
+  \label{thm:presuppositions}%
+  Let $T$ be a raw type theory with all rules weakly presuppositive.
+  %
+  If a judgement is derivable over $T$, then so are all its presuppositions.
+\end{theorem}
+
+\begin{proof}
+  We proceed by induction on derivations $D$ over~$T$.
+
+  If $D$ ends with a variable rule (\cref{def:variable-rule}), then the only presupposition appears directly as the premise of the rule, so we may re-use its subderivation.
+
+  If $D$ ends with a substitution rule (\cref{def:substitution-rule}), then its conclusion must be $\Delta \types \tca{f} J$ for some substitution~$f : \Delta \to \Gamma$ and judgement~$\Gamma \types J$.
+  %
+  By \cref{prop:presuppositions-action-substitution}, each presupposition of the conclusion is $\Delta \types \tca{f} J'$ for some presupposition $\Gamma \types J'$ of $\Gamma \types J$.
+  %
+  But $\Gamma \types J$ is a premise of the last rule of $D$, so by induction we have a derivation $D'$ of $\Gamma \types J'$.
+  %
+  So we  can apply the substitution rule with $\Gamma \types J'$ (derived by $D'$) and the same substitution $f$ (with its premises derived as in $D$) to get the desired derivation of $\Delta \types \tca{f} J'$.
+  
+  Similarly, if $D$ ends with an equality substitution rule (\cref{def:equality-substitution-rule}), substituting an pair $f,g : \Delta \to \Gamma$ into a judgement $\Gamma \types J$, each presupposition of the conclusion can be derived by either a substitution (along $f$ or $g$ individually) or an equality substitution (along $f,g$) into some presupposition of $\Gamma \types J$.
+
+  The equivalence and conversion rules (\cref{def:equivalence-relation-rule,def:conversion-rule}) are presuppositive by \cref{prop:structural-rules-acceptable}, so we treat them together with the specific raw rules of~$T$.
+
+  If $D$ ends with an instance $\act{(I,\Gamma)} R$ of a raw rule $R$ (either specific or structural), then its conclusion is of the form $\act{(I,\Gamma)} \Delta \types \act{I} J$, where $\Delta \types J$ is the conclusion of~$R$.
+  %
+  Now \cref{prop:presuppositions-action-instantiation} tells us that each presupposition of the conclusion is an instantiation $\act{(I,\Gamma)} \Delta \types \act{I} J'$ of some presupposition $\Delta \types J'$ of $\Delta \types J$.
+  %
+  Since $R$ is weakly presuppositive, $\Delta \types J'$ is derivable from the premises of~$R$ plus their presuppositions.
+  %
+  So by \cref{cor:instantiation-of-derivations}, $\act{(I,\Gamma)} \Delta \types \act{I} J'$ is derivable from the premises of $\act{(I,\Gamma)} R$ plus their presuppositions, which in turn are derivable by induction.
+\end{proof}
+
+%%% Substitution elimination is long, so we put it in a separate file
+\input{substitution.tex}
+
+
+\subsection{Uniqueness of typing}
+
+Whether it is desirable for a term to have many types depends on one's motivations, but certainly in our setting, where the terms record detailed information about premises, we should expect a term to have at most one type, which we prove here.
+
+\begin{theorem}
+  \label{thm:tight-uniqueness-of-typing}
+  %
+  If a tight, substitutive raw type theory $T$ derives $\istype \Gamma A$, $\istype \Gamma B$, $\isterm \Gamma t A$ and $\isterm \Gamma t B$ then it also derives $\eqtype \Gamma A B$.
+\end{theorem}
+
+\begin{proof}
+  By \cref{thm:elimination-substitution} it suffices to prove the claim for substitution-free derivations.
+  %
+  % The precise statement we prove is as follows:
+  % %
+  % \begin{quote}
+  %   For all substitution-free derivations $D_A$, $D_B$, $D_1$ and $D_2$,
+  %   and for all $\Gamma$, $t$, $A$, $B$,
+  %   if the conclusion of $D_A$ is $\istype \Gamma A$
+  %   the conclusion of $D_B$ is $\istype \Gamma B$,
+  %   the conclusion of $D_1$ is $\isterm \Gamma t A$,
+  %   and the conclusion of $D_2$ is $\isterm \Gamma t B$,
+  %   then there exists a derivation of $\eqtype \Gamma A B$.
+  % \end{quote}
+  % %
+  Suppose we have derivations $D_A$, $D_B$, $D_1$ and $D_2$:
+  %
+  \begin{mathpar}
+    \infer
+    {D_A}
+    {\istype{\Gamma}{A}}
+
+    \infer
+    {D_B}
+    {\istype{\Gamma}{B}}
+
+    \infer
+    {D_1}
+    {\isterm{\Gamma}{t}{A}}
+
+    \infer
+    {D_2}
+    {\isterm{\Gamma}{t}{B}}
+  \end{mathpar}
+  %
+  The proof proceeds by a double induction on the derivations $D_1$
+  and $D_2$.
+
+  Consider the case where $D_1$ ends with a conversion:
+  %
+  \begin{equation*}
+  \infer
+    {    \infer {D_{1,A'}} {\istype \Gamma {A'}}
+    \and \infer {D_{1,A}} {\istype \Gamma A}
+    \and \infer {D_{1,t}} {\isterm \Gamma t {A'}}
+    \and \infer {D_{1,\mathrm{eq}}} {\eqtype \Gamma {A'} A}}
+    {\isterm \Gamma t A}
+  \end{equation*}
+  %
+  We apply the induction hypothesis to $D_{1,t}$ and $D_2$ to derive $\eqtype \Gamma {A'} {B}$. The desired $\eqtype \Gamma A B$ now follows from $D_{1,\mathrm{eq}}$ by symmetry and transitivity of equality.
+  %
+  The case where $D_2$ ends with a conversion is symmetric, except that it does not require the use of symmetry.
+
+  Consider the case where $D_1$ ends with a variable rule:
+  %
+  \[ \infer {D_1'}
+    {\infer {\istype \Gamma {\Gamma_j}} {\isterm \Gamma {\synvar j}{\Gamma_j}}}
+  \]
+  %
+  Because $T$ is tight $D_2$ must end with a variable or a conversion rule. We have already dealt with the latter one.
+  If~$D_2$ ends with a variable rule, then $A = \Gamma_j = B$, and we may conclude $\eqtype{\Gamma}{A}{B}$ by reflexivity.
+
+  In the remaining case $D_1$ and $D_2$ both end with instantiations of specific rules of~$T$.
+  Let $\beta$ be the map which takes each symbol $S \in \Sigma$ to the corresponding symbol rule in~$T$.
+  There is a unique symbol $S \in \Sigma$, such that $D_1$ and $D_2$ both end with instantiations of $\beta(S)$:
+  %
+  \begin{mathpar}
+    \inferrule{
+      D_1
+    }{
+      \isterm \Gamma {\act I S(\fammap{\synmeta{i}}{i \in \args S})} {\act I C}
+    }
+
+    \inferrule{
+      D_2
+    }{
+      \isterm \Gamma {\act J S(\fammap{\synmeta{j}}{j \in \args S})} {\act J C}
+    }
+  \end{mathpar}
+  %
+  Of course, $\act I C$ is just $A$ and $\act J C$ is $B$, and both heads are equal to~$t$, from which it follows that
+  %
+  \begin{equation*}
+    S(\fammap{\act I {\synmeta i}}{i \in \args S}) = S(\fammap{\act J {\synmeta i}}{i \in \args S}),
+  \end{equation*}
+  %
+  and so $I$ and $J$ are equal because they match on every $i \in \args S$.
+  %
+  Thus $A = \act I C = \act J C = B$, and we may derive $\eqtype \Gamma A B$ by reflexivity.
+\end{proof}
+
+We record a more economical version of uniqueness of typing, which one can afford in reasonable situations.
+
+\begin{corollary}
+  \label{cor:accaptable-uniqueness}
+  %
+  If an acceptable type theory derives $\isterm{\Gamma}{e}{A}$ and $\isterm{\Gamma}{e}{B}$ then it also derives
+  $\eqtype{\Gamma}{A}{B}$.
+\end{corollary}
+
+\begin{proof}
+  Apply \cref{thm:presuppositions} to $\isterm{\Gamma}{e}{A}$ and $\isterm{\Gamma}{e}{B$} to obtain
+  $\istype{\Gamma}{A}$ and $\istype{\Gamma}{B}$, and conclude by \cref{thm:tight-uniqueness-of-typing}.
+\end{proof}
+
+Acceptability also easily gives us uniqueness of typing for term equalities.
+
+\begin{corollary}
+  If an acceptable type theory derives $\eqterm{\Gamma}{s}{t}{A}$ and $\eqterm{\Gamma}{s}{t}{B}$ then it also derives $\eqtype{\Gamma}{A}{B}$.
+\end{corollary}
+
+\begin{proof}
+  Again, apply \cref{thm:presuppositions} to get $\istype{\Gamma}{A}$ and $\istype{\Gamma}{B}$, and conclude by \cref{thm:tight-uniqueness-of-typing}.
+\end{proof}
+
+
+\subsection{An inversion principle}
+
+Given the fact that a judgement $\Gamma \types J$ is derivable, to what extent can a derivation of it be constructed just from the information given in the judgement? We show in this section that, for sufficiently well-behaved type theories, one can read off the proof-relevant part of a derivation from the head of~$J$. The proof-irrelevant parts are the applications of conversion rules, and subderivations of equalities. The former may be arranged to always appear just once after variable and symbol rules, while the latter must be dealt with on a case-by-case basis, as a particular type theory may or may not possess an algorithm that checks derivability of equalities.
+
+When we attempt to reconstruct a derivation from a judgement, the first obstacle we face is what types should be given to the subterms appearing in a judgement. For the variables the answer is clear, while for symbol expressions it is natural to use the types dictated by the corresponding rules, as follows.
+
+\begin{definition}
+  Let $T$ be a tight raw type theory over $\Sigma$ and $\beta$ the assignment of rules to the symbols of~$\Sigma$.
+  %
+  Thus for each term symbol $S \in \Sigma$, the conclusion of $\beta(S)$ takes the form
+  %
+  $
+    \isterm{}
+    {\genapp{S}}{A_S}
+  $
+  %
+  for some $A_S \in \Expr{\Ty}{\mvextend{\Sigma}{\arity{R}}}{\emptyscope}$.
+  %
+  Given a term expression $t \in \Expr{\Tm}{\Sigma}{\Gamma}$, its \defemph{natural type} $\natty{\Gamma}{t} \in \Expr{\Ty}{\Sigma}{\Gamma}$ is defined by
+  %
+  \begin{equation*}
+    \natty{\Gamma}{\synvar{i}} \defeq \Gamma_i
+    \qquad\text{and}\qquad
+    \natty{\Gamma}{S(e)} \defeq \act{e} A_S,
+  \end{equation*}
+  %
+  % e ∈ Π(i : arg S) Expr (cl_S i) Σ (Γ ⊕ bind_S i)
+  %
+  where we used $e \in \prod_{i \in \args S} \Expr{\argclass{S}{i}}{\Sigma}{\sumscope{\gamma}{\argbinder{S}{i}}}$ as an instantiation, so that $\act{e} A_S$ is the expression in which each $\synmeta{i}(e')$ is replaced by $\tca{(e')} e_i$.
+\end{definition}
+
+To put it more simply, the natural type of $S(e)$ is the type one obtains by applying the symbol rule for~$S$ to the premises determined by~$e$.
+
+\begin{theorem}[Inversion principle]
+  \label{thm:inversion-principle}%
+  Let $T$ be an acceptable type theory over~$\Sigma$.
+  %
+  \begin{enumerate}
+
+  \item If $T$ derives $\isterm{\Gamma}{\synvar{i}}{A}$ then it does so by an application of a variable rule, followed by a conversion:
+    %
+    \begin{equation*}
+      \infer{
+        \infer{D'}{\isterm{\Gamma}{\synvar{i}}{\Gamma_i}}
+        \\
+       \infer{D''}{\eqtype{\Gamma}{\Gamma_i}{A}}
+      }{
+        \isterm{\Gamma}{\synvar{i}}{A}
+      }
+    \end{equation*}
+    %
+  \item If $T$ derives $\isterm{\Gamma}{S(e)}{A}$ then it does so by an application of the symbol rule for~$S$, followed by a conversion:
+    %
+    \begin{equation*}
+      \infer{
+        \infer{D'}{\isterm{\Gamma}{S(e)}{\natty{\Gamma}{S(e)}}}
+        \\
+       \infer{D''}{\eqtype{\Gamma}{\natty{\Gamma}{S(e)}}{A}}
+      }{
+        \isterm{\Gamma}{S(e)}{A}
+      }
+    \end{equation*}
+    %
+  \item If $T$ derives $\istype{\Gamma}{S(e)}$ then it does so by an application of the symbol rule for~$S$.
+  \end{enumerate}
+  %
+\end{theorem}
+
+\begin{proof}
+  Let $T$ be an acceptable type theory over~$\Sigma$, and $\beta$ the assignment of symbol rules to the symbols of~$\Sigma$.
+  %
+  To establish the first two claims, we proceed by induction on a substitution-free derivation $D$, which exists by \cref{thm:elimination-substitution}.
+
+  If $D$ ends with a variable rule,
+  %
+  \begin{equation*}
+    \infer{
+      \infer{D}{\istype{\Gamma}{\Gamma_i}}
+    }{
+      \isterm{\Gamma}{\synvar{i}}{\Gamma_i}
+    }
+  \end{equation*}
+  %
+  then we obtain the desired derivation by attaching a dummy conversion rule:
+  %
+  \begin{equation*}
+    \infer{
+      \infer{
+        \infer{D}{\istype{\Gamma}{\Gamma_i}}
+      }{
+        \isterm{\Gamma}{\synvar{i}}{\Gamma_i}
+      }
+      \\
+      \infer{
+        \infer{D}{\istype{\Gamma}{\Gamma_i}}
+      }{
+        \eqtype{\Gamma}{\Gamma_i}{\Gamma_i}
+      }
+    }{
+      \isterm{\Gamma}{\synvar{i}}{\Gamma_i}
+    }
+  \end{equation*}
+  %
+  Otherwise, $D$ ends with an application of the conversion rule
+  %
+  \begin{equation*}
+    \infer{
+      \infer{D'}{\isterm{\Gamma}{\synvar{i}}{B}}
+      \\
+      \infer{D''}{\eqtype{\Gamma}{B}{A}}
+    }{
+      \isterm{\Gamma}{\synvar{i}}{A}
+    }
+  \end{equation*}
+  %
+  We apply the induction hypothesis to $D'$ to obtain a derivation of the form
+  %
+  \begin{equation*}
+    \infer{
+      \infer{D^*}{\isterm{\Gamma}{\synvar{i}}{\Gamma_i}}
+      \\
+      \infer{D^{**}}{\eqtype{\Gamma}{\Gamma_i}{B}}
+    }{
+      \isterm{\Gamma}{\synvar{i}}{B}
+    }
+  \end{equation*}
+  %
+  Using the transitivity rule, we combine $D^{**}$ and $D''$ into a derivation of $\eqtype{\Gamma}{\Gamma_i}{A}$, which can then be used together with $D^{*}$ to get the desired form of derivation.
+
+  If $D$ ends with an application of the symbol rule $\beta(S)$,
+  %
+  \begin{equation*}
+    \infer{D'}{\isterm{\Gamma}{S(e)}{\natty{\Gamma}{S(e)}}},
+  \end{equation*}
+  %
+  then by \cref{thm:presuppositions} there is a derivation $D''$ of the presupposition $\istype{\Gamma}{\natty{\Gamma}{S(e)}}$. We apply reflexivity to $D''$ to obtain $\eqtype{\Gamma}{\natty{\Gamma}{S(e)}}{\natty{\Gamma}{S(e)}}$, and then conversion to get the desired derivation.
+  %
+  Otherwise, $D$ ends with an application of a conversion rule, in which case we proceed as in the variable case.
+
+  The third claim is trivial, because $\beta(S)$ is the only rule which can be instantiated to have the conclusion $\istype{\Gamma}{S(e)}$, apart from substitution rules, which we have dispensed with.
+\end{proof}
+
+The above theorem may be applied repeatedly to obtain a canonical form of the proof-relevant part of a derivation. The missing subderivations of equalities must be provided by other means. Also notice that it is easy enough to avoid insertion of unnecessary appeals to conversion rules along reflexivity.
+
+A useful consequence of \cref{thm:inversion-principle} is the fact that a type of a term may be calculated directly from the term (and the symbol rules), as long as it has one.
+
+\begin{corollary}
+  In an acceptable type theory, a typeable term has its natural type.
+\end{corollary}
+
+\begin{proof}
+   Whenever $\isterm{\Gamma}{e}{A}$ is derivable, then so is $\isterm{\Gamma}{e}{\natty{\Gamma}{e}}$ because its derivation appears as a subderivation in the statement of
+   \cref{thm:inversion-principle}.
+\end{proof}
+
+
+
+% \subsection{Alternative forms of rules}
+
+% \placeholder{Structural rules: Certain specific economical forms of structural rules are equivalent to our paranoid forms}
+
+% \placeholder{Logical rules: “Economical forms” of logical rules (defined in some general way) are equivalent to paranoid forms.}
+
+% \begin{theorem}
+%   Suppose $\mathcal{T}$ is a presuppositive type theory. Let $R$ be a rule of $\mathcal{T}$ and let $P$ be a premise of $R$ which is already a presupposition of one of the other premises of~$R$. Let $R'$ be the rule which is like $R$, but with $P$ removed. Let $\mathcal{T}'$ be the type theory in which $R$ is replaced with~$R'$. Then $\mathcal{T}'$ is presuppositive and it derives the same judgements as~$\mathcal{T}$.
+% \end{theorem}
+
+% TODO Is the above theorem true in any sense? Is it about raw type theories, or some other level of type theories? Do we really need to roll the assumption that the theory is presuppositive with the rest of the induction? Yes, if the proof relies on the fact that the theory enjoys the presupposition theorem, or else we will not be able to iterate applications of the theorem to make multiple changes to a type theory.
+
+
+% \subsection{Counterexamples}
+
+% Possibly give some pathological theories here, showing some badly-behaved raw type theories failing the given conditions?
