@@ -337,7 +337,7 @@
 % \rotFPtop        \rotFPbot          Effect
 % 0pt plus 1fil    0pt plus 1fil      figure/table appears in middle (default value)
 % 0pt              0pt plus 1fil      figure/table appears with its top nearest the edge of the page
-% 0pt plus 1fil    0pt plus 2fil      figure/table’s bottom appears twice as far from the edge as the top does
+% 0pt plus 1fil    0pt plus 2fil      figure/tableÂ’s bottom appears twice as far from the edge as the top does
 
 \@ifpackageloaded{rotating}{%
 %
@@ -750,7 +750,7 @@
     \end{minipage}}
   \fi
   \par \nobreak
-  \vskip 10.5\baselineskip% 2.5 less than the first line of text
+  \vskip 6\baselineskip% 2.5 less than the first line of text
   }
   \chapterauthor{\relax}%
 }
@@ -779,7 +779,7 @@
     \@ch@pterauthor
    \end{minipage}}
   \par \nobreak
-  \vskip 10.5\baselineskip % 2.5 less than the first line of text
+  \vskip 6\baselineskip % 2.5 less than the first line of text
   }\chapterauthor{\relax}%
 }
 %
@@ -897,7 +897,7 @@
 %
 \ifAJW@indentsty
  \def\section{\@startsection {section}{1}{\AJW@indent}
-  {-30\p@ \@plus-7\p@ \@minus-3.5\p@}{8\p@}{\Aheadsize\bfseries\AJW@hangraggedright}}
+  {-30\p@ \@plus-7\p@ \@minus-3.5\p@}{4\p@}{\Aheadsize\bfseries\AJW@hangraggedright}}
  \def\subsection{\@startsection{subsection}{2}{\AJW@indent}
   {-20\p@ \@plus-7\p@ \@minus-3.5\p@}{5\p@}{\large\bfseries\AJW@hangraggedright}}
  \def\subsubsection{\@startsection{subsubsection}{3}{\AJW@indent}
@@ -2377,22 +2377,19 @@
  \let\@mkboth=\markboth
  \def\@oddfoot {}
  \def\@evenfoot{}
+ \def\@oddfoot {\hfil \sc \thepage \hfil}
+ \def\@evenfoot{\hfil \sc \thepage \hfil}
  \ifAJW@indentsty
   \ifdim\AJW@indent=\z@
-   \def\@oddhead {\listsize\itshape \rightmark \hfill \rm \thepage}
-   \def\@evenhead{\listsize\rm \thepage \hfill \itshape \leftmark}
+   \def\@oddhead {}
+   \def\@evenhead{}
   \else
-   \def\@oddhead {\listsize
-                  \hspace*{\AJW@indent}\itshape \rightmark \hfil \rm\thepage}
-   \def\@evenhead{\listsize
-                  \makebox[\z@][l]{\rm \thepage}\hspace*{\AJW@indent}\itshape
-                  \leftmark \hfill}
+   \def\@oddhead {}
+   \def\@evenhead{}
   \fi
  \else
-  \def\@oddhead {\listsize
-                 \hfil \itshape \rightmark \hfil \makebox[\z@][r]{\rm \thepage}}
-  \def\@evenhead{\listsize
-                 \makebox[\z@][l]{\rm \thepage}\hfil \itshape \leftmark \hfil}
+   \def\@oddhead {}
+   \def\@evenhead{}
  \fi
  \ifAJW@confsty
   \def\chaptermark##1{}
