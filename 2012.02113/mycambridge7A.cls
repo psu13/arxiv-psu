@@ -805,10 +805,10 @@
 %2
 % this code just added
       \ifAJW@oneappendix
-        \addcontentsline{toc}{chapter}{\protect\AJW@nonumberline{}#1}
+        \addcontentsline{toc}{chapter}{\protect\numberline{}#1}
       \else
         \ifAJW@appendix
-          \addcontentsline{toc}{chapter}{\protect\AJW@numberline{\thechapter}#1}
+          \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#1}
         \else
           \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#1}
         \fi
@@ -833,10 +833,10 @@
       \fi
     \else %if single-author
       \ifAJW@oneappendix
-        \addcontentsline{toc}{chapter}{\protect\AJW@nonumberline{}#1}
+        \addcontentsline{toc}{chapter}{\protect\numberline{}#1}
       \else
         \ifAJW@appendix
-          \addcontentsline{toc}{chapter}{\protect\AJW@numberline{\thechapter}#1}
+          \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#1}
         \else
           \addcontentsline{toc}{chapter}{\protect\numberline{\thechapter}#1}
         \fi
@@ -967,7 +967,7 @@
  \setcounter{chapter}{0}
  \setcounter{section}{0}
 % set tocdepth to chapter heads only whether multi-author or single-author
- \addtocontents{toc}{\protect\setcounter{tocdepth}{0}}
+ %\addtocontents{toc}{\protect\setcounter{tocdepth}{0}}
  \def\@chapapp{\appendixname}
  \def\thechapter {\Alph{chapter}}
  \def\thesection {\thechapter.\arabic{section}}
@@ -1515,11 +1515,11 @@
 \newdimen\AJW@toclmarg
 %\newdimen\AJW@tocfloatlmarg
 \ifAJW@confsty
- \setcounter{tocdepth}{0}
+% \setcounter{tocdepth}{0}
  \AJW@toclmarg 16\p@
 % \AJW@tocfloatlmarg 16\p@
 \else
- \setcounter{tocdepth}{1}
+% \setcounter{tocdepth}{1}
  \AJW@toclmarg 28\p@
 % \AJW@tocfloatlmarg 28\p@
 \fi
@@ -1631,7 +1631,7 @@
    \chapter*{\listfigurename}
    \addcontentsline{toc}{schapter}{{List of illustrations}}
  \normalsmall
- \setcounter{tocdepth}{1}
+% \setcounter{tocdepth}{1}
  \@starttoc{lof}
  \egroup
  \if@restonecol\twocolumn\fi
@@ -1668,7 +1668,7 @@
    \chapter*{\listtablename}
    \addcontentsline{toc}{schapter}{List of tables}
  \normalsmall
- \setcounter{tocdepth}{1}
+% \setcounter{tocdepth}{1}
  \@starttoc{lot}
  \egroup
  \if@restonecol\twocolumn\fi
@@ -1687,7 +1687,7 @@
    \chapter*{\listcontribname}
    \addcontentsline{toc}{schapter}{List of contributors}
  \normalsmall
- \setcounter{tocdepth}{1}
+% \setcounter{tocdepth}{1}
  \@starttoc{loc}
  \egroup
  \if@restonecol\twocolumn\fi
@@ -1700,7 +1700,7 @@
    \chapter*{\listcontribname}
    \addcontentsline{toc}{schapter}{List of contributors}
  \normalsmall
- \setcounter{tocdepth}{1}
+% \setcounter{tocdepth}{1}
  %\@starttoc{loc}
  \input{editedloc}
  \egroup
