@@ -1,0 +1,1586 @@
+%!TEX root = IntroArithGrps.tex
+
+\newif\ifwantindex \wantindexfalse
+ \wantindextrue     %% @@@
+
+\makeindex
+
+\newif\ifportable \portablefalse
+   \portabletrue %% @@@ make compatible with other systems that do not have my fonts
+
+\newif\ifappendix\appendixfalse
+\newif\iffn
+\newif\if@noindent
+\newif\ifnotappendixtoc 
+%%%% give the option to exclude sections from the Table of Contents
+%% 	by using the  \putintocfalse  flag
+\newif\ifputintoc \putintoctrue % can exclude some chapters/sections from TOC
+%% and to avoid setting marks by using the  \makemarksfalse  flab
+\newif\ifmakemarks \makemarkstrue
+
+\newif\ifstandassump\standassumpfalse	% cannot assume until we have stated it
+\newif\ifCC % (Creative Commons license at start of the chapter?)
+	\CCfalse % (not for preface and acknowledgments)
+
+%\usepackage[bookmarksopen=true,bookmarksopenlevel=0]{hyperref}
+\usepackage[capitalize]{cleveref}
+
+\usepackage{tikz, calc} 
+
+\input boxmatrix
+
+%\parskip=0pt plus 0.05pt \relax
+
+\listparindent=\normalparindent
+%%%%%%%%%%% want to allow listparindent to be nonzero
+\def\list#1#2{%
+  \ifnum \@listdepth >5\relax
+    \@toodeep
+  \else
+    \global\advance\@listdepth\@ne
+  \fi
+  \rightmargin\z@
+ % \listparindent\z@ % DWM 4-2015
+  \itemindent\z@
+  \csname @list\romannumeral\the\@listdepth\endcsname
+  \def\@itemlabel{#1}%
+  \let\makelabel\@mklab
+  \@nmbrlistfalse
+  #2\relax
+  \@trivlist
+  \parskip\parsep
+  \parindent\listparindent
+  \advance\linewidth -\rightmargin
+  \advance\linewidth -\leftmargin
+  \advance\@totalleftmargin \leftmargin
+  \parshape \@ne \@totalleftmargin \linewidth
+  \ignorespaces}
+
+
+%%%%%%%% don't want so much space before lists
+\def\@item[#1]{%
+  \if@noparitem
+    \@donoparitem
+  \else
+    \if@inlabel
+      \indent \par
+    \fi
+    \ifhmode
+      \unskip\unskip \par
+    \fi
+    \if@newlist
+      \if@nobreak
+        \@nbitem
+      \else
+        \addpenalty\@beginparpenalty
+        %\addvspace\@topsep % don't want so much space before lists
+        \addvspace{-\parskip}%
+      \fi
+    \else
+      \addpenalty\@itempenalty
+      \addvspace\itemsep
+    \fi
+    \global\@inlabeltrue
+  \fi
+  \everypar{%
+    \@minipagefalse
+    \global\@newlistfalse
+    \if@inlabel
+      \global\@inlabelfalse
+      {\setbox\z@\lastbox
+       \ifvoid\z@
+         \kern-\itemindent
+       \fi}%
+      \box\@labels
+      \penalty\z@
+    \fi
+    \if@nobreak
+      \@nobreakfalse
+      \clubpenalty \@M
+    \else
+      \clubpenalty \@clubpenalty
+      \everypar{}%
+    \fi}%
+  \if@noitemarg
+    \@noitemargfalse
+    \if@nmbrlist
+      \refstepcounter\@listctr
+    \fi
+  \fi
+  \sbox\@tempboxa{\makelabel{#1}}%
+  \global\setbox\@labels\hbox{%
+    \unhbox\@labels
+    \hskip \itemindent
+    \hskip -\labelwidth
+    \hskip -\labelsep
+    \ifdim \wd\@tempboxa >\labelwidth
+      \box\@tempboxa
+    \else
+      \hbox to\labelwidth {\unhbox\@tempboxa}%
+    \fi
+    \hskip \labelsep}%
+  \ignorespaces}
+%%%%%%%%%%%%%
+
+
+% Lucida leaves a little too much space after most math formulas
+\ifportable
+\newcommand{\mk}{}
+\else
+\mathsurround=-0.5pt
+\everymath={\kern-\mathsurround}
+\newcommand{\mk}{\mkern0.5mu}
+\fi
+
+%\usepackage{showkeys}
+
+% code from http://tex.stackexchange.com/a/100428/
+% to eliminate "Too many math alphabets" error
+\usepackage{etoolbox}
+\def\new@mathgroup{\alloc@8\mathgroup\mathchardef\@cclvi}
+\patchcmd{\document@select@group}{\sixt@@n}{\@cclvi}{}{}
+\patchcmd{\select@group}{\sixt@@n}{\@cclvi}{}{}
+\usepackage{bm} % bold-face mathematics
+
+\ifportable \else
+\usepackage[no-math]{fontspec} % \setmainfont, \newfontfamily and \fontspec 
+%%% Let's use Lucida font!
+%\usepackage{lucimatx}
+ \usepackage[LY1]{fontenc} 
+ \usepackage[expert, LY1, mylucidascale]{mylucidabr} % I adjusted the scaling
+\renewcommand{\nobreakspace}{\penalty10000\ }
+\fi
+
+
+%%%%%% eliminate pdftex warnings caused by minor incompatibility of cleveref with hyperref
+%%%%%% 	(clear \dth@counter, so hyperref does not make redundant hyperlink)
+\def\cref@thmoptarg[#1]#2#3#4{%
+  \ifhmode\unskip\unskip\par\fi%
+  \normalfont%
+  \trivlist%
+  \let\thmheadnl\relax%
+  \let\thm@swap\@gobble%
+  \thm@notefont{\fontseries\mddefault\upshape}%
+  \thm@headpunct{.}% add period after heading
+  \thm@headsep 5\p@ plus\p@ minus\p@\relax%
+  \thm@space@setup%
+  #2% style overrides
+  \@topsep \thm@preskip               % used by thm head
+  \@topsepadd \thm@postskip           % used by \@endparenv
+  \def\@tempa{#3}\ifx\@empty\@tempa%
+    \def\@tempa{\@oparg{\@begintheorem{#4}{}}[]}%
+  \else%
+    \refstepcounter[#1]{#3}%  <<< cleveref modification
+    \def\dth@counter{} % <<< correction for hyperref by DWM 8/2013
+    \def\@tempa{\@oparg{\@begintheorem{#4}{\csname the#3\endcsname}}[]}%
+  \fi%
+  \@tempa}
+
+\usepackage{graphicx, ifthen, amssymb, relsize} % upref?
+
+\usepackage[mathscr]{eucal}
+
+
+
+%% revise chapter headings
+
+\usepackage{color}
+\definecolor{gray}{gray}{0.4}
+\definecolor{ltgray}{gray}{0.9}
+
+
+\let\oldnoindent\noindent
+\renewcommand{\noindent}{\@noindentfalse\oldnoindent}
+
+\def\@afterheading{%
+\@nobreaktrue
+\@noindenttrue
+  \everypar{%
+  \if@noindent   \hskip-\parindent \@noindentfalse \fi %% DM 3-09: don't indent 1st line of section
+    \if@nobreak
+      \@nobreakfalse
+      \clubpenalty \@M
+      \if@afterindent \else
+        {\setbox\z@\lastbox}%
+      \fi
+    \else
+      \clubpenalty \@clubpenalty
+      \everypar{}%
+    \fi}\ignorespaces}
+
+
+\newlength{\tikzwidth}
+\newlength{\tikzheight} 
+
+\def\@makechapterhead#1{%
+\setbox0\hbox{\textsf{\Huge\bfseries Chapter \thechapter}%
+	\ifnum\thechapter=1 \hskip-5pt\fi % center title when last digit is 1
+	\ifnum\thechapter=11 \hskip-5pt\fi % center title when last digit is 1
+	\ifnum\thechapter=21 \hskip-5pt\fi % center title when last digit is 1
+	}%
+\setlength{\tikzwidth}{(\wd0 + 2cm)/2}%
+\setlength{\tikzheight}{(\ht0 + \dp0 + 30pt)/2}%
+\centerline{
+\begin{tikzpicture}[rounded corners=10pt, color=black!50]
+\filldraw (-\tikzwidth,-\tikzheight) rectangle (\tikzwidth,\tikzheight) ;
+\draw (0,-1pt) node[color=black!0]{\copy0};
+\end{tikzpicture}
+}
+\vbox{\vskip 2cm}
+  \begingroup
+  \fontsize{\@xxvpt}{25}\bfseries\centering
+    \mathversion{bold} \textsf{#1}\par \endgroup
+    \vskip2cm}
+
+\def\@makeappendixhead#1{%
+\vbox{\vskip 2cm}
+  \begingroup
+  \fontsize{\@xivpt}{18}\normalfont\centering
+  \textsf{\larger[2] Appendix \theappendix} \\
+    \bfseries\mathversion{bold} \textsf{#1}\par \endgroup
+    \vskip2cm}
+
+
+\def\@part[#1]#2{%
+ \refstepcounter{part}%
+  \addtocontents{toc}{\vskip0pt plus 3pt} 
+  \ifnum \c@secnumdepth >-2\relax 
+    \addcontentsline{toc}{part}{\partname\ \thepart.\ #1}%
+  \else
+    \addcontentsline{toc}{part}{#1}\fi
+  \begingroup\centering
+  \ifnum \c@secnumdepth >-2\relax
+       {\fontsize{30}{35}\bfseries
+         \textsf{\partname\ \thepart}} \vskip 80\p@ \fi
+  \fontsize{45}{60}\bfseries
+      \textsf{#1} \vfil\vfil\endgroup \newpage\thispagestyle{empty}}
+
+%\def\@spart#1{\addcontentsline{toc}{part}{\protect\noindent#1}%
+%  \begingroup\centering
+%  \fontsize{50}{60}\bfseries
+%     \textsf{#1} \vfil \endgroup  \newpage\thispagestyle{empty}}
+
+\def\@spart#1{%
+    \addtocontents{toc}{\vskip0pt plus 3pt} 
+  \ifnum \c@secnumdepth >-2\relax \refstepcounter{part}%
+    \addcontentsline{toc}{part}{#1}%
+  \else
+    \addcontentsline{toc}{part}{#1}\fi
+  \begingroup\centering
+	\fontsize{50}{60}\bfseries
+      \textsf{#1} \vfil\vfil\endgroup \newpage\thispagestyle{empty}}
+
+
+%% unnumbered chapters need to write different command in toc
+\let\l@schapter\l@chapter
+\newcommand{\schaptername}{}
+\def\@schapter#1{\typeout{#1}%
+  \let\@secnumber\@empty
+  \def\@toclevel{1}%
+  \ifputintoc
+  \ifx\chaptername\appendixname \@tocwriteb\tocappendix{chapter}{#1}%
+  \else \@tocwriteb\tocchapter{schapter}{#1}\fi % was \tocchapter{chapter}
+  \fi\global\putintoctrue
+  \chaptermark{#1}%
+  \addtocontents{lof}{\protect\addvspace{10\p@}}%
+  \addtocontents{lot}{\protect\addvspace{10\p@}}%
+  \@makeschapterhead{#1}\@afterheading}
+\newcommand{\toclevel@schapter}{0}
+
+
+% appendix should use "appendix" counter, not "chapter" counter
+\newcounter{appendix}
+\def\@chapter[#1]#2{\refstepcounter{\ifappendix appendix\else chapter\fi}%
+  \ifnum\c@secnumdepth<\z@ \let\@secnumber\@empty
+  \else\ifappendix \let\@secnumber\theappendix \else \let\@secnumber\thechapter \fi\fi
+  \typeout{\chaptername\space\@secnumber}%
+  \def\@toclevel{0}%
+  \ifappendix \@tocwriteb\tocappendix{appendix}{#2}%
+  \else \@tocwriteb\tocchapter{chapter}{#2}\fi
+  \chaptermark{#1}%
+  \addtocontents{lof}{\protect\addvspace{10\p@}}%
+  \addtocontents{lot}{\protect\addvspace{10\p@}}%
+  \@makechapterhead{#2}\@afterheading}
+\let\l@appendix\l@chapter
+
+
+%% add section sign (\S) at start of section heading
+\renewcommand{\@seccntformat}[1]{\S\csname the#1\endcsname.\enspace}
+
+% put bigskip before start of section
+\newcommand{\oldstartsection}{}
+\let\oldstartsection=\@startsection
+\renewcommand{\@startsection}{\bigbreak\oldstartsection}
+
+\newcommand{\optional}{\text{\smaller\normalfont (optional)}}
+\newcommand{\harder}{\text{\smaller\normalfont (\emph{harder})} }
+
+
+%\newcommand{\SpellOut}[1]{\ifcase \csname c@#1\endcsname 
+%\or One\or Two\or Three\or Four\or Five\fi}
+\renewcommand{\thepart}{\Roman{part}}
+
+% put quotation marks directly over a period or comma
+\newcommand{\zz}[1]{\setbox0\hbox{#1}{#1}\nobreak\hskip-\wd0\nobreak}
+
+% LaTeX puts too much space before and after displayed equations
+\AtBeginDocument{%
+\setlength{\abovedisplayskip}{0.25em plus 0.1em}
+\setlength{\belowdisplayskip}{0.25em plus 0.1em}
+}
+ 
+
+%%% set up the theorem environments
+
+\numberwithin{section}{chapter}
+\numberwithin{equation}{chapter}
+\numberwithin{equation}{section}
+
+\crefformat{page}{page~#2#1#3}
+\crefformat{section}{Section~#2#1#3}
+\crefmultiformat{section}{Sections~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+\crefformat{chapter}{Chapter~#2#1#3}
+\crefmultiformat{chapter}{Chapters~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+
+\crefname{section}{section}{sections}
+\Crefname{section}{Section}{Sections}
+\crefformat{section}{Section~#2#1#3}
+
+\crefname{subsection}{subsection}{sections}
+\Crefname{subsection}{Subsection}{Sections}
+\crefformat{subsection}{Subsection~#2#1#3}
+\crefmultiformat{subsection}{Subsections~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+
+\Crefname{table}{Table}{Tables}
+\crefname{table}{table}{tables}
+
+% swap theorem number to margin, and modify the style
+\def\thmhead@plain#1#2#3{%
+ \global\@noindentfalse
+  {\normalfont\@ifnotempty{#2}{(\thmnumber{#2})}}% I like parentheses around the theorem number
+  \thmname{\@ifnotempty{#2}{~}#1}%
+  \thmnote{ {\the\thm@notefont#3}}} % I removed the parentheses around the note
+\let\thmhead\thmhead@plain
+
+\def\th@definition{%
+ \global\@noindentfalse
+  \let\thm@indent\noindent % no indent
+  \thm@headfont{\bfseries}% heading font
+  \normalfont % body font
+}
+
+\def\th@remark{%
+ \global\@noindentfalse
+  \let\thm@indent\noindent % no indent
+  \thm@headfont{\itshape}% heading font
+  \normalfont % body font
+}
+
+\numberwithin{figure}{section}
+\renewcommand{\thefigure}{\thesection\Alph{figure}}
+\def\@captionheadfont{\normalfont\bf}
+\def\fnum@figure{{\scshape Figure} \thesection\Alph{figure}}
+\newcommand{\oldthefigure}{} 
+\crefformat{figure}{Figure~#2#1#3}
+\newcommand{\subfigurename}[1]{{\@captionheadfont\fnum@figure(#1)}}
+
+\newlength{\mythmpreskip}
+\mythmpreskip=6pt plus 2pt \relax
+\def\th@plain{%
+%%  \let\thm@indent\noindent % no indent
+%%  \thm@headfont{\bfseries}% heading font is bold
+%%  \thm@notefont{}% same as heading font
+%%  \thm@headpunct{.}% add period after heading
+%%  \let\thm@swap\@gobble
+ \thm@preskip\mythmpreskip % want slightly stretchable space before theorems
+%%  \thm@postskip\theorempreskipamount
+  \itshape % body font
+\thm@headsep=5pt plus1pt minus2pt\relax
+}
+
+\theoremstyle{plain}
+
+\newtheorem{thm}[equation]{Theorem}
+\newtheorem{mainthm}[equation]{Main Theorem}
+\newtheorem{major}[equation]{Major Theorem}
+\newtheorem{lem}[equation]{Lemma}
+\newtheorem{cor}[equation]{Corollary}
+\newtheorem{prop}[equation]{Proposition}
+\newtheorem{openproblem}[equation]{Open Problem}
+\newtheorem{egprop}[equation]{Example}
+\newtheorem{conj}[equation]{Conjecture}
+\newtheorem{keyfact}[equation]{Key Fact}
+\newtheorem{obs}[equation]{Observation}
+%\newtheorem{defnthm}[equation]{Definition and Theorem}
+
+
+\crefformat{equation}{Equation~(#2#1#3)}
+\crefformat{thm}{Theorem~#2#1#3}
+\crefformat{major}{Theorem~#2#1#3}
+\crefformat{mainthm}{Theorem~#2#1#3}
+\crefformat{lem}{Lemma~#2#1#3}
+\crefformat{cor}{Corollary~#2#1#3}
+\crefformat{prop}{Proposition~#2#1#3}
+\crefformat{openproblem}{Problem~#2#1#3}
+\crefformat{egprop}{Example~#2#1#3}
+\crefformat{conj}{Conjecture~#2#1#3}
+\crefformat{keyfact}{Key Fact~#2#1#3}
+%\crefformat{defnthm}{Definition~#2#1#3}
+
+\crefname{lem}{lemma}{lemmas}
+\Crefname{lem}{Lemma}{Lemmas}
+
+\crefname{major}{theorem}{theorems}
+\Crefname{major}{Theorem}{Theorems}
+
+\crefname{prop}{proposition}{propositions}
+\Crefname{prop}{Proposition}{Propositions}
+
+\crefname{thm}{theorem}{theorems}
+\Crefname{thm}{theorem}{theorems}
+
+\crefformat{exeri}{Exercise~#2#1#3} 
+\crefformat{exerii}{Exercise~#2#1#3}
+\crefformat{exeriii}{Exercise~#2#1#3}
+\crefmultiformat{exeri}{Exercises~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+\crefmultiformat{exerii}{Exercises~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+
+%\crefrangeformat{exeri}{Exercises~(#3#1#4)--(#5#2#6)}
+%
+%\crefmultiformat{exeri}{Exercises~#2#1#3}{, #2#1#3}{ and~#2#1#3}
+%\crefmultiformat{rem}{Remarks~#2#1#3}{, #2#1#3}{ and~#2#1#3}
+\crefmultiformat{thm}{Theorems~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+\crefmultiformat{lem}{Lemmas~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+\crefmultiformat{prop}{Propositions~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+\crefmultiformat{cor}{Corollaries~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+
+%\newcommand{\crefrangeconjunction}{--}
+
+
+\newtheoremstyle{namedplain}%
+{3pt plus 2pt}% Space above
+{3pt}% Space below
+{\itshape}% Body font
+{}% Indent amounti
+{\bfseries}% Theorem head font
+{.}% Punctuation after theorem head
+{.5em plus .1em minus .1em}% Space after theorem headi
+{\thmnumber{\normalfont(#2)}\thmname{\bf\@ifnotempty{#2}{~}#3}}% Theorem head spec (can be left empty, meaning `normal'
+
+\theoremstyle{namedplain}
+\newtheorem{namedthm}[equation]{\ignorespaces}
+\crefformat{namedthm}{Theorem~#2#1#3}
+\crefmultiformat{namedthm}{Theorems~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+
+\theoremstyle{definition}
+\newtheorem{standassump}[equation]{Standing Assumptions}
+\crefformat{standassump}{the Standing Assumptions~#2(#1)#3}
+
+
+
+\theoremstyle{definition}
+
+\newtheorem{defn}[equation]{Definition}
+\newtheorem{defns}[equation]{Definitions}
+\newtheorem*{defn*}{Definition}
+\newtheorem{notation}[equation]{Notation}
+\newtheorem{warn}[equation]{Warning}
+\newtheorem{warns}[equation]{Warnings}
+\newtheorem*{warn*}{Warning}
+\newtheorem{terminology}[equation]{Other terminology}
+\newtheorem*{terminology*}{Other terminology}
+\newtheorem{exmp}[equation]{Example}
+\newtheorem{eg}[equation]{Example}
+\newtheorem{egs}[equation]{Examples}
+\newtheorem{prob}[equation]{Problem}
+\newtheorem{assump}[equation]{Assumption}
+\newtheorem*{assump*}{Assumption}
+\newtheorem{assumps}[equation]{Assumptions}
+\newtheorem{problem}[equation]{Problem}
+\newtheorem*{reminder}{Reminder}
+\newtheorem{corrections}[equation]{Corrections}
+\newtheorem{other}[equation]{Other terminology}
+
+\crefformat{corrections}{Correction~#2#1#3} 
+\crefformat{defns}{Definition~#2#1#3} 
+\crefformat{warns}{Warning~#2#1#3} 
+\crefformat{terminology}{Terminology~#2#1#3} 
+\crefmultiformat{defn}{Definitions~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+
+\crefformat{eg}{Example~#2#1#3} 
+\crefmultiformat{eg}{Examples~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+\crefformat{egs}{Example~#2#1#3} 
+\crefmultiformat{egs}{Examples~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+\crefname{eg}{example}{examples}
+\Crefname{eg}{Example}{Examples}
+
+%\crefformat{defn}{Definition~#2#1#3}
+%\crefformat{notation}{Notation~#2#1#3}
+%\crefformat{terminology}{Terminology~#2#1#3}
+%\crefformat{exmp}{Example~#2#1#3}
+%\crefformat{eg}{Example~#2#1#3}
+\crefmultiformat{eg}{Examples~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+%\crefformat{prob}{Problem~#2#1#3}
+%\crefformat{assump}{Assumption~#2#1#3}
+%\crefformat{problem}{Problem~#2#1#3}
+%\crefformat{warn}{Warning~#2#1#3}
+%
+%\crefmultiformat{eg}{Examples~#2#1#3}{, #2#1#3}{ and~#2#1#3}
+
+
+\theoremstyle{remark}
+
+\newtheorem{rem}[equation]{Remark}       % \renewcommand{\therem}{}
+\newtheorem{rems}[equation]{Remarks}       % \renewcommand{\therem}{}
+\newtheorem*{rem*}{Remark}
+\newtheorem*{note}{Note}      % \renewcommand{\thenote}{}
+\newtheorem*{disclaimer}{Disclaimer}   
+
+%\crefformat{rem}{Remark~#2#1#3}
+\crefformat{rems}{Remark~#2#1#3}
+\crefmultiformat{rem}{Remarks~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+
+
+ \newcounter{case}
+ \newenvironment{case}[1][\unskip]{\refstepcounter{case}\em
+ \medbreak \noindent Case \thecase\ #1.\ }{\unskip\upshape}
+ \renewcommand{\thecase}{\arabic{case}}
+
+\crefformat{case}{Case~#2#1#3}
+\crefname{case}{case}{cases}
+\Crefname{case}{Case}{Cases}
+
+
+ \newcounter{subcase}
+ \newenvironment{subcase}[1][\unskip]{\refstepcounter{subcase}\em
+ \medbreak \noindent Subcase \thesubcase\ #1.\ }{\unskip\upshape}
+ \numberwithin{subcase}{case}
+
+\crefformat{subcase}{Subcase~#2#1#3}
+
+ \newcounter{step}
+ \newenvironment{step}[1][\unskip]{\refstepcounter{step}\em
+ \medskip \noindent Step \thestep\ #1.\ }{\unskip\upshape}
+ \renewcommand{\thestep}{\arabic{step}}
+
+\crefformat{step}{Step~#2#1#3}
+\crefmultiformat{step}{Steps~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+
+\newenvironment{claim}{\em
+ \medskip \noindent Claim.\ }{\unskip\upshape}
+ 
+ \newcounter{axiomnumber} \setcounter{axiomnumber}{0}
+  \renewcommand{\theaxiomnumber}{BG\arabic{axiomnumber}}
+ \newenvironment{axiomeqn}{\refstepcounter{axiomnumber}
+  \begingroup   \renewcommand{\theequation}{\theaxiomnumber}
+  \begin{equation}}
+   {\end{equation}\endgroup\addtocounter{equation}{-1}\ignorespaces}
+ 
+% may want a reference number on a proof
+ \newenvironment{numproof}[1][\proofname]{\par \normalfont
+ \refstepcounter{equation}
+  \topsep6\p@\@plus6\p@ \trivlist \itemindent\z@
+  \item[\hskip\labelsep(\theequation) \bfseries
+    #1\@addpunct{.}]\ignorespaces
+}{%
+  \qed\endtrivlist
+}% 
+
+%% make a theorem's label refer to some other (such as Thm. 3.6')
+\newenvironment{thmref}{\thmrefer}{}
+\newcommand{\thmrefer}[1]{\expandafter\ifx\csname r@#1\endcsname\relax
+ \renewcommand{\theequation}{??}%
+     \protect\G@refundefinedtrue%
+    \nfss@text{\reset@font\bfseries ??}%
+    \@latex@warning{Reference `#1' on page \thepage \space undefined}%
+ \else \cref@getlabel{#1}{\dtemp} \renewcommand{\theequation}{\dtemp$'$} \fi
+  \addtocounter{equation}{-1}
+}
+
+
+\newenvironment{thmrefref}{\thmrefrefer}{}
+\newcommand{\thmrefrefer}[1]{\renewcommand\theequation
+  {\protect\ref{#1}$''$}\addtocounter{equation}{-1}}
+
+
+%\renewcommand{\thesection}{\thechapter\alph{section}}
+
+% "proof" should not be indented, and should be bold, not csc
+\renewenvironment{proof}[1][\proofname]{\par
+  \pushQED{\qed}%
+  \normalfont \vskip-\lastskip\vskip 0.5\baselineskip plus 0.1\baselineskip\relax
+       \noindent {\bfseries#1\@addpunct{.}\ \ignorespaces}%
+}{%
+  \popQED\endtrivlist\@endpefalse \goodbreak \vskip1\baselineskip plus 0.2\baselineskip\relax
+}
+
+ % use single parenthesis for item numbers
+\renewcommand{\labelenumi}{\theenumi)}
+
+ \renewcommand{\labelitemii}{$\m@th\circ$} % I don't like using a dash
+  
+ % displayed equations need more indentation in an itemize or enumerate
+ %	(amsbook eliminates this feature, and we need to reinstate it)
+ \everydisplay={}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+ 
+ 
+ \tolerance=400 % default is 200
+\hbadness = 300 % warn about underfull hboxes 
+
+\ifportable \else
+% forbid breaks in math formulas (unless we explicitly allow them)
+% see  Exercise 18.20 of the TeXbook
+\relpenalty=10000
+\binoppenalty=10000
+\renewcommand{\bmod}{\nonscript\mskip-\medmuskip \mkern5mu
+  \mathbin{\rm mod} %\penalty900 % delete this penalty to forbid breaks
+\mkern5mu \nonscript\mskip-\medmuskip}
+% pmod has already been redefined, so no need to do it here
+\fi
+
+% put this before long URLs
+\newcommand{\mayneedbreak}{\hfil\allowbreak\hfilneg\ }
+
+
+
+ %% Want an alternative to the Lucida Fraktur font
+ %% Need to magnify size because euf is too small
+\DeclareFontFamily{U}{euF}{}
+\DeclareFontShape{U}{euF}{m}{n}{%
+ <-5>*[1.15]eufm5%
+ <6>*[1.368]eufm5%
+ <7>*[1.15]eufm7%
+ <8>*[1.15]eufm7%
+ <9>*[1.15]eufm9%
+ <10->*[1.15]eufm10%
+ }{}
+\DeclareFontShape{U}{euF}{b}{n}{%
+ <-5>*[1.15]eufb5%
+  <6>*[1.368]eufb5%
+ <7>*[1.15]eufb7%
+ <8>*[1.15]eufb7%
+ <9>*[1.15]eufb9%
+ <10->*[1.15]eufb10%
+ }{}
+ \DeclareMathAlphabet{\AMSfrak}{U}{euF}{m}{n}
+ \SetMathAlphabet{\AMSfrak}{bold}{U}{euF}{b}{n}
+
+
+%\newcommand{\pgref}{} %% make sure it's not used
+%\let\pgref=\pref
+\newcommand{\pref}[1]{\textup(\ref{#1}\textup)} 
+\newcommand{\fullref}[2]{\ref{#1}\pref{#1-#2}}
+\newcommand{\fullcref}[2]{\cref{#1}\pref{#1-#2}}
+\newcommand{\fullCref}[2]{\Cref{#1}\pref{#1-#2}}
+\newcommand{\fullccf}[2]{(cf.\ \fullcref{#1}{#2})}
+\newcommand{\spref}[1]{\textup(\ref{#1}$_S$\textup)} % used in S-arithmetic appendix
+\newcommand{\sprefs}[2]{\vbox to 7pt{\hbox{$\begin{pmatrix} \ref{#1}_S,\\\ref{#2}_S \end{pmatrix}$}\vss}} % used in S-arithmetic appendix
+\renewcommand{\Cref}[1]{\cref{#1}}
+
+\renewcommand{\mod}{\mathrel{\text{\upshape mod}}}
+
+\ifportable\else
+% \ell is too tall
+% adjusted for hormalsize (6) and "\smaller" (4), but other sizes will still be off
+\font\ellfont=hlcrm at 8.45pt
+\font\scriptellfont=hlcrm at 5.925pt
+\font\scriptscripterellfont=hlcrm at 4.25pt
+\font\smallellfont=hlcrm at 6.6pt
+\renewcommand{\ell}{{%
+	\ifnum\@currsizeindex>5%
+	\mathchoice%
+	{{\mathord{\hbox{\ellfont`}}}}%
+	{{\mathord{\hbox{\ellfont`}}}}%
+	{{\mathord{\hbox{\scriptellfont`}}}}%
+	{{\mathord{\hbox{\scriptscripterellfont`}}}}%
+	\else 
+	\mathchoice%
+	{{\mathord{\hbox{\smallellfont`}}}}%
+	{{\mathord{\hbox{\smallellfont`}}}}%
+	{{\mathord{\hbox{\scriptellfont`}}}}%
+	{{\mathord{\hbox{\scriptscripterellfont`}}}}%
+	\fi}}
+\fi
+
+% I do not have the bold script font, and pmb does a poor job on script L
+\def\mypmb#1{\setbox8\hbox{$#1$}%
+  \setboxz@h{$\m@th#1\mkern.5mu$}\pmbraise@\wdz@
+%  \binrel@{#2}%
+  \dimen@-\wd8 %
+  \binrel@@{%
+    \mkern-.6mu\copy8 %
+    \kern\dimen@\mkern.3mu\copy8 %
+    \kern\dimen@\mkern.3mu\box8 }%
+}
+% want a bit lighter than mypmb on \mathbb{Q}
+\def\mpmb#1{\setbox8\hbox{$#1$}%
+  \setboxz@h{$\m@th#1\mkern.5mu$}\pmbraise@\wdz@
+%  \binrel@{#2}%
+  \dimen@-\wd8 %
+  \binrel@@{%
+    \mkern-.15mu\copy8 %
+    \kern\dimen@\mkern.3mu\copy8 %
+%    \kern\dimen@\mkern.3mu\box8 
+}%
+}
+
+
+\newcommand{\rsp}{\Lie N}
+\newcommand{\Var}{\operatorname{Var}} %% the variety of an ideal
+\newcommand{\outerform}[3]{\mbox{${}^{#1} \hskip -1.5pt {#2}_{#3}$}}
+\newcommand{\leftconj}[2]{\mbox{${}^{#1} \hskip -1.5pt {#2}$}}
+
+\DeclareMathOperator{\Nred}{N_{\text{\upshape red}}}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\Gal}{Gal}
+\DeclareMathOperator{\Cay}{Cay}
+\DeclareMathOperator{\codim}{codim}
+\DeclareMathOperator{\meas}{meas}
+\DeclareMathOperator{\length}{length}
+\DeclareMathOperator{\graph}{graph}
+\DeclareMathOperator{\ext}{ext}
+
+\newcommand{\dual}[1]{\widehat{#1}} % unitary dual
+\newcommand{\embed}[1]{\overline{#1}}
+\newcommand{\Lie}[1]{\lowercase{\AMSfrak{#1}}}  %% @@@ could use MathPiTwo
+\newcommand{\lie}[1]{\mathord{\underline{#1}}}
+\newcommand{\cjg}[1]{\overline{#1}}
+\newcommand{\Zar}[1]{\overline{\overline{#1}}}
+\newcommand{\Qi}{\mathord{\rational[i]}}
+\newcommand{\Isom}{\operatorname{Isom}\nolimits}
+\newcommand{\QIsom}{\operatorname{QIsom}\nolimits}
+\newcommand{\QI}{\stackrel{\scriptscriptstyle \mathrm{QI}}{\sim}}
+\newcommand{\vol}{\operatorname{vol}\nolimits}
+\newcommand{\fund}{\mathord{\mathcal{F}}}
+\newcommand{\flags}{\mathord{\mathcal{F}}}
+\newcommand{\Brauer}{\mathop{\mathcal{B}}\nolimits}
+\newcommand{\Banach}{\mathop{\mathcal{B}}\nolimits}
+\newcommand{\LocConvex}{\mathop{\mathcal{V}}\nolimits}
+\newcommand{\unitary}{\mathcal{U}} % group of unitary operators
+\newcommand{\Bool}{\mathop{\raise0.02pt\hbox{$\mathcal{B}$}}\nolimits} % @@@
+\ifportable
+	\newcommand{\notsubset}{\not\subset}
+	\newcommand{\open}{\mathcal{O}}%
+\else
+	\newcommand{\open}{\mathord{\text{\upshape\fontspec{Snell Roundhand Bold} O}}}%
+\fi
+\newcommand{\free}{\mathsf{F}}
+\newcommand{\basis}{\mathord{\mathcal{B}}}
+\newcommand{\Zlatt}{\mathord{\mathcal{L}}}
+\newcommand{\subgrps}{\mathord{\mathscr{S}}} % full subgrps of Zlatt
+\renewcommand{\Im}{\operatorname{Im}\nolimits}
+\renewcommand{\Re}{\operatorname{Re}\nolimits}
+\newcommand{\dist}{\operatorname{dist}\nolimits}
+\newcommand{\val}{\operatorname{val}\nolimits}
+\newcommand{\diam}{\operatorname{diam}\nolimits}
+\newcommand{\content}{\operatorname{cont}\nolimits}
+\newcommand{\genset}{\mathcal{X}}
+\newcommand{\SRhalf}{\SR_{1\frac{1}{2}}}
+\newcommand{\PI}{\mathfrak{p}}
+\newcommand{\Iq}{\mathfrak{q}}
+\newcommand{\bigtimes}{\mathop{\mbox{\Large$\times$}}}
+\newcommand{\normal}{\mathrel{\triangleleft}}
+\newcommand{\normaleq}{\mathrel{\trianglelefteq}}
+\newcommand{\Cbdd}{C_{\text{\rm bdd}}}
+\newcommand{\symmdiff}{\mathbin{\triangle}}
+\newcommand{\RP}[1]{\real P^{#1}}
+\newcommand{\defd}{\mathrel{:=}}
+\newcommand{\Grass}[2]{\boldsymbol{G}_{#1,#2}}
+\newcommand{\leb}{l} % lebesgue measure on R
+\newcommand{\GG}{\mathbf{G}}
+\newcommand{\Borel}{\mathcal{B}}
+
+ \newcommand{\prims}[1]{\widehat{#1}} % the set of primitive vectors
+ \newcommand{\primplus}[1]{\prims{#1}^+} % choose either w or -w
+
+% large symbol (eg., 0 or *) to represent lots of entries of a matrix
+\newcommand{\BigSymbol}[3]{\hbox to 0pt{\hskip#2pt\Huge\vbox to 0pt{\vss\hbox{$#1$}\vskip#3pt}\hss}}
+
+
+%% eliminate a PDFTeX error when operator names appear in section titles
+\renewcommand{\operatorname}[1]{\mathop{\mathrm{#1}}\nolimits}
+
+\newcommand{\Prob}{\operatorname{Prob}}
+\newcommand{\Ad}{\operatorname{Ad}}
+\newcommand{\ad}{\operatorname{ad}}
+\newcommand{\Out}{\operatorname{Out}}
+\newcommand{\Aut}{\operatorname{Aut}}
+\newcommand{\GL}{\operatorname{GL}}
+\newcommand{\End}{\operatorname{End}}
+\newcommand{\Hom}{\operatorname{Hom}}
+\newcommand{\Id}{\operatorname{Id}}
+\newcommand{\Mat}{\operatorname{Mat}}
+\newcommand{\rank}{\operatorname{rank}}
+\newcommand{\SL}{\operatorname{SL}}
+\newcommand{\Sp}{\operatorname{Sp}}
+\newcommand{\PSL}{\operatorname{PSL}}
+\newcommand{\SO}{\operatorname{SO}}
+\newcommand{\PO}{\operatorname{PO}}
+\newcommand{\Ortho}{\operatorname{O}}
+\newcommand{\Spin}{\operatorname{Spin}}
+\newcommand{\SU}{\operatorname{SU}}
+\newcommand{\LieSL}{\mathop{\Lie{SL}}}
+\newcommand{\closure}[1]{\overline{#1}}
+\newcommand{\algclosure}[1]{\overline{#1}}
+\newcommand{\nzer}{\mathop{\mathcal{N}}\nolimits}
+\newcommand{\czer}{\mathop{\mathcal{C}}\nolimits}
+\newcommand{\Zass}{\mathcal{Z}} % Zassenhaus neighborhood
+
+\newcommand{\SR}{\mathsf{SR}}
+
+\renewcommand{\pmod}[1]{\mathrel{(\mod} #1)}
+
+
+\newcommand{\PSO}{\operatorname{PSO}}
+\newcommand{\PSU}{\operatorname{PSU}}
+\newcommand{\PSp}{\operatorname{PSp}}
+
+\renewcommand{\aa}{\mathsf{a}}
+\renewcommand{\ggg}{\mathsf{g}}
+
+\newcommand{\real}{{\mathord{\mathbb R}}}
+\newcommand{\rational}{{\mathord{\mathbb Q}}}
+\newcommand{\complex}{{\mathord{\mathbb C}}}
+\newcommand{\field}{{\mathord{\mathbb F}}}
+\newcommand{\integer}{{\mathord{\mathbb Z}}}
+\newcommand{\hyperbolic}{\AMSfrak{H}}
+\renewcommand{\natural}{\mathord{\mathbb N}}
+\renewcommand{\circle}{{S^1}}
+\newcommand{\circlek}{{S^1_k}}
+\newcommand{\torus}{\mathord{\mathbb T}}
+\newcommand{\F}{\mathbb{F}}
+\renewcommand{\L}{\mathbb{L}}
+\newcommand{\quaternion}{\mathbb{H}}
+\newcommand{\octonion}{\mathbb{O}}
+\DeclareMathOperator{\Homeo}{Homeo}
+\DeclareMathOperator{\Diff}{Diff}
+\DeclareMathOperator{\AffIsom}{Aff\,Isom}
+\newcommand{\emat}{\varepsilon} %% an elementary matrix
+\newcommand{\projective}{\mathbb{P}}
+\DeclareMathOperator{\proj}{proj}
+
+\newcommand{\disjunion}{\sqcup} % disjoint union
+\newcommand{\Hilbert}{{\mathord{\mathcal{H}}}}
+\newcommand{\bdry}{\partial}
+\newcommand{\Ind}{\operatorname{Ind}}
+	\def\Ind_#1^#2{\operatorname{Ind}_{#1}^{#2}\!}
+\newcommand{\wl}{\prec}
+\newcommand{\wg}{\succ}
+\newcommand{\iso}{\cong}
+\newcommand{\trace}{\operatorname{trace}}
+\newcommand{\ssim}{\approx}
+\newcommand{\unitop}{\mathop{\mathcal{U}}}
+
+\newcommand{\cover}{\widetilde}
+\newcommand{\bundle}{\mathscr{E}}
+%\DeclareMathOperator{\Sect}{Sect}
+\newcommand{\Sect}{\mathop{\mathrm{Sect}}}
+\newcommand{\Sectm}{\Sect_{\text{\rm meas}}}
+
+\newcommand{\interior}{\mathring}
+
+
+%% from TeXbook defn of ddots
+\newcommand{\nedots}{\mathinner{\mkern1mu\raise1pt
+ \vbox{\kern7pt\hbox{.}}\mkern2mu
+    \raise4pt\hbox{.}\mkern2mu\raise7pt\hbox{.}\mkern1mu}}
+
+\newcommand{\Comm}{\operatorname{Comm}}
+\newcommand{\Rad}{\operatorname{Rad}}
+\newcommand{\Stab}{\operatorname{Stab}}
+\newcommand{\unip}{\operatorname{unip}}
+
+%\newcommand{\binom}[2]{\genfrac{(}{)}{0pt}{}{#1}{#2}}
+
+\newcommand{\towith}[1]{\mathrel{\mathop{\longrightarrow}\limits^{#1}}}
+
+% from TeXBook:
+\newcommand{\mapdown}[1]{\Big\downarrow
+  \rlap{$\vcenter{\hbox{$\scriptstyle#1$}}$}}
+
+ % let's make a good vector sign - cf. TeXBook, pp 357, 359
+\newcommand{\vectorfill}{$\m@th \mathord- \mkern-6mu
+ \cleaders \hbox{$\mkern-2mu \mathord- \mkern-2mu$}\hfill
+ \mkern-6mu \mathord \rightharpoonup$}
+\renewcommand{\vector}[1]{\vbox{\ialign{##\crcr \vectorfill \crcr
+\noalign
+ {\kern-1pt \nointerlineskip} $\hfil \displaystyle {#1}\hfil$\crcr}}}
+
+ \newcommand{\openfund}{\mathring{\fund}}
+
+ %% other installations may not have the MathPi fonts 
+ \ifportable
+ \newcommand{\coho}[1]{\mathop{\hbox{$\mathcal{H}$}}\nolimits^{#1}\!}
+ \newcommand{\redcoho}[1]{\mathop{\overline{\mathcal{H}}}\nolimits^{#1}\!}
+ \newcommand{\cocyc}[1]{\mathop{\hbox{$\mathcal{Z}$}}\nolimits^{#1}\!}
+ \newcommand{\cobdry}[1]{\mathop{\hbox{$\mathcal{B}$}}\nolimits^{#1}\!}
+ \newcommand{\Siegel}{\mathord{\mathscr{S}}}
+ \newcommand{\openSiegel}{\Siegel_\circ}
+ \newcommand{\LGamma}[1]{\mathop{\mathscr{L}}\nolimits_{\Gamma}^{#1}\!}
+ \newcommand{\LL}[1]{\mathop{\mathscr{L}}\nolimits^{#1}\!}
+ \newcommand{\pmbLL}[1]{\mathop{\mypmb{\mathscr{L}}}\nolimits^{#1}\!}
+ \newcommand{\LLequi}[1]{\mathop{\mathscr{L}}\nolimits^{\infty}_{#1}\!}
+ \newcommand{\trivrep}{\mathbf{1}}
+ \newcommand{\bddop}{\mathbf{B}} % algebra of bounded operators
+\else
+ \DeclareFontFamily{U}{MPi2}{}
+\DeclareFontShape{U}{MPi2}{m}{n}{ <-> MathPi2}{}
+\DeclareSymbolFont{MPi2Font}{U}{MPi2}{m}{n}
+ \DeclareFontFamily{U}{smallerMPi2}{}
+\DeclareFontShape{U}{smallerMPi2}{m}{n}{ <->*[0.925]MathPi2}{}
+\DeclareSymbolFont{smallerMPi2Font}{U}{smallerMPi2}{m}{n}
+\DeclareMathSymbol{\cohochar}{\mathord}{MPi2Font}{'052}
+ \newcommand{\coho}[1]{\cohochar^{#1}\!}
+ \newcommand{\redcoho}[1]{\overline{\cohochar}^{#1}\!}
+ \DeclareMathSymbol{\cocycchar}{\mathord}{MPi2Font}{'135}
+ \newcommand{\cocyc}[1]{\cocycchar^{#1}\!}
+ \DeclareMathSymbol{\cobdrychar}{\mathord}{MPi2Font}{'100}
+ \newcommand{\cobdry}[1]{\cobdrychar^{#1}\!}
+\DeclareMathSymbol{\Siegel}{\mathord}{smallerMPi2Font}{83} % Fraktur S
+ \newcommand{\openSiegel}{\mathring{\Siegel}}
+\DeclareMathSymbol{\LLchar}{\mathord}{MPi2Font}{'053}
+ \newcommand{\LGamma}[1]{\LLchar_\Gamma^{#1}\!}
+ \newcommand{\LL}[1]{\LLchar^{#1}\!}
+ \newcommand{\pmbLL}[1]{\mathop{\mypmb{\LLchar}}\nolimits^{#1}\!}
+ \newcommand{\LLequi}[1]{\LLchar^{\infty}_{#1}\!}
+ \DeclareFontFamily{U}{bbold}{}
+\DeclareFontShape{U}{bbold}{m}{n}{ <-> [1.125] bbold10}{}
+\DeclareSymbolFont{bboldFont}{U}{bbold}{m}{n}
+\DeclareMathSymbol{\trivrep}{\mathord}{bboldFont}{49} % 1
+ \DeclareFontFamily{U}{bddop}{}
+\DeclareFontShape{U}{bddop}{m}{n}{ <-> [1.125] "Snell Roundhand-Bold"}{}
+\DeclareSymbolFont{bddopFont}{U}{bddop}{m}{n}
+\DeclareMathSymbol{\bddop}{\mathord}{bddopFont}{66} % B
+ \fi
+
+% Lucida's chi looks too much like a lower-case x (especially in \chi_x).
+% I couldn't get the Adobe Symbol font (psyr) to embed in the PDF file, .
+% so we use cmmi10 instead
+ \DeclareFontFamily{U}{AdobeSymbol}{}
+\DeclareFontShape{U}{AdobeSymbol}{m}{n}{ <-> [1.2] "cmmi10"}{} % 1.075 for psyr
+\DeclareSymbolFont{AdobeSymbolFont}{U}{AdobeSymbol}{m}{n}
+\DeclareMathSymbol{\chisymbol}{\mathord}{AdobeSymbolFont}{31} % 31 = chi (99 for psyr)
+\renewcommand{\chi}{{\mathchoice
+	{\raise 1.75pt\hbox{$\chisymbol$}}%
+	{\raise 1.75pt\hbox{$\chisymbol$}}%
+	{\raise 1pt\hbox{\smaller$\chisymbol$}}%
+	{\raise 1.75pt\hbox{\smaller[2]$\chisymbol$}}}}
+
+\newcommand{\bdd}{_{\mkern-10mu \text{\rm bdd}}}
+
+\newcommand{\transpose}{{\mathord{T}}}
+\newcommand{\cohobdd}{\coho_{\text{\upshape bdd}}}
+\newcommand{\ints}{\mathcal{O}}
+\newcommand{\regrep}{\pi_{\text{reg}}}
+
+
+
+\renewcommand{\see}[1]{\textup(see~\ref{#1}\textup)}
+\newcommand{\csee}[1]{\textup(see~\cref{#1}\textup)}
+\newcommand{\seebelow}[1]{\textup(see~\ref{#1} below\/\textup)}
+\newcommand{\seeand}[2]{\textup(see~\ref{#1} and~\ref{#2}\textup)}
+\newcommand{\seeor}[2]{\textup(see~\ref{#1} or~\ref{#2}\textup)}
+%\newcommand{\seefig}[1]{\textup(see Figure~\ref{#1}\textup)}
+\newcommand{\cseep}[1]{\textup(see \cref{#1} on p.~\pageref{#1}\textup)}
+\newcommand{\cf}[1]{\textup(cf.~\ref{#1}\textup)}
+\newcommand{\ccf}[1]{\textup(cf.\ \cref{#1}\textup)}
+\newcommand{\fullCcf}[2]{\textup(Cf.\ \cref{#1}\pref{#1-#2}\textup)}
+\newcommand{\Ccf}[1]{\textup(Cf.\ \cref{#1}\textup)}
+\newcommand{\cfand}[2]{\textup(cf.~\ref{#1} and~\ref{#2}\textup)}
+
+\newcommand{\fullsee}[2]{\textup(see~\ref{#1}(\ref{#1-#2})\textup)}
+\newcommand{\fullcsee}[2]{\textup(see \cref{#1}(\ref{#1-#2})\textup)}
+\newcommand{\fullcf}[2]{\textup(cf.~\ref{#1}(\ref{#1-#2})\textup)}
+
+\newcommand{\emphit}[1]{{\textit{#1\/}}}
+\newcommand{\bemph}[1]{{\textbf{#1}}}
+
+
+% don't want citations in boldface
+ \def\@cite#1#2{{%
+ \m@th\upshape\mdseries[{#1}{\if@tempswa, #2\fi}]}}
+
+% Put entries in index.  
+% Optional argument is what will appear in the index.
+% Default is to use same words in text and index.
+\newcommand{\defit}[2][\temp]{\def\temp{#2}\emph{\textbf{\mathversion{bold}#2}}\index{#1}}
+\newcommand{\term}[2][\temp]{\def\temp{#2}{#2}\index{#1}}
+
+ % to refer reader to a different entry in the index:
+\newcommand{\indsee}[2]{{\it see\/} #1}
+\newcommand{\indseealso}[2]{{\it see also\/} #1}
+
+\renewcommand{\thesubsection}
+ {\thesection(\roman{subsection})}
+
+
+\newcommand{\Qrank}{\rank_{\rational}}
+\newcommand{\Rrank}{\rank_{\real}}
+	% {\mathop{\mathbb{R}\text{\upshape{-rank}}}\nolimits}
+\newcommand{\Srank}{\mathop{S\text{\upshape{-rank}}}\nolimits}
+\newcommand{\Frank}{\rank_{\field}}
+ \newcommand{\Qprank}{\rank_{\rational_p}}
+ \newcommand{\Fvrank}{\rank_{F_v}}
+
+ % this makes set braces "{}" tall enough
+ % to fit what is in between
+\newcommand\bigset[2]{\left\{\, #1 
+ \mathrel{\left| \vphantom {\left\{ #1 \mid #2 \right\} }
+ \right.} #2 \,\right\} }
+
+% this makes a small bmatrix, with entries of textstyle size
+\newenvironment{Smallbmatrix}{\left[\null\vcenter\bgroup
+  \Let@\restore@math@cr\default@tag
+  \baselineskip6\ex@ \lineskip1.5\ex@ \lineskiplimit\lineskip
+  \ialign\bgroup\hfil$\m@th\textstyle##$\hfil&&\thickspace\hfil
+  $\m@th\textstyle##$\hfil\crcr
+}{%
+  \crcr\egroup\egroup%
+  \right]
+}
+
+% to put an asterisk that is a little higher in a matrix
+\newcommand{\upast}{\vphantom{1}\mathchoice
+	{\raise0.6pt\hbox{$*$}}{\raise0.6pt\hbox{$*$}}{\raise0.48pt\hbox{$*$}}{\raise0.42pt\hbox{$*$}}
+	}
+
+
+\newcommand{\hint}[1]{{\par\smallskip\noindent
+	\renewcommand{\baselinestretch}{0.9}%
+	\smaller{[}\emph{Hint:} #1{]}\par}}
+
+
+%% put two lines in a table entry
+\newcommand{\twoline}[2]{
+ \setbox0\vbox{
+ \hbox{#1}
+ \hbox{#2}}
+ \lower 15 pt \vbox{
+ \vskip4pt
+ \hbox to \wd0{\hss#1\hss}
+ \smallskip
+ \hbox to \wd0{\hss#2\hss}
+ \vskip4pt}}
+
+%% making the table row taller
+\newcommand{\tstrut}{\vphantom{\lower8pt\vbox to 20pt{\vss}}}
+
+%% for adding hrules in some tables:
+\newcommand{\withintypeseparator}{ & \kern-5pt \hrulefill \kern-5pt
+& \kern-5pt \hrulefill \kern-5pt & \kern-5pt \hrulefill \kern-5pt &
+\kern-5pt \hrulefill \kern-5pt & \kern-5pt \hrulefill \kern-5pt \\} 
+
+\newcommand{\betweentypeseparator}{  \noalign{\hrule} 
+ \multispan5{\smallskip} \\
+ \noalign{\hrule}}
+
+\newcommand{\withingrpseparator}{\cline{2-5}}
+
+\newcommand{\betweengrpseparator}{  \noalign{\hrule} 
+ \multispan4{\smallskip} \\
+ \noalign{\hrule}}
+
+
+
+\def\@listI{\leftmargin 1.5\parindent % was \leftmargini  @@@
+\parsep\z@skip
+   \vskip 0.5\medskipamount plus 2pt 
+   \topsep 0.5\medskipamount plus 2pt 
+   \itemsep 0.5\medskipamount plus 2pt% I want space between items in my lists (and I want it stretchable
+  }
+
+%% for notes at end of chapter
+
+\newenvironment{notes}{\section*{Notes}\addtocounter{section}{1}\@noindentfalse}
+
+
+
+%% For putting bibliography at end of chapter 
+
+\newenvironment{references}[1]{%
+\section*{References}%
+\raggedright 
+ \normalfont\labelsep .25em\relax
+  \renewcommand\theenumiv{\arabic{enumiv}}\let\p@enumiv\@empty
+  \list{\@biblabel{\theenumiv}}{\settowidth\labelwidth{\@biblabel{#1}}%
+    \leftmargin\labelwidth \advance\leftmargin\labelsep
+    \usecounter{enumiv}}%
+  \sloppy \clubpenalty\@M \widowpenalty\clubpenalty
+  \sfcode`\.=\@m
+}{%
+  \def\@noitemerr{\@latex@warning{Empty `thebibliography' environment}}%
+  \endlist
+}
+
+\renewcommand{\MR}[1]{\href{http://www.ams.org/mathscinet-getitem?mr=#1}{MR~#1}}
+\newcommand{\Zbl}[1]{\href{http://zbmath.org/?q=an:#1}{Zbl~#1}}
+
+\newcommand{\maynewline}{\hfil\penalty100\hfilneg} % allow a URL to start a new line if it doesn't fit
+%\def\url@smallsfstyle{%
+% \@ifundefined{selectfont}{\def\UrlFont{\smaller\sf}}{\def\UrlFont{\smaller\sffamily}}}
+\urlstyle{sf}
+
+% math in section and subsection titles should be boldface
+\def\section{\@startsection{section}{1}%
+  \z@{.7\linespacing\@plus\linespacing}{.5\linespacing}%
+  {\normalfont\bfseries\boldmath\centering}}
+\def\subsection{\@startsection{subsection}{2}%
+  \normalparindent{.5\linespacing\@plus.7\linespacing}{-.5em}%
+  {\normalfont\bfseries\boldmath}}
+
+% sections in Summary Chapter should not show up in the TOC
+\def\notocsection{\@startsection{notocsection}{9}%
+  \z@{.7\linespacing\@plus\linespacing}{.5\linespacing}%
+  {\normalfont\bfseries\boldmath\centering}}
+ \newcommand{\l@notocsection}{\@tocline{3}{0pt}{1pc}{7pc}{}}
+ \let\notocsectionname\@empty
+ \let\tocnototcsection\tocsection
+ \def\toclevel@notocsection{9}
+
+
+
+
+%%% SET UP APPENDIX ENVIRONMENT
+\newcommand{\toclevel@appendix}{0}
+\newcommand{\toclevel@appsection}{1}
+\newcounter{appsection}
+ \def\appsection{\@startsection{appsection}{2}%
+  \z@{.7\linespacing\@plus\linespacing}{.5\linespacing}%
+  {\normalfont\bfseries\boldmath\centering}}
+\let\appsectionname\@empty
+\def\tocappsection{\tocsection}
+\numberwithin{appsection}{appendix}
+ \renewcommand{\theappsection}{\theappendix\arabic{appsection}}
+ \def\l@appsection{\l@section}
+\def\appsectionmark{\sectionmark}
+
+\crefname{appsection}{appendix}{appendices}
+\Crefname{appsection}{Appendix}{Appendices}
+\crefformat{appsection}{Appendix~#2#1#3}
+\crefname{appendix}{appendix}{appendices}
+\Crefname{appendix}{Appendix}{Appendices}
+\crefformat{appendix}{Appendix~#2#1#3}
+
+\newcommand{\startappendix}{
+\let\@makechapterhead\@makeappendixhead
+\def\section{\appsection}
+ \renewcommand{\exertitle}{Exercises for \S\theappsection}
+ \renewcommand{\thesection}{\theappsection}
+% \renewcommand{\theexeri}{\theappsection\#\arabic{exeri}}
+
+\renewcommand{\chaptername}{Appendix}
+\appendixtrue
+\numberwithin{equation}{appendix}
+\numberwithin{equation}{appsection}
+\renewcommand{\theappendix}{\Alph{appendix}}
+%\renewcommand{\theappendix}{\everymath={}\mathsurround=0pt$\mathbb{\ifcase \c@appendix \of \or A\or B\or C\or D\fi}$}
+\renewcommand*{\theHappendix}{\Alph{appendix}}
+\protected@write\@notationfile{}%
+      {\string\renewcommand{\string\chaptername}{Appendix}}
+}
+%% END OF APPENDIX ENVIRONMENT
+
+
+% for S-arithmetic appendix
+\newdimen\sindent \sindent=1.25\parindent 
+\newenvironment{slist}{\ %
+	\def\sitem[##1]{\par
+	\smallskip\hangindent=\sindent
+	\hskip-\parindent 
+	##1\enspace\ignorespaces}}{\par}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% PUTS ROWS OF DOTS IN THE TABLE OF CONTENTS (from AMS)%%
+
+\newcounter{tocrow}
+
+% shade every other line
+\definecolor{rowcolor}{gray}{0.9}
+\newlength{\rowwidth}
+\setlength{\rowwidth}{\textwidth}
+\addtolength{\rowwidth}{-7pt}
+
+\newcommand\@dotsep{1}
+\def\@tocline#1#2#3#4#5#6#7{\relax
+  \ifnum #1>\c@tocdepth % then omit
+  \else
+    \par 
+    \addpenalty\@secpenalty\addvspace{#2}%
+    \begingroup \hyphenpenalty\@M
+    \@ifempty{#4}{%
+      \@tempdima\csname r@tocindent\number#1\endcsname\relax
+    }{%
+      \@tempdima#4\relax
+    }%
+    \parindent\z@ \leftskip#3\relax \advance\leftskip\@tempdima\relax
+    \rightskip\@pnumwidth plus1em \parfillskip-\@pnumwidth
+%  \ifnum #1 = 0  \bfseries\fi
+  #5 
+    \ifnum #1=0 \vskip \intertoccorrection \relax \fi
+    \leavevmode\hskip-\@tempdima 
+  \ifnum #1=0 \setcounter{tocrow}{0} \fi
+   \ifnum #1 > 0
+ 	\addtocounter{tocrow}{1}
+	\ifodd \thetocrow % we want a shaded line (but maybe should only do every 3rd?)
+    \hbox to 0pt{\color{rowcolor}\vrule width \rowwidth depth 4pt height 10pt\hss}\fi\fi
+  #6\relax
+% \ifnum #1 > 0
+%	\ifodd \thetocrow % we want dots
+%	\hskip-3pt
+%    \leaders\hbox{$\m@th
+%      \mkern \@dotsep mu\raise2pt\hbox{.}\mkern \@dotsep mu$}\fi\fi
+  \hfill
+  {{\normalfont \hskip-0pt #7}}\par
+    \nobreak
+    \endgroup
+  \fi}
+  
+
+%\newcommand\@dotsep{1}
+%\def\@tocline#1#2#3#4#5#6#7{\relax
+%  \ifnum #1>\c@tocdepth % then omit
+%  \else
+%    \par \addpenalty\@secpenalty\addvspace{#2}%
+%    \begingroup \hyphenpenalty\@M
+%    \@ifempty{#4}{%
+%      \@tempdima\csname r@tocindent\number#1\endcsname\relax
+%    }{%
+%      \@tempdima#4\relax
+%    }%
+%    \parindent\z@ \leftskip#3\relax \advance\leftskip\@tempdima\relax
+%    \rightskip\@pnumwidth plus1em \parfillskip-\@pnumwidth
+%%  \ifnum #1 = 0  \bfseries\fi
+%  #5 \leavevmode\hskip-\@tempdima #6\relax
+%  \ifnum #1=0 \setcounter{tocrow}{0} \fi
+% \ifnum #1 > 0
+% 	\addtocounter{tocrow}{1}
+%	\ifodd \thetocrow % we want dots
+%	\hskip-3pt
+%    \leaders\hbox{$\m@th
+%      \mkern \@dotsep mu\raise2pt\hbox{.}\mkern \@dotsep mu$}\fi\fi\hfill
+%  {{\normalfont \hskip-0pt
+%#7}}\par
+%    \nobreak
+%    \endgroup
+%  \fi}
+
+%% restrict citations and bib entries within each chapter
+\def\@citex[#1]#2{%
+  \let\@citea\@empty
+  \@cite{\@for\@citeb:=#2\do
+    {\@citea\def\@citea{,\penalty\@m\ }%
+    \edef\@citeb{<\chaptername\arabic{chapter}>\expandafter\@firstofone\@citeb\@empty}%
+     \if@filesw\immediate\write\@auxout{\string\citation{\@citeb}}\fi
+     \@ifundefined{b@\@citeb}{\mbox{\reset@font\bfseries ?}%
+       \G@refundefinedtrue
+       \@latex@warning
+         {Citation `\@citeb' on page \thepage \space undefined}}%
+       {\hbox{\csname b@\@citeb\endcsname}}}}{#1}}
+
+\AtBeginDocument{
+
+\newcommand{\old@lbibitem}{} \let\old@lbibitem=\@lbibitem
+\renewcommand{\@lbibitem}{}
+ \def\@lbibitem[#1]#2{\old@lbibitem[#1]{<\chaptername\arabic{chapter}>#2}}
+
+\newcommand{\old@bibitem}{} \let\old@bibitem=\@bibitem
+\renewcommand{\@bibitem}{}
+ \def\@bibitem#1{\old@bibitem{<\chaptername\arabic{chapter}>#1}}
+
+ }
+
+
+
+%% smart exercise refs: ref within section is #1
+
+ \def\recordsection#1{\@bsphack
+  \protected@write\@auxout{}%
+         {\string\newsectionref{#1}{\thesection}}%
+  \@esphack}
+ \def\newsectionref#1#2{\global\@namedef{section@#1}{#2}}
+ \def\sectionref#1{\csname section@#1\endcsname}
+
+\newcommand{\shortref}[1]{\ref{short@#1}}
+
+%%
+%
+ \def\recordshort#1{\@bsphack 
+  \protected@write\@auxout{}%
+         {\string\newshortref{#1}{\#\arabic{enumi}}}%
+  \@esphack}
+ \def\newshortref#1#2{\global\@namedef{short@#1}{#2}}
+ \def\shortref#1{\csname short@#1\endcsname}
+
+%% Set up the exercise environment
+
+ \newcounter{exersection}[subsection]
+ \newcommand{\l@exersection}{\@tocline{3}{0pt}{1pc}{7pc}{}}
+ \let\exersectionname\@empty
+ \let\subsubsectionmark\@gobble
+ \let\tocexersection\tocsection
+ \def\toclevel@exersection{3}
+ \newcommand{\exertitle}{Exercises for \S\thesection}
+ 
+ \newcounter{exeri}
+ \newcounter{exerii}
+ \newcounter{exeriii}
+  \newcommand{\labelexeri}{\#\arabic{exeri}.}
+ \newcommand{\labelexerii}{\alph{exerii})}
+ \newcommand{\labelexeriii}{\roman{exeriii})}
+
+ \renewcommand{\theexeri}{\thesection\#\arabic{exeri}}
+ \renewcommand{\theexerii}{\alph{exerii}}
+ \renewcommand{\theexeriii}{\theexerii(\roman{exeriii})}
+ 
+\crefmultiformat{exeri}{Exercises~#2#1#3}{ and~#2#1#3}{, #2#1#3}{, and~#2#1#3}
+
+
+ \newcommand{\exerlabel}[1]{\hss\llap{#1}}
+
+\newenvironment{exercises}[1][]
+ {\medbreak
+ \@startsection{exersection}{3}
+  \z@\z@{-.5em}%
+  {\bfseries}*{\exertitle}
+  \@ifnotempty{#1}{#1}\ 
+% don't use the enumi counter
+ \def\enumerate{%
+  \ifnum \@enumdepth >\thr@@\@toodeep\else
+    \advance\@enumdepth\@ne
+    \edef\@enumctr{exer\romannumeral\the\@enumdepth}%
+      \expandafter
+	\list
+        \csname label\@enumctr\endcsname
+        {\usecounter\@enumctr\let\makelabel=\exerlabel}%
+  \fi}
+\noprelistbreak
+\begin{enumerate} \itemsep=\medskipamount \vskip\medskipamount
+ \let\stupidlabel=\label
+ \def\label##1{\stupidlabel{##1}
+ \recordsection{##1}
+ \begingroup
+ \ifnum\@enumdepth= 1
+ 	\renewcommand{\cref@currentlabel}{\arabic{exeri}}
+	 \renewcommand{\@currentlabel}{\arabic{exeri}} 
+	\def\exerlevel{exeri}
+ \else \ifnum\@enumdepth= 2
+	 \renewcommand{\cref@currentlabel}{\alph{exerii}} 
+	 \renewcommand{\@currentlabel}{\alph{exerii}} 
+	 \def\exerlevel{exerii}
+ \else \ifnum\@enumdepth= 3
+	\renewcommand{\cref@currentlabel}{\alph{exerii}(\roman{exeriii})} 
+	 \renewcommand{\@currentlabel}{\alph{exerii}(\roman{exeriii})} 
+	\def\exerlevel{exeriii}
+ \else \message{Error: No exercise number here???}
+ \fi \fi \fi
+ \stupidlabel{short@##1} % can use \ref{short@xxx} to get short version of xxx
+ \endgroup}
+ \noprelistbreak
+ }
+ {\end{enumerate}
+ }
+
+% sometimes we want to label a group of exercises
+\newcommand{\exersubsection}[1]{
+	\par\medbreak\noindent\hskip-1.75\parindent{\it #1}}
+
+
+%% end of exercise environment
+
+%% this is from memoir.cls:
+\newcommand{\noprelistbreak}{\@nobreaktrue\nopagebreak} 
+
+
+
+
+\renewcommand{\theindex}{\@restonecoltrue\if@twocolumn\@restonecolfalse\fi
+  \columnseprule\z@ \columnsep 35\p@ 
+  \cleardoublepage
+ \twocolumn[\refstepcounter{FixPDFBookMark} % make target for PDF bookmark
+ 	\chapter*{\indexname} \vskip-1.25in]
+  \chaptermark{\MakeUppercase\indexname}
+  \thispagestyle{plain}%
+  \let\item\@idxitem
+  \parindent\z@  \parskip\z@\@plus.3\p@\relax
+  \raggedright
+  \hyphenpenalty\@M
+  \footnotesize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% make index of notation               %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\def\makenotationnindex{%
+\newwrite\@notationfile
+  \immediate\openout\@notationfile=\jobname.ntn
+  \def\nindex{\@bsphack\begingroup
+                \@sanitize
+                \@wrnotation}
+   \def\nchap{\@bsphack\begingroup
+                \@sanitize
+                \@wrnchap}\typeout
+    {Writing notation index file \jobname.ntn }%
+  \let\makenotationnindex\@empty
+}
+\@onlypreamble\makenotationnindex
+\def\@wrnotation#1{%
+   \protected@write\@notationfile{}%
+      {\string\notationentry{#1}{\thepage}}%
+ \endgroup
+ \@esphack}
+\def\@wrnchap#1{%
+   \protected@write\@notationfile{}%
+      {\string\notationchapter{\mathversion{bold}#1}{\ifappendix\theappendix\else\thechapter\fi}}%
+ \endgroup
+ \@esphack}
+\def\nindex{\@bsphack\begingroup\@sanitize\@index}
+\def\nchap{\@bsphack\begingroup\@sanitize\@index}
+
+ \newcommand{\notationentry}[2]{\item #1, page~#2 \smallskip}
+ \newcommand{\notationindexname}{List of Notation}
+ \newcommand{\notationchapter}[2]{\bigbreak
+ \item \hbox{\hskip-\itemindent \bf \chaptername\ #2. #1} \medskip}
+
+\newcommand{\NotationIndex}%
+ %\@restonecoltrue\if@twocolumn\@restonecolfalse\fi
+ % \columnseprule\z@ \columnsep 35\p@
+ % \let\@makeschapterhead\indexchap
+%  \@xp\chapter\@xp*\@xp{\notationindexname}%
+%  \thispagestyle{plain}%
+ {\refstepcounter{FixPDFBookMark} % make target for PDF bookmark
+ \chapter*{\notationindexname}
+ \chaptermark{\MakeUppercase\notationindexname}
+ \begingroup
+  \let\item\@idxitem
+  \parindent\z@  \parskip\z@\@plus.3\p@\relax
+  %\footnotesize
+ \vskip-2\bigskipamount
+ \def\\{ \ignorespaces}
+  \immediate\closeout\@notationfile
+ \input \jobname.ntn
+ %\if@restonecol\onecolumn\else
+ \clearpage
+ %\fi
+ \endgroup}
+
+\makenotationnindex
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% end index of notation                %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% make list of theorems               %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+  \newwrite\thmlistfile
+  \immediate\openout\thmlistfile=thmlist.idx
+  \newcommand\thmindex[1]{\protected@write\thmlistfile{}%
+      {\string\indexentry{#1}{\thepage}}%
+	}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% end list of theorems                %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\definecolor{recallcolor}{gray}{0.9} % @@@ same as rowcolor and ltgray
+\newlength{\recalllength} \setlength{\recalllength}{\textwidth}
+	\addtolength{\recalllength}{10pt}
+ \newcommand{\mychapter}[1]{\chapter{#1}%
+  	\nchap{#1}
+  \fnfalse \ifstandassump \fntrue \else \ifCC \fntrue \fi \fi
+  \iffn
+  {\renewcommand{\thefootnote}{}%
+  \footnote{%
+\hskip-\parindent 
+\ifstandassump \begingroup \normalsize
+\vbox to 0pt{\color{recallcolor} \vskip -10pt \hbox{\hskip-5pt \vbox{\hrule width\recalllength height 2 \baselineskip depth 1pt}\hskip-5pt} \vss} \vskip-\baselineskip 
+\noindent \emph{Recall:} The Standing Assumptions (\ref{standassump} on page~\pageref{standassump}) are in effect,
+so, as always, $\Gamma$ is a lattice in the semisimple Lie group $G \subseteq \SL(\ell,\real)$.\par
+\endgroup 
+	\ifCC\smallskip\else\vskip -\baselineskip\relax \  \fi 
+	\fi
+\ifCC \sffamily
+\noindent You can copy, modify, and distribute this work, even for commercial purposes, 
+ all without \\ asking permission.
+	\quad  \url{http://creativecommons.org/publicdomain/zero/1.0/}\fi%
+	}}\fi
+\@afterheading
+}
+
+ \newcommand{\prereqs}[1]{\begingroup \renewcommand{\thefootnote}{}%
+ 	\footnote{\normalsize\\[-8pt]\raggedright
+	\emph{Main prerequisites for this chapter:} #1}%
+	\endgroup}
+ 
+ \newlength{\templength}
+
+
+% 
+\newcounter{FixPDFBookMark}
+\def\@sect#1#2#3#4#5#6[#7]#8{%
+  \edef\@toclevel{\ifnum#2=\@m 0\else\number#2\fi}%
+  \ifnum #2>\c@secnumdepth \let\@secnumber\@empty
+  \else \@xp\let\@xp\@secnumber\csname the#1\endcsname\fi
+  \@tempskipa #5\relax
+  \ifnum #2>\c@secnumdepth
+    \let\@svsec\@empty
+    \refstepcounter{FixPDFBookMark}% make target for bookmark of starred sections
+  \else
+    \refstepcounter{#1}%
+    \edef\@secnumpunct{%
+      \ifdim\@tempskipa>\z@ % not a run-in section heading
+        \@ifnotempty{#8}{.\@nx\enspace}%
+      \else
+        \@ifempty{#8}{.}{.\@nx\enspace}%
+      \fi
+    }%
+    \protected@edef\@svsec{%
+      \ifnum#2<\@m
+        \@ifundefined{#1name}{}{%
+          \ignorespaces\csname #1name\endcsname\space
+        }%
+      \fi
+      \@seccntformat{#1}%
+    }%
+  \fi
+  \ifdim \@tempskipa>\z@ % then this is not a run-in section heading
+    \begingroup #6\relax
+    \@hangfrom{\hskip #3\relax\@svsec}{\interlinepenalty\@M #8\par}%
+    \endgroup
+  \ifmakemarks\csname #1mark\endcsname{#7}\fi%
+    \ifnum#2>\@m \else \ifputintoc\@tocwrite{#1}{#8}\fi\fi
+  \else
+  \def\@svsechd{#6\hskip #3\@svsec
+    \@ifnotempty{#8}{\ignorespaces#8\unskip
+       \@addpunct.}%
+    \ifnum#2>\@m \else \ifputintoc\@tocwrite{#1}{#8}\fi\fi
+  }%
+  \fi
+  \global\@nobreaktrue
+  \global\putintoctrue
+  \@xsect{#5}}
+
+
+\usepackage{pdfcomment}
+\def\cleardoublepage{\clearpage\if@twoside \ifodd\c@page\else
+    \hbox{}
+    \thispagestyle{empty}
+%%%%%%%%%% uncomment to revise \cleardoublepage to annotate blank pages !!!
+%\pdffreetextcomment[height=0.5in,width=4.64in,voffset=-6in,hoffset=0cm,justification=center,
+%fontsize=10pt,color=white, borderstyle=dashed,dashstyle={1 10000}]%
+%{This page intentionally left blank.}
+%%%%%%%%%% end of region to uncomment
+    \newpage\if@twocolumn\hbox{}\newpage\fi\fi\fi}
+
+\hyphenation{eigen-value eigen-space}
