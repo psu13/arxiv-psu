@@ -1,0 +1,222 @@
+%**<title>A Gentle Introduction to Haskell: Numbers</title>
+
+%**~header
+\section{Numbers}
+
+Haskell provides a rich collection of numeric types, based on those of
+Scheme~\cite{RRRRS}, which in turn are based on Common
+Lisp~\cite{steele:common-lisp}.  (Those languages, however, are
+dynamically typed.)  The standard types include fixed- and
+arbitrary-precision integers, ratios (rational numbers) formed from
+each integer type, and single- and double-precision real and complex
+floating-point.  We outline here the basic characteristics of the
+numeric type class structure and refer the reader to
+\see{numbers} for details.
+
+\subsection{Numeric Class Structure}
+
+The numeric type classes (class \mbox{\tt Num} and those that lie below it)
+account for 
+many of the standard Haskell classes.  We also note that \mbox{\tt Num}
+is a subclass of \mbox{\tt Eq}, but not of \mbox{\tt Ord}; this is because the order
+predicates do not apply to complex numbers.  The subclass \mbox{\tt Real}
+of \mbox{\tt Num}, however, is a subclass of \mbox{\tt Ord} as well.
+
+The \mbox{\tt Num} class provides several basic operations common to all
+numeric types; these include, among others, addition, subtraction,
+negation, multiplication, and absolute value:
+\bprog
+\mbox{\tt (+),\ (-),\ (*)\ \ \ \ \ \ \ \ \ \ \ ::\ (Num\ a)\ =>\ a\ ->\ a\ ->\ a}\\
+\mbox{\tt negate,\ abs\ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Num\ a)\ =>\ a\ ->\ a}
+\eprog
+\syn{\mbox{\tt negate} is the function applied by Haskell's only prefix operator,
+minus; we can't call it \mbox{\tt (-)}, because that is the subtraction
+function, so this name is provided instead.  For example,
+\mbox{\tt -x*y} is equivalent to \mbox{\tt negate\ (x*y)}.  (Prefix minus has the same
+syntactic precedence as infix minus, which, of course, is lower
+than that of multiplication.)}
+
+Note that \mbox{\tt Num} does {\em not} provide a division operator; two
+different kinds of division operators are provided in two non-overlapping
+subclasses of \mbox{\tt Num}:
+
+The class \mbox{\tt Integral} provides whole-number division and remainder
+operations.  The
+standard instances of \mbox{\tt Integral} are \mbox{\tt Integer} (unbounded or
+mathematical integers, also known as ``bignums'') and \mbox{\tt Int}
+(bounded, machine integers, with a range equivalent to at least
+29-bit signed binary).  A particular Haskell implementation might
+provide other integral types in addition to these.  Note that
+\mbox{\tt Integral} is a subclass of \mbox{\tt Real}, rather than of \mbox{\tt Num} directly;
+this means that there is no attempt to provide Gaussian integers.
+
+All other numeric types fall in the class \mbox{\tt Fractional}, which provides
+the ordinary division operator \mbox{\tt (/)}.  The further subclass
+\mbox{\tt Floating} contains trigonometric, logarithmic, and exponential functions.
+
+The \mbox{\tt RealFrac} subclass of \mbox{\tt Fractional}  and \mbox{\tt Real} provides a function
+\mbox{\tt properFraction}, which decomposes a number into its whole and
+fractional parts, and a collection of functions that round to
+integral values by differing rules:
+\bprog
+\mbox{\tt properFraction\ \ \ \ \ \ \ \ \ \ ::\ (Fractional\ a,\ Integral\ b)\ =>\ a\ ->\ (b,a)}\\
+\mbox{\tt truncate,\ round,}\\
+\mbox{\tt floor,\ ceiling:\ \ \ \ \ \ \ \ \ ::\ (Fractional\ a,\ Integral\ b)\ =>\ a\ ->\ b}
+\eprog
+
+The \mbox{\tt RealFloat} subclass of \mbox{\tt Floating} and \mbox{\tt RealFrac} provides
+some specialized functions for efficient access to the components
+of a floating-point number, the {\em exponent} and {\em significand}.
+The standard types \mbox{\tt Float} and \mbox{\tt Double} fall in class \mbox{\tt RealFloat}.
+
+\subsection{Constructed Numbers}
+
+Of the standard numeric types, \mbox{\tt Int}, \mbox{\tt Integer}, \mbox{\tt Float}, and \mbox{\tt Double}
+are primitive.  The others are made from these by type constructors.
+
+\mbox{\tt Complex} (found in the library \mbox{\tt Complex}) is a type constructor that
+makes a complex type in class  \mbox{\tt Floating} from a \mbox{\tt RealFloat} type:
+\bprog
+\mbox{\tt data\ (RealFloat\ a)\ =>\ Complex\ a\ =\ !a\ :+\ !a\ \ deriving\ (Eq,\ Text)}
+\eprog
+The \mbox{\tt !} symbols are strictness flags; these were discussed in Section~
+\ref{tut-strict-flag}.
+Notice the context \mbox{\tt RealFloat\ a}, which restricts the argument
+type; thus, the standard complex types are \mbox{\tt Complex\ Float} and
+\mbox{\tt Complex\ Double}.  We can also see from the \mbox{\tt data} declaration
+that a complex number is written \mbox{$\it x$} \mbox{\tt :+} \mbox{$\it y$}; the arguments are
+the cartesian real and imaginary parts, respectively.  Since \mbox{\tt :+}
+is a data constructor, we can use it in pattern matching:
+\bprog
+\mbox{\tt conjugate\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (RealFloat\ a)\ =>\ Complex\ a\ ->\ Complex\ a}\\
+\mbox{\tt conjugate\ (x:+y)\ \ \ \ \ \ \ \ =\ \ x\ :+\ (-y)}
+\eprog
+
+Similarly, the type constructor \mbox{\tt Ratio} (found in the \mbox{\tt Rational}
+library) makes a rational type in class \mbox{\tt RealFrac} from an instance of
+\mbox{\tt Integral}. 
+(\mbox{\tt Rational} is a type synonym for \mbox{\tt Ratio\ Integer}.)
+\mbox{\tt Ratio}, however, is an abstract type constructor. 
+Instead of a data constructor like \mbox{\tt :+}, rationals use the `\mbox{\tt {\char'45}}' function to
+form a ratio from two integers.  Instead of pattern matching,
+component extraction functions are provided:
+\bprog
+\mbox{\tt ({\char'45})\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Integral\ a)\ =>\ a\ ->\ a\ ->\ Ratio\ a}\\
+\mbox{\tt numerator,\ denominator\ \ ::\ (Integral\ a)\ =>\ Ratio\ a\ ->\ a}
+\eprog
+
+Why the difference?  Complex numbers in cartesian form are
+unique---there are no nontrivial identities involving \mbox{\tt :+}.  On the
+other hand, ratios are not unique, but have a canonical (reduced) form
+that the implementation of the abstract data type must maintain; it is
+not necessarily the case, for instance, that \mbox{\tt numerator\ (x{\char'45}y)} is
+equal to \mbox{\tt x}, although the real part of \mbox{\tt x:+y} is always \mbox{\tt x}.
+
+\subsection{Numeric Coercions and Overloaded Literals}
+\label{tut-num-constants}
+
+The Standard Prelude and libraries provide several overloaded functions
+that serve as explicit coercions:
+\bprog
+\mbox{\tt fromInteger\ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Num\ a)\ =>\ Integer\ ->\ a}\\
+\mbox{\tt fromRational\ \ \ \ \ \ \ \ \ \ \ \ ::\ (Fractional\ a)\ =>\ Rational\ ->\ a}\\
+\mbox{\tt toInteger\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Integral\ a)\ =>\ a\ ->\ Integer}\\
+\mbox{\tt toRational\ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (RealFrac\ a)\ =>\ a\ ->\ Rational}\\
+\mbox{\tt fromIntegral\ \ \ \ \ \ \ \ \ \ \ \ ::\ (Integral\ a,\ Num\ b)\ =>\ a\ ->\ b}\\
+\mbox{\tt fromRealFrac\ \ \ \ \ \ \ \ \ \ \ \ ::\ (RealFrac\ a,\ Fractional\ b)\ =>\ a\ ->\ b}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt fromIntegral\ \ \ \ \ \ \ \ \ \ \ \ =\ \ fromInteger\ .\ toInteger}\\
+\mbox{\tt fromRealFrac\ \ \ \ \ \ \ \ \ \ \ \ =\ \ fromRational\ .\ toRational}
+\eprog
+
+Two of these are implicitly used to provide overloaded numeric literals:
+An integer numeral (without a decimal point) is actually equivalent to
+an application of \mbox{\tt fromInteger} to the value of the numeral as an
+\mbox{\tt Integer}.  Similarly, a floating numeral (with a decimal point) is
+regarded as an application of \mbox{\tt fromRational} to the value of the
+numeral as a \mbox{\tt Rational}.  Thus, \mbox{\tt 7} has the type \mbox{\tt (Num\ a)\ =>\ a},
+and \mbox{\tt 7.3} has the type \mbox{\tt (Fractional\ a)\ =>\ a}.  This means that we
+can use numeric literals in generic numeric functions, for example:
+\bprog
+\mbox{\tt halve\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Fractional\ a)\ =>\ a\ ->\ a}\\
+\mbox{\tt halve\ x\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ x\ *\ 0.5}
+\eprog
+This rather indirect way of overloading numerals has the additional
+advantage that the method of interpreting a numeral as a number
+of a given type can be specified in an \mbox{\tt Integral} or \mbox{\tt Fractional}
+instance declaration (since \mbox{\tt fromInteger} and \mbox{\tt fromRational} are
+operators of those classes, respectively).  For example, the
+\mbox{\tt Num} instance of \mbox{\tt (RealFloat\ a)\ =>\ Complex\ a} contains this method:
+\bprog
+\mbox{\tt fromInteger\ x\ \ \ \ \ \ \ \ \ \ \ =\ \ fromInteger\ x\ :+\ 0}
+\eprog
+This says that a \mbox{\tt Complex} instance of \mbox{\tt fromInteger} is defined to
+produce a complex number whose real part is supplied by an appropriate
+\mbox{\tt RealFloat} instance of \mbox{\tt fromInteger}.  In this manner, even
+user-defined numeric types (say, quaternions) can make use of
+overloaded numerals.
+
+As another example, recall our first definition of \mbox{\tt inc} from Section
+\ref{tut-values-etc}:
+\bprog
+\mbox{\tt inc\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ Integer\ ->\ Integer}\\
+\mbox{\tt inc\ n\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ n+1}
+\eprog 
+Ignoring the type signature, the most general type of \mbox{\tt inc} is 
+\mbox{\tt (Num\ a)\ =>\ a->a}.  The explicit type signature is legal,
+however, since it is {\em more specific} than the principal type (a
+more general type signature would cause a static error).  The type
+signature has the effect of restricting \mbox{\tt inc}'s type, and in this
+case would cause something like \mbox{\tt inc\ (1::Float)} to be ill-typed.
+
+\subsection{Default Numeric Types}
+
+Consider the following function definition:
+\bprog
+\mbox{\tt rms\ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Floating\ a)\ =>\ a\ ->\ a\ ->\ a}\\
+\mbox{\tt rms\ x\ y\ \ \ \ \ \ \ \ \ \ =\ \ sqrt\ ((x{\char'136}2\ +\ y{\char'136}2)\ *\ 0.5)}
+\eprog
+The exponentiation function \mbox{\tt ({\char'136})} (one of three different standard
+exponentiation operators with different typings, see \S{6.8.5}) has
+the type \mbox{\tt (Num\ a,\ Integral\ b)\ =>\ a\ ->\ b\ ->\ a}, and since \mbox{\tt 2} has the
+type \mbox{\tt (Num\ a)\ =>\ a}, the type of \mbox{\tt x{\char'136}2} is \mbox{\tt (Num\ a,\ Integral\ b)\ =>\ a}.
+This is a problem; there is no way to resolve the overloading
+associated with the type variable \mbox{\tt b}, since it is in the context, but
+has otherwise vanished from the type expression.  Essentially, the
+programmer has specified that \mbox{\tt x} should be squared, but has not
+specified whether it should be squared with an \mbox{\tt Int} or an \mbox{\tt Integer}
+value of two.  Of course, we can fix this:
+\bprog
+\mbox{\tt rms\ x\ y\ \ \ \ \ \ \ \ \ \ =\ \ sqrt\ ((x\ {\char'136}\ (2::Integer)\ +\ y\ {\char'136}\ (2::Integer))\ *\ 0.5)}
+\eprog
+It's obvious that this sort of thing will soon grow tiresome, however.
+
+In fact, this kind of overloading ambiguity is not restricted to
+numbers:
+\bprog
+\mbox{\tt show\ (read\ "xyz")}
+\eprog
+As what type is the string supposed to be read?  This is
+more serious than the exponentiation ambiguity, because there, any
+\mbox{\tt Integral} instance will do, whereas here, very different behavior
+can be expected depending on what instance of \mbox{\tt Text} is used to
+resolve the ambiguity.
+
+Because of the difference between the numeric and general cases of the
+overloading ambiguity problem, Haskell provides a solution that is
+restricted to numbers: Each module may contain a {\em default
+declaration,} consisting of the keyword \mbox{\tt default} followed by a
+parenthesized, comma-separated list of numeric monotypes (types with
+no variables).  When an ambiguous type variable is discovered (such as
+\mbox{\tt b}, above), if at least one of its classes is numeric and all of its
+classes are standard, the default list is consulted, and the first
+type from the list that will satisfy the context of the type variable
+is used.  For example, if the default declaration
+\mbox{\tt default\ (Int,\ Float)} is in effect, the ambiguous exponent above will
+be resolved as type \mbox{\tt Int}.  (See \see{default-decls} for more details.)
+
+The ``default default'' is \mbox{\tt (Integer,\ Double)}, but
+\mbox{\tt (Integer,\ Rational,\ Double)} may also be appropriate.  Very cautious
+programmers may prefer \mbox{\tt default\ ()}, which provides no defaults.
+
+%**~footer

@@ -1,0 +1,528 @@
+%**<title>A Gentle Introduction to Haskell: About Monads</title>
+
+%**~header
+
+\section{About Monads}
+\label{tut-monads}
+Many newcomers to Haskell are puzzled by the concept of {\em monads}.
+Monads are frequently encountered in Haskell: the IO system is constructed
+using a monad, a special syntax for monads has been provided (\mbox{\tt do}
+expressions), and the standard libraries contain an entire module dedicated
+to monads.  In this section we explore monadic programming in more detail.
+
+This section is perhaps less ``gentle'' than the others.  Here we
+address not only the language features that involve monads but also
+try to reveal the bigger picture: why monads are such an important
+tool and how they are used.  There is no
+single way of explaining monads that works for everyone; more
+explanations can be found at {\tt haskell.org}.  Another good
+introduction to practical programming using monads is Wadler's 
+{\em Monads for Functional Programming}~\cite{wadler:mffp}.  
+
+\subsection{Monadic Classes}
+\label{tut-monadic-classes}
+The Prelude contains a number of classes defining monads are they
+are used in Haskell.  These classes are based on the monad construct
+in category theory; whilst the category theoretic terminology
+provides the names for the monadic classes and operations, it is not
+necessary to delve into abstract mathematics to get an intuitive
+understanding of how to use the monadic classes.
+
+A monad is constructed on top of a polymorphic type such as \mbox{\tt IO}.  The
+monad itself is defined by instance declarations 
+associating the type with the some or all of the
+monadic classes, \mbox{\tt Functor}, \mbox{\tt Monad},
+and \mbox{\tt MonadPlus}.  None of the monadic classes are derivable.  In addition
+to \mbox{\tt IO}, two other types in the Prelude are members of the monadic
+classes: lists (\mbox{\tt []}) and \mbox{\tt Maybe}.  
+
+Mathematically, monads are governed by set of {\em laws} that should hold
+for the monadic operations.  This idea of laws is not unique to
+monads: Haskell includes other operations that are 
+governed, at least informally, by laws.  For example, \mbox{\tt x\ /=\ y} and
+\mbox{\tt not\ (x\ ==\ y)} ought to be the same for any type of values being
+compared.  However, there is no guarantee of this: both \mbox{\tt ==} and \mbox{\tt /=} are 
+separate methods in the \mbox{\tt Eq} class and there is no way to assure that
+\mbox{\tt ==} and \mbox{\tt =/} are related in this manner.
+In the same sense, the monadic laws presented here are not enforced by
+Haskell, but ought be obeyed by any instances of a monadic class.
+The monad laws give insight into the underlying structure of monads:
+by examining these laws, we hope to give a feel for how monads are
+used. 
+
+The \mbox{\tt Functor} class, already discussed in section
+\ref{tut-type-classes},  defines a 
+single operation: \mbox{\tt fmap}.  The map function applies an operation to the
+objects inside a container (polymorphic types can be thought of as
+containers for values  of another type), returning a container of the
+same shape. 
+These laws apply to \mbox{\tt fmap} in the class \mbox{\tt Functor}:
+\[\ba{lcl}
+\mbox{\tt fmap\ id}&=&\mbox{\tt id}\\
+\mbox{\tt fmap\ (f\ .\ g)}&=&\mbox{\tt fmap\ f\ .\ fmap\ g}\\
+\ea\]
+These laws ensure that the container shape is unchanged by
+\mbox{\tt fmap} and that the contents of the container are not re-arranged by
+the mapping operation.   
+
+The \mbox{\tt Monad} class defines two basic operators: \mbox{\tt >>=} (bind) and \mbox{\tt return}.
+\bprog
+\mbox{\tt infixl\ 1\ \ >>,\ >>=}\\
+\mbox{\tt class\ \ Monad\ m\ \ where}\\
+\mbox{\tt \ \ \ \ (>>=)\ \ \ \ \ \ \ \ \ \ \ \ ::\ m\ a\ ->\ (a\ ->\ m\ b)\ ->\ m\ b}\\
+\mbox{\tt \ \ \ \ (>>)\ \ \ \ \ \ \ \ \ \ \ \ \ ::\ m\ a\ ->\ m\ b\ ->\ m\ b}\\
+\mbox{\tt \ \ \ \ return\ \ \ \ \ \ \ \ \ \ \ ::\ a\ ->\ m\ a}\\
+\mbox{\tt \ \ \ \ fail\ \ \ \ \ \ \ \ \ \ \ \ \ ::\ String\ ->\ m\ a}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt \ \ \ \ m\ >>\ k\ \ \ \ \ \ \ \ \ \ \ =\ \ m\ >>=\ {\char'134}{\char'137}\ ->\ k}
+\eprog
+The bind operations, \mbox{\tt >>} and \mbox{\tt >>=}, combine two monadic values while
+the \mbox{\tt return} operation injects a value into the monad (container).
+The signature of \mbox{\tt >>=}  helps
+us to understand this operation: \mbox{\tt ma\ >>=\ {\char'134}v\ ->\ mb} 
+combines a monadic value \mbox{\tt ma} containing values
+of type \mbox{\tt a} and a function which operates
+on a value \mbox{\tt v} of type \mbox{\tt a}, returning the monadic value \mbox{\tt mb}.  The
+result is to combine \mbox{\tt ma} and \mbox{\tt mb} into a 
+monadic value containing \mbox{\tt b}.  The \mbox{\tt >>} 
+function is used when the function does not need the value produced by
+the first monadic operator.
+
+The precise meaning of binding depends, of course, on the monad.  For
+example, in the IO monad, \mbox{\tt x\ >>=\ y} performs two actions sequentially,
+passing the result of the first into the second.  For the other
+built-in monads, lists and the \mbox{\tt Maybe} type, these monadic operations
+can be understood in terms of passing zero or more values from one
+calculation to the next.  We will see examples of this shortly.
+
+The \mbox{\tt do} syntax provides a simple shorthand for chains of monadic
+operations.  The essential translation of \mbox{\tt do} is captured in the
+following two rules:
+\bprog
+\mbox{\tt \ \ do\ e1\ ;\ e2\ \ \ \ \ \ =\ \ \ \ \ \ \ \ e1\ >>\ e2}\\
+\mbox{\tt \ \ do\ p\ <-\ e1;\ e2\ \ =\ \ \ \ \ \ \ \ e1\ >>=\ {\char'134}p\ ->\ e2}
+\eprog
+When the pattern in this second form of \mbox{\tt do} is refutable, pattern
+match failure calls the \mbox{\tt fail} operation.  This may raise an error (as
+in the \mbox{\tt IO} monad) or return a ``zero'' (as in the list monad).  Thus
+the more complex translation is
+\bprog
+\mbox{\tt \ \ \ do\ p\ <-\ e1;\ e2\ \ =\ \ \ e1\ >>=\ ({\char'134}v\ ->\ case\ v\ of\ p\ ->\ e2;\ {\char'137}\ ->\ fail\ "s")\ \ \ \ }
+\eprog
+where \mbox{\tt "s"} is a string identifying the location of the \mbox{\tt do} statement
+for possible use in an error message.  For example, in the I/O monad,
+an action such as \mbox{\tt 'a'\ <-\ getChar} will call \mbox{\tt fail} if the character
+typed is not 'a'.  This, in turn, terminates the program since in the
+I/O monad \mbox{\tt fail} calls \mbox{\tt error}.  
+
+The laws which govern \mbox{\tt >>=} and \mbox{\tt return} are:  
+\[\ba{lcl}
+\mbox{\tt return\ a\ >>=\ k}&=&\mbox{\tt k\ a} \\
+\mbox{\tt m\ >>=\ return}&=&\mbox{\tt m} \\
+\mbox{\tt xs\ >>=\ return\ .\ f}&=&\mbox{\tt fmap\ f\ xs}\\
+\mbox{\tt m\ >>=\ ({\char'134}x\ ->\ k\ x\ >>=\ h)}&=&\mbox{\tt (m\ >>=\ k)\ >>=\ h}\\
+\ea\]
+
+The class \mbox{\tt MonadPlus} is used for monads that have a \mbox{$\it zero$} element
+and a \mbox{$\it plus$} operation:
+\bprog
+\mbox{\tt class\ \ (Monad\ m)\ =>\ MonadPlus\ m\ \ where}\\
+\mbox{\tt \ \ \ \ mzero\ \ \ \ \ \ \ \ \ \ \ \ \ ::\ m\ a}\\
+\mbox{\tt \ \ \ \ mplus\ \ \ \ \ \ \ \ \ \ \ \ \ ::\ m\ a\ ->\ m\ a\ ->\ m\ a}
+\eprog
+The zero element obeys the following laws: 
+\[\ba{lcl}
+\mbox{\tt m\ >>=\ {\char'134}x\ ->\ mzero}&=&\mbox{\tt mzero}\\
+\mbox{\tt mzero\ >>=\ m}&=&\mbox{\tt mzero}\\
+\ea\]
+For lists, the zero value is \mbox{\tt []}, the empty list.  The I/O monad has
+no zero element and is not a member of this class.  
+
+The laws governing the \mbox{\tt mplus} operator are as follows:
+\[\ba{lcl}
+\mbox{\tt m\ `mplus`\ mzero}&=&\mbox{\tt m}\\
+\mbox{\tt mzero\ `mplus`\ m}&=&\mbox{\tt m}\\
+\ea\]
+The \mbox{\tt mplus} operator is ordinary list concatenation in the list monad.
+
+\subsection{Built-in Monads}
+Given the monadic operations and the laws that govern them, what can
+we build?  We have already examined the I/O monad in detail so we
+start with the two other built-in monads.  
+
+For lists, monadic binding involves joining together a set of
+calculations for each value in the list.  When used with lists, the
+signature of \mbox{\tt >>=} becomes:
+\bprog
+\mbox{\tt (>>=)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ [a]\ ->\ (a\ ->\ [b])\ ->\ [b]\ }
+\eprog
+That is, given a list of \mbox{\tt a}'s and a function that maps an \mbox{\tt a} onto a
+list of \mbox{\tt b}'s, binding applies this function to each of the \mbox{\tt a}'s in
+the input and returns all of the generated \mbox{\tt b}'s concatenated into a
+list.  The \mbox{\tt return} function creates a singleton list.  These
+operations should already be familiar: list comprehensions can easily
+be expressed using the monadic operations 
+defined for lists.  These following three
+expressions are all different syntax for the same thing:
+\bprog
+\mbox{\tt [(x,y)\ |\ x\ <-\ [1,2,3]\ ,\ y\ <-\ [1,2,3],\ x\ /=\ y]}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt do\ x\ <-\ [1,2,3]}\\
+\mbox{\tt \ \ \ y\ <-\ [1,2,3]}\\
+\mbox{\tt \ \ \ True\ <-\ return\ (x\ /=\ y)}\\
+\mbox{\tt \ \ \ return\ (x,y)}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt [1,2,3]\ >>=\ ({\char'134}\ x\ ->\ [1,2,3]\ >>=\ ({\char'134}y\ ->\ return\ (x/=y)\ >>=}\\
+\mbox{\tt \ \ \ ({\char'134}r\ ->\ case\ r\ of\ True\ ->\ return\ (x,y)}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ {\char'137}\ \ \ \ ->\ fail\ "")))}
+\eprog
+This definition depends on the definition of \mbox{\tt fail} in this monad as
+the empty list.  Essentially, each \mbox{\tt <-} is generating a set of values
+which is passed on into the remainder of the monadic computation.
+Thus \mbox{\tt x\ <-\ [1,2,3]} invokes the remainder of the monadic computation
+three times, once for each element of the list.  The returned
+expression, \mbox{\tt (x,y)}, will be
+evaluated for all possible combinations of bindings that surround it.
+In this sense, the list monad can be thought of as describing
+functions of multi-valued arguments.  For example, this function:
+\bprog
+\mbox{\tt mvLift2\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (a\ ->\ b\ ->\ c)\ ->\ [a]\ ->\ [b]\ ->\ [c]}\\
+\mbox{\tt mvLift2\ f\ x\ y\ \ \ \ \ \ \ \ \ \ =\ \ do\ x'\ <-\ x}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ y'\ <-\ y}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ return\ (f\ x'\ y')}
+\eprog
+turns an ordinary function of two arguments (\mbox{\tt f}) into a function over
+multiple values (lists of arguments), returning a value for each possible
+combination of the two input arguments.  For example, 
+\[\ba{lcl}
+\mbox{\tt mvLift2\ (+)\ [1,3]\ [10,20,30]}  \ \ \ &\red&\ \ \ \mbox{\tt [11,21,31,13,23,33]}\\
+\mbox{\tt mvLift2\ ({\char'134}a\ b->[a,b])\ "ab"\ "cd"}  \ \ \ &\red&\ \ \ \mbox{\tt ["ac","ad","bc","bd"]}\\
+\mbox{\tt mvLift2\ (*)\ [1,2,4]\ []}\ \ \ &\red&\ \ \ \mbox{\tt []}\\
+\ea\]
+This function is a specialized version of the \mbox{\tt LiftM2} function in the
+monad library.  You can think of it as transporting a function from
+outside the list monad, \mbox{\tt f}, into the list monad in which computations
+take on multiple values.  
+
+The monad defined for \mbox{\tt Maybe} is similar to the list monad: the value
+\mbox{\tt Nothing} serves as \mbox{\tt []} and \mbox{\tt Just\ x} as \mbox{\tt [x]}.  
+
+\subsection{Using Monads}
+Explaining the monadic operators and their associated laws doesn't
+really show what monads are good for.  What they really provide is
+{\em modularity}.  That is, by defining an operation monadically, we can
+hide underlying machinery in a way that allows new features to be
+incorporated into the monad transparently.  Wadler's paper~\cite{wadler:mffp}
+is an excellent example of how monads can be 
+used to construct modular programs.  We will start with a monad taken
+directly from this paper, the state monad, and then build a more
+complex monad with a similar definition. 
+
+Briefly, a state monad built around a state type \mbox{\tt S} looks
+like this:
+\bprog
+\mbox{\tt data\ SM\ a\ =\ SM\ (S\ ->\ (a,S))\ \ --\ The\ monadic\ type}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt instance\ Monad\ SM\ where}\\
+\mbox{\tt \ \ --\ defines\ state\ propagation}\\
+\mbox{\tt \ \ SM\ c1\ >>=\ fc2\ \ \ \ \ \ \ \ \ =\ \ SM\ ({\char'134}s0\ ->\ let\ (r,s1)\ =\ c1\ s0\ }\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ SM\ c2\ =\ fc2\ r\ in}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ c2\ s1)}\\
+\mbox{\tt \ \ return\ k\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ SM\ ({\char'134}s\ ->\ (k,s))}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt \ --\ extracts\ the\ state\ from\ the\ monad}\\
+\mbox{\tt readSM\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ SM\ S}\\
+\mbox{\tt readSM\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ SM\ ({\char'134}s\ ->\ (s,s))}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt \ --\ updates\ the\ state\ of\ the\ monad}\\
+\mbox{\tt updateSM\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (S\ ->\ S)\ ->\ SM\ ()\ \ --\ alters\ the\ state}\\
+\mbox{\tt updateSM\ f\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ SM\ ({\char'134}s\ ->\ ((),\ f\ s))\ }\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt --\ run\ a\ computation\ in\ the\ SM\ monad}\\
+\mbox{\tt runSM\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ S\ ->\ SM\ a\ ->\ (a,S)}\\
+\mbox{\tt runSM\ s0\ (SM\ c)\ \ \ \ \ \ \ \ \ =\ \ c\ s0}
+\eprog
+This example defines a new type, \mbox{\tt SM}, to be a computation that
+implicitly carries a type \mbox{\tt S}.  That is, a computation of type \mbox{\tt SM\ t}
+defines a value of type \mbox{\tt t} 
+while also interacting with (reading and writing) the state of type
+\mbox{\tt S}.  The definition of \mbox{\tt SM} is simple: it consists of functions that take a
+state and produce two results: a returned value (of any type) and an
+updated state.  We can't use a type synonym here: we need a type name
+like \mbox{\tt SM} that can be used in instance declarations.  The \mbox{\tt newtype}
+declaration is often used here instead of \mbox{\tt data}.
+
+This instance declaration defines the `plumbing' of the monad: how to
+sequence two computations and the definition of an empty computation.
+Sequencing (the \mbox{\tt >>=} operator) defines a computation (denoted by the
+constructor \mbox{\tt SM}) that passes an initial 
+state, \mbox{\tt s0}, into \mbox{\tt c1}, then passes the value coming out of this
+computation, \mbox{\tt r}, to the function that returns the second computation,
+\mbox{\tt c2}.  Finally, the state coming out of \mbox{\tt c1} is passed into \mbox{\tt c2} and
+the overall result is the result of \mbox{\tt c2}.  
+
+The definition of \mbox{\tt return} is easier: \mbox{\tt return} doesn't change the
+state at all; it only serves to bring a value into the monad.  
+
+While \mbox{\tt >>=} and \mbox{\tt return} are the basic monadic sequencing operations,
+we also need some {\em monadic primitives}.  A monadic primitive is
+simply an operation that uses the insides of the monad abstraction and
+taps into 
+the `wheels and gears' that make the monad work.  For example, in the
+\mbox{\tt IO} monad, operators such as \mbox{\tt putChar} are primitive since they deal
+with the inner workings of the \mbox{\tt IO} monad.  Similarly, our state monad
+uses two primitives: \mbox{\tt readSM} and \mbox{\tt updateSM}.  Note that these depend
+on the inner structure of the monad - a change to the definition of
+the \mbox{\tt SM} type would require a change to these primitives.
+
+The definition of \mbox{\tt readSM} and \mbox{\tt updateSM} are simple: \mbox{\tt readSM} brings
+the state out of the monad for observation while \mbox{\tt updateSM} allows the
+user to alter the state in the monad.  (We could also have used
+\mbox{\tt writeSM} as a primitive but update is often a more natural way of
+dealing with state).  
+
+Finally, we need a function that runs computations in the monad,
+\mbox{\tt runSM}.  This takes an initial state and a computation and yields
+both the returned value of the computation and the final state.
+
+Looking at the bigger picture, what we are trying to do is define an
+overall computation as a series of steps (functions with type
+\mbox{\tt SM\ a}), sequenced using \mbox{\tt >>=} and \mbox{\tt return}.  These steps may interact
+with the state (via \mbox{\tt readSM} or \mbox{\tt updateSM}) or may ignore the state.
+However, the use (or non-use) of the state is hidden: we don't invoke
+or sequence our computations differently depending on whether or not
+they use \mbox{\tt S}.  
+
+Rather than present any examples using this simple state monad, we
+proceed on to a more complex example that includes the state monad.
+We define a small {\em embedded language} of resource-using
+calculations. 
+That is, we build a special purpose language implemented as a set of Haskell
+types and functions.  Such languages use the basic tools of Haskell,
+functions and types, to build a library of operations
+and types specifically tailored to a domain of interest.
+
+In this example, consider a computation that requires some sort of
+resource.  If the resource is available, computation proceeds; when the
+resource is unavailable, the computation suspends.  We use the type \mbox{\tt R}
+to denote a computation using resources controlled by our monad.
+The definition of \mbox{\tt R} is as follows:
+\bprog
+\mbox{\tt data\ R\ a\ =\ R\ (Resource\ ->\ (Resource,\ Either\ a\ (R\ a)))}
+\eprog
+Each computation is a function from available resources to remaining
+resources, coupled with either a result, of type \mbox{\tt a}, or a
+suspended computation, of type \mbox{\tt R\ a}, capturing the work done up
+to the point where resources were exhausted.
+
+The \mbox{\tt Monad} instance for \mbox{\tt R} is as follows:
+\bprog
+\mbox{\tt instance\ Monad\ R\ where}\\
+\mbox{\tt \ \ R\ c1\ >>=\ fc2\ \ \ \ \ \ \ \ \ \ =\ R\ ({\char'134}r\ ->\ case\ c1\ r\ of}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (r',\ Left\ v)\ \ \ \ ->\ let\ R\ c2\ =\ fc2\ v\ in}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ c2\ r'}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (r',\ Right\ pc1)\ ->\ (r',\ Right\ (pc1\ >>=\ fc2)))}\\
+\mbox{\tt \ \ return\ v\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ R\ ({\char'134}r\ ->\ (r,\ (Left\ v)))}
+\eprog
+The \mbox{\tt Resource} type is used in the same manner as the state in
+the state monad.  This definition reads as follows: to combine two
+`resourceful' computations, \mbox{\tt c1} and \mbox{\tt fc2} (a function producing
+\mbox{\tt c2}), pass the initial resources into \mbox{\tt c1}.  The result will be
+either
+\begin{itemize}
+\item a value, \mbox{\tt v}, and remaining resources, which are used to determine
+the next computation (the call \mbox{\tt fc2\ v}), or
+\item a suspended computation, \mbox{\tt pc1}, and resources remaining at the
+point of suspension.  
+\end{itemize}
+The suspension must take the second computation into consideration:
+\mbox{\tt pc1} suspends only the first computation, \mbox{\tt c1}, so we must bind \mbox{\tt c2}
+to this to produce a suspension of the overall computation.
+The definition of \mbox{\tt return} leaves the resources unchanged while moving
+\mbox{\tt v} into the monad.
+
+This instance declaration defines the basic structure of the monad but
+does not determine how resources are used.  This monad could be
+used to control many types of resource or implement many different
+types of resource usage policies.  We will demonstrate a very simple
+definition of resources as an example: we choose \mbox{\tt Resource} to be an
+\mbox{\tt Integer}, representing available computation steps:
+\bprog
+\mbox{\tt type\ Resource\ \ \ \ \ \ \ \ \ \ \ =\ \ Integer}
+\eprog
+This function takes a step unless no steps are available:
+\bprog
+\mbox{\tt step\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ a\ ->\ R\ a}\\
+\mbox{\tt step\ v\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ c\ where}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ c\ =\ R\ ({\char'134}r\ ->\ if\ r\ /=\ 0\ then\ (r-1,\ Left\ v)}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ else\ (r,\ Right\ c))}
+\eprog
+The \mbox{\tt Left} and \mbox{\tt Right} constructors are part of the \mbox{\tt Either} type.
+This function continues computation in \mbox{\tt R} by returning \mbox{\tt v} so long as
+there is at least one computational step resource available.
+If no steps are available, the \mbox{\tt step} function suspends the current
+computation (this suspension is captured in \mbox{\tt c}) and passes this
+suspended computation back into the monad.  
+
+So far, we have the tools to define a sequence of ``resourceful''
+computations (the monad) and we can express a form of resource usage
+using \mbox{\tt step}.  Finally, we need to address how computations in this
+monad are expressed.  
+
+Consider an increment function in our monad:
+\bprog
+\mbox{\tt inc\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ R\ Integer\ ->\ R\ Integer}\\
+\mbox{\tt inc\ i\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ do\ iValue\ <-\ i}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ step\ (iValue+1)}
+\eprog
+This defines increment as a single step of computation.  The \mbox{\tt <-} is
+necessary to pull the argument value out of the monad; the type of
+\mbox{\tt iValue} is \mbox{\tt Integer} instead of \mbox{\tt R\ Integer}.  
+
+This definition isn't particularly satisfying, though, compared to the
+standard definition of the increment function.  Can we instead ``dress
+up'' existing operations like \mbox{\tt +} so that they work in our monadic
+world?  We'll start with a set of {\tt lifting} functions.  These 
+bring existing functionality into the monad.  Consider the definition
+of \mbox{\tt lift1} (this is slightly different from the \mbox{\tt liftM1} found in the
+\mbox{\tt Monad} library):
+\bprog
+\mbox{\tt lift1\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (a\ ->\ b)\ ->\ (R\ a\ ->\ R\ b)}\\
+\mbox{\tt lift1\ f\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ {\char'134}ra1\ ->\ do\ a1\ <-\ ra1}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ step\ (f\ a1)}
+\eprog
+This takes a function of a single argument, \mbox{\tt f}, and creates a
+function in \mbox{\tt R} that executes the lifted function in a single step.
+Using \mbox{\tt lift1}, \mbox{\tt inc} becomes
+\bprog
+\mbox{\tt inc\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ R\ Integer\ ->\ R\ Integer}\\
+\mbox{\tt inc\ i\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ lift1\ (i+1)}
+\eprog
+This is better but still not ideal.  First, we add \mbox{\tt lift2}:
+\bprog
+\mbox{\tt lift2\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (a\ ->\ b\ ->\ c)\ ->\ (R\ a\ ->\ R\ b\ ->\ R\ c)}\\
+\mbox{\tt lift2\ f\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ {\char'134}ra1\ ra2\ ->\ do\ a1\ <-\ ra1}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ a2\ <-\ ra2}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ step\ (f\ a1\ a2)}
+\eprog
+Notice that this function explicitly sets the order of evaluation in
+the lifted function: the computation yielding \mbox{\tt a1} occurs before the
+computation for \mbox{\tt a2}.
+
+Using \mbox{\tt lift2}, we can create a new version of \mbox{\tt ==} in the \mbox{\tt R} monad:
+\bprog
+\mbox{\tt (==*)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ Ord\ a\ =>\ R\ a\ ->\ R\ a\ ->\ R\ Bool}\\
+\mbox{\tt (==*)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ lift2\ (==)}
+\eprog
+We had to use a slightly different name for this new function since
+\mbox{\tt ==} is already taken but in
+some cases we can use the same name for the lifted and unlifted
+function.  This instance declaration allows 
+all of the operators in \mbox{\tt Num} to be used in \mbox{\tt R}:
+\bprog
+\mbox{\tt instance\ Num\ a\ =>\ Num\ (R\ a)\ where}\\
+\mbox{\tt \ \ (+)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ lift2\ (+)}\\
+\mbox{\tt \ \ (-)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ lift2\ (-)}\\
+\mbox{\tt \ \ negate\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ lift1\ negate}\\
+\mbox{\tt \ \ (*)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ lift2\ (*)}\\
+\mbox{\tt \ \ abs\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ lift1\ abs}\\
+\mbox{\tt \ \ fromInteger\ \ \ \ \ \ \ \ \ \ \ =\ \ return\ .\ fromInteger}
+\eprog
+The \mbox{\tt fromInteger} function is applied implicitly to all integer
+constants in a Haskell program (see Section \ref{tut-num-constants});
+this definition allows integer constants to have the type \mbox{\tt R\ Integer}.
+We can now, finally, write increment in a completely natural style:
+\bprog
+\mbox{\tt inc\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ R\ Integer\ ->\ R\ Integer}\\
+\mbox{\tt inc\ x\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ x\ +\ 1}
+\eprog
+Note that we cannot lift the \mbox{\tt Eq} class in the same manner as the
+\mbox{\tt Num} class: the signature of \mbox{\tt ==*} is not compatible with allowable
+overloadings of \mbox{\tt ==} since the result of \mbox{\tt ==*} is \mbox{\tt R\ Bool} instead of
+\mbox{\tt Bool}.
+
+To express interesting computations in \mbox{\tt R} we will need a
+conditional.  Since we can't use \mbox{\tt if} (it requires that the test be of
+type \mbox{\tt Bool} instead of \mbox{\tt R\ Bool}), we name the function \mbox{\tt ifR}:
+\bprog
+\mbox{\tt ifR\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ R\ Bool\ ->\ R\ a\ ->\ R\ a\ ->\ R\ a}\\
+\mbox{\tt ifR\ tst\ thn\ els\ \ \ \ \ \ \ \ \ =\ \ do\ t\ <-\ tst}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ if\ t\ then\ thn\ else\ els}
+\eprog
+Now we're ready for a larger program in the \mbox{\tt R} monad:
+\bprog
+\mbox{\tt fact\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ R\ Integer\ ->\ R\ Integer}\\
+\mbox{\tt fact\ x\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ ifR\ (x\ ==*\ 0)\ 1\ (x\ *\ fact\ (x-1))}
+\eprog
+Now this isn't quite the same as an ordinary factorial function but
+still quite readable.  The idea of providing new definitions for
+existing operations like \mbox{\tt +} or \mbox{\tt if} is an essential part of creating
+an embedded language in Haskell.  Monads are particularly useful for
+encapsulating the semantics of these embedded languages in a clean and
+modular way.
+
+We're now ready to actually run some programs.  This function runs a
+program in \mbox{\tt M} given a maximum number of computation steps:
+\bprog
+\mbox{\tt run\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ Resource\ ->\ R\ a\ ->\ Maybe\ a}\\
+\mbox{\tt run\ s\ (R\ p)\ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ case\ (p\ s)\ of\ }\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ({\char'137},\ Left\ v)\ ->\ Just\ v}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ {\char'137}\ \ \ \ \ \ \ \ \ \ \ ->\ Nothing}
+\eprog
+We use the \mbox{\tt Maybe} type to deal with the possibility of the
+computation not finishing in the allotted number of steps.  We can now
+compute 
+\[\ba{lcl}
+\mbox{\tt run\ 10\ (fact\ 2)}  \ \ \ &\red&\ \ \ \mbox{\tt Just\ 2}\\
+\mbox{\tt run\ 10\ (fact\ 20)}  \ \ \ &\red&\ \ \ \mbox{\tt Nothing}\\
+\ea\]
+
+Finally, we can add some more interesting functionality to this
+monad.  Consider the following function:
+\bprog
+\mbox{\tt (|||)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ R\ a\ ->\ R\ a\ ->\ R\ a}
+\eprog
+This runs two computations in parallel, returning the value of the
+first one to complete.  One possible definition of this function is:
+\bprog
+\mbox{\tt c1\ |||\ c2\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ oneStep\ c1\ ({\char'134}c1'\ ->\ c2\ |||\ c1')}\\
+\mbox{\tt \ \ \ where}\\
+\mbox{\tt \ \ \ \ \ \ \ \ oneStep\ \ \ \ \ \ \ \ \ \ ::\ R\ a\ ->\ (R\ a\ ->\ R\ a)\ ->\ R\ a}\\
+\mbox{\tt \ \ \ \ \ \ \ \ oneStep\ (R\ c1)\ f\ =}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ R\ ({\char'134}r\ ->\ case\ c1\ 1\ of}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (r',\ Left\ v)\ ->\ (r+r'-1,\ Left\ v)}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (r',\ Right\ c1')\ ->\ \ --\ r'\ must\ be\ 0}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ let\ R\ next\ =\ f\ c1'\ in}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ next\ (r+r'-1))}
+\eprog
+This takes a step in \mbox{\tt c1}, returning its value of \mbox{\tt c1} complete or, if
+\mbox{\tt c1} returns a suspended computation (\mbox{\tt c1'}), it evaluates
+\mbox{\tt c2\ |||\ c1'}.  The \mbox{\tt oneStep} function takes a single step in its
+argument, either returning an evaluated value or passing the remainder
+of the computation into \mbox{\tt f}.  The definition of \mbox{\tt oneStep} is simple:
+it gives \mbox{\tt c1} a 1 as its resource argument.  If a final value is
+reached, this is returned, adjusting the returned step count (it is
+possible that a computation might return after taking no steps so the
+returned resource count isn't necessarily 0).  If the computation
+suspends, a patched up resource count is passed to the final
+continuation. 
+
+We can now evaluate expressions like \mbox{\tt run\ 100\ (fact\ (-1)\ |||\ (fact\ 3))}
+without looping since the two calculations are interleaved.  (Our
+definition of \mbox{\tt fact} loops for \mbox{\tt -1}).  
+Many variations are possible on this basic
+structure.  For example, we could extend the state to include a trace
+of the computation steps.  We could also embed this monad inside the
+standard \mbox{\tt IO} monad, allowing computations in \mbox{\tt M} to interact with the
+outside world.
+ 
+While this example is perhaps more advanced than others in this tutorial,
+it serves to illustrate the power of monads as a tool for defining the
+basic semantics of a system.  We also present this example as a model
+of a small {\em Domain Specific Language}, something Haskell is
+particularly good at defining.  Many other DSLs have been developed in
+Haskell; see {\tt haskell.org} for many more examples.  Of particular
+interest are Fran, a language of reactive animations, and Haskore, a
+language of computer music.
+
+%**~footer

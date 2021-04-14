@@ -1,0 +1,239 @@
+%**<title>A Gentle Introduction to Haskell: Types, Again</title>
+%**~header
+\section{Types, Again}
+
+Here we examine some of the more advanced aspects of type
+declarations.  
+
+\subsection{The Newtype Declaration}
+
+A common programming practice is to define a type whose representation
+is identical to an existing one but which has a separate identity in
+the type system.  
+In Haskell, the \mbox{\tt newtype} declaration creates a new type from an
+existing one.  For example, natural numbers can be represented by
+the type \mbox{\tt Integer} using the following declaration:
+\bprog
+\mbox{\tt newtype\ Natural\ =\ MakeNatural\ Integer}
+\eprog
+This creates an entirely new type, \mbox{\tt Natural}, whose only
+constructor contains a single \mbox{\tt Integer}.  The constructor \mbox{\tt MakeNatural} 
+converts between an \mbox{\tt Natural} and an \mbox{\tt Integer}:
+\bprog
+\mbox{\tt toNatural\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ Integer\ ->\ Natural}\\
+\mbox{\tt toNatural\ x\ |\ x\ <\ 0\ \ \ \ \ =\ error\ "Can't\ create\ negative\ naturals!"\ }\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ |\ otherwise\ =\ MakeNatural\ x}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt fromNatural\ \ \ \ \ \ \ \ \ \ \ \ \ ::\ Natural\ ->\ Integer}\\
+\mbox{\tt fromNatural\ (MakeNatural\ i)\ =\ i}
+\eprog
+The 
+following instance declaration admits \mbox{\tt Natural} to the \mbox{\tt Num} class:
+\bprog
+\mbox{\tt instance\ Num\ Natural\ where}\\
+\mbox{\tt \ \ \ \ fromInteger\ \ \ \ \ \ \ \ \ =\ toNatural}\\
+\mbox{\tt \ \ \ \ x\ +\ y\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ toNatural\ (fromNatural\ x\ +\ fromNatural\ y)}\\
+\mbox{\tt \ \ \ \ x\ -\ y\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ let\ r\ =\ fromNatural\ x\ -\ fromNatural\ y\ in}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ if\ r\ <\ 0\ then\ error\ "Unnatural\ subtraction"}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ else\ toNatural\ r}\\
+\mbox{\tt \ \ \ \ x\ *\ y\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ toNatural\ (fromNatural\ x\ *\ fromNatural\ y)}
+\eprog
+Without this declaration, \mbox{\tt Natural} would not be in \mbox{\tt Num}.  Instances
+declared for the old type do not carry over to the new one.  Indeed,
+the whole purpose of this type is to introduce a different \mbox{\tt Num}
+instance.  This would not be possible if \mbox{\tt Natural} were
+defined as a type synonym of \mbox{\tt Integer}.  
+
+All of this works using a \mbox{\tt data} declaration instead of a
+\mbox{\tt newtype} declaration.  However, the \mbox{\tt data} declaration 
+incurs extra overhead in the representation of \mbox{\tt Natural} values.  The
+use of \mbox{\tt newtype} avoids the extra level of indirection (caused by
+laziness) that the \mbox{\tt data} declaration would introduce.  
+See section 
+\ref{datatype-renaming} of the report for a more discussion of the
+relation between \mbox{\tt newtype}, \mbox{\tt data}, and \mbox{\tt type} declarations.
+ 
+\syn{Except for the keyword, the \mbox{\tt newtype} declaration uses the same
+syntax as a \mbox{\tt data} declaration with a single constructor containing a
+single field.  This is appropriate since types defined using \mbox{\tt newtype}
+are nearly identical to those created by an ordinary \mbox{\tt data}
+declaration.}
+
+\subsection{Field Labels}
+
+The fields within a Haskell data type can be accessed either
+positionally or by name using \mbox{$\it field\ labels$}.
+Consider a data type for a two-dimensional point:
+\bprog
+\mbox{\tt data\ Point\ =\ Pt\ Float\ Float}
+\eprog
+The two components of a \mbox{\tt Point} are the first and second arguments to the
+constructor \mbox{\tt Pt}.  A function such as
+\bprog
+\mbox{\tt pointx\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ Point\ ->\ Float}\\
+\mbox{\tt pointx\ (Pt\ x\ {\char'137})\ \ \ \ \ \ \ \ \ =\ \ x}
+\eprog
+may be used to refer to the first component of a point in a more
+descriptive way, but, for large structures, it becomes tedious to
+create such functions by hand.
+
+Constructors in a \mbox{\tt data} declaration may be declared
+with associated \mbox{$\it field\ names$}, enclosed in braces.  These field names
+identify the components of constructor by name rather than by position.
+This is an alternative way to define \mbox{\tt Point}:
+\bprog
+\mbox{\tt data\ Point\ =\ Pt\ {\char'173}pointx,\ pointy\ ::\ Float{\char'175}}
+\eprog
+This data type is identical to the earlier definition
+of \mbox{\tt Point}.  The constructor \mbox{\tt Pt} is the same in both cases.  However,
+this declaration also defines two field names, \mbox{\tt pointx}
+and \mbox{\tt pointy}.  These field names can be used as \mbox{$\it selector\ functions$} to
+extract a component from a structure.  In this example, the selectors
+are:
+\bprog
+\mbox{\tt pointx\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ \ \ Point\ ->\ Float\ }\\
+\mbox{\tt pointy\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ \ \ Point\ ->\ Float\ }
+\eprog
+This is a function using these selectors: 
+\bprog
+\mbox{\tt absPoint\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ Point\ ->\ Float}\\
+\mbox{\tt absPoint\ p\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ sqrt\ (pointx\ p\ *\ pointx\ p\ +\ }\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ pointy\ p\ *\ pointy\ p)}
+\eprog
+
+Field labels can also be used to construct new values.  The expression
+\mbox{\tt Pt\ {\char'173}pointx=1,\ pointy=2{\char'175}} is identical to \mbox{\tt Pt\ 1\ 2}.  The use of field
+names in the declaration of a data constructor does not preclude the
+positional style of field access; both
+\mbox{\tt Pt\ {\char'173}pointx=1,\ pointy=2{\char'175}} and \mbox{\tt Pt\ 1\ 2} are allowed.  
+When constructing a value using field names, some fields may be
+omitted; these absent fields are undefined.   
+
+Pattern matching using field names uses a similar syntax for the
+constructor \mbox{\tt Pt}:
+\bprog
+\mbox{\tt absPoint\ (Pt\ {\char'173}pointx\ =\ x,\ pointy\ =\ y{\char'175})\ =\ sqrt\ (x*x\ +\ y*y)\ }
+\eprog
+
+An update function uses field values in an existing structure to fill
+in components of a new structure.  If \mbox{\tt p} is a \mbox{\tt Point}, then 
+\mbox{\tt p\ {\char'173}pointx=2{\char'175}} is a point with the same \mbox{\tt pointy} as \mbox{\tt p} but with
+\mbox{\tt pointx} replaced by \mbox{\tt 2}.  This is not a destructive update:
+the update function merely creates a new copy of the object, filling
+in the specified fields with new values.
+
+\syn{The braces used in conjunction with field labels are somewhat
+special: Haskell syntax usually allows braces to be omitted using the
+\mbox{$\it layout\ rule$} (described in Section \ref{tut-layout}).  However, the
+braces associated with field names must be explicit.}
+
+%Within the braces used to name the fields of a structure, {\em
+%punning}---using the same word in two different ways---can be used to
+%abbreviate bindings which associate a field name with a local variable
+%of the same name.  That is, \mbox{\tt {\char'173}pointx{\char'175}} abbreviates \mbox{\tt {\char'173}pointx\ =\ pointx{\char'175}}
+%in a field list.  Thus, the \mbox{\tt abs} function could also be written
+%\bprog
+%
+%abs (Pt {pointx, pointy}) = sqrt (pointx*pointx + pointy*pointy)
+%
+%\eprog
+
+Field names are not restricted to types with a single constructor
+(commonly called `record' types).  In a type with multiple
+constructors, selection or update operations using field names may
+fail at runtime.  This is similar to the behavior of the \mbox{\tt head}
+function when applied to an empty list.
+
+Field labels share the top level namespace with ordinary variables and
+class methods.
+A field name cannot be used in more than one data type in scope.
+However, within a data type, the same field
+name can be used in more than one of the constructors so long as it
+has the same typing in all cases.  For example, in this data type
+\bprog
+\mbox{\tt data\ T\ =\ C1\ {\char'173}f\ ::\ Int,\ g\ ::\ Float{\char'175}}\\
+\mbox{\tt \ \ \ \ \ \ \ |\ C2\ {\char'173}f\ ::\ Int,\ h\ ::\ Bool{\char'175}}
+\eprog
+the field name \mbox{\tt f} applies to both constructors in \mbox{\tt T}.  Thus if
+\mbox{\tt x} is of type \mbox{\tt T}, then \mbox{\tt x\ {\char'173}f=5{\char'175}} will work for values created by
+either of the constructors in \mbox{\tt T}.
+
+Field names does not change the basic nature of an algebraic
+data type; they are simply a convenient syntax for accessing the
+components of a data structure by name rather than by position.  They
+make constructors with many components 
+more manageable since fields can be added or removed without changing
+every reference to the constructor.  For full details of field labels
+and their semantics, see Section~\see{field-labels}.
+
+\subsection{Strict Data Constructors}
+\label{tut-strict-flag}
+Data structures in Haskell are generally \mbox{$\it lazy$}: the
+components are not evaluated until 
+needed.  This permits structures that contain elements which, if
+evaluated, would lead to an error or fail to terminate.  Lazy data
+structures enhance the expressiveness of Haskell and are an
+essential aspect of the Haskell programming style.
+
+Internally, each field of a lazy data object is wrapped up in a structure
+commonly referred to as a \mbox{$\it thunk$} that encapsulates the computation
+defining the field value.  This thunk is not entered until
+the value is needed; thunks which contain errors (\mbox{$\it \bot$}) do not affect other
+elements of a data structure.   For 
+example, the tuple \mbox{\tt ('a',}\mbox{$\it \bot$}\mbox{\tt )} is a perfectly legal Haskell
+value.  The
+\mbox{\tt 'a'} may be used without disturbing the other component of the tuple.
+Most programming languages are 
+\mbox{$\it strict$} instead of lazy: that is, all components of a data structure
+are reduced to values before being placed in the structure.
+
+There are a number of overheads associated with thunks: they take time to
+construct and evaluate, they occupy space in the heap, and they cause
+the garbage collector to retain other structures needed for the
+evaluation of the thunk.  
+To avoid these overheads, {\em strictness flags} in \mbox{\tt data} declarations
+allow specific fields of a constructor to be evaluated immediately,
+selectively suppressing laziness.  A field
+marked by \mbox{$\it \makebox{\tt !}$} in a \mbox{\tt data} declaration is evaluated when
+the structure is created instead of delayed in a thunk.
+ 
+There are a number of situations where it may be appropriate to use
+strictness flags:
+\begin{itemize}
+\item Structure components that are sure to be evaluated at some
+point during program execution.  
+\item Structure components that are simple to evaluate and never
+cause errors. 
+\item Types in which partially undefined values are not meaningful.
+\end{itemize}
+For example, the complex number library defines the \mbox{\tt Complex} type as:
+\bprog
+\mbox{\tt data\ RealFloat\ a\ =>\ Complex\ a\ =\ !a\ :+\ !a}
+\eprog
+\syn{note the infix definition of the constructor \mbox{\tt :+}.} This definition
+marks the two components, the real and imaginary parts, of the complex
+number as being strict.  This is a more compact representation of
+complex numbers but this comes at the expense of making a complex
+number with an undefined component, \mbox{\tt 1\ :+\ } \mbox{$\it \bot$}  for example,
+totally undefined (\mbox{$\it \bot$}).  As there is no real need for partially 
+defined complex numbers, it makes sense to use strictness flags to
+achieve a more efficient representation.
+
+Strictness flags may be used to address memory leaks: structures
+retained by the garbage collector but no longer necessary for computation.
+
+The strictness flag, \mbox{\tt !}, can only appear in \mbox{\tt data} declarations.
+It cannot be used in other type
+signatures or in any other type definitions.  There is no
+corresponding way to mark function arguments as being strict, although
+the same effect can be obtained using the \mbox{\tt seq} or \mbox{\tt !{\char'44}} functions.  See
+~\see{strictness-flags} for further details. 
+
+It is difficult to present exact guidelines for the use of strictness
+flags.  They should be used with caution: laziness is one of the
+fundamental properties of Haskell and adding strictness flags may lead
+to hard to find infinite loops or have other unexpected consequences.
+
+%**~footer
+
+

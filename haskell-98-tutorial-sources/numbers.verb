@@ -1,0 +1,246 @@
+%**<title>A Gentle Introduction to Haskell: Numbers</title>
+
+%**~header
+\section{Numbers}
+
+Haskell provides a rich collection of numeric types, based on those of
+Scheme~\cite{RRRRS}, which in turn are based on Common
+Lisp~\cite{steele:common-lisp}.  (Those languages, however, are
+dynamically typed.)  The standard types include fixed- and
+arbitrary-precision integers, ratios (rational numbers) formed from
+each integer type, and single- and double-precision real and complex
+floating-point.  We outline here the basic characteristics of the
+numeric type class structure and refer the reader to
+\see{numbers} for details.
+
+\subsection{Numeric Class Structure}
+
+The numeric type classes (class @Num@ and those that lie below it)
+account for 
+many of the standard Haskell classes.  We also note that @Num@
+is a subclass of @Eq@, but not of @Ord@; this is because the order
+predicates do not apply to complex numbers.  The subclass @Real@
+of @Num@, however, is a subclass of @Ord@ as well.
+
+The @Num@ class provides several basic operations common to all
+numeric types; these include, among others, addition, subtraction,
+negation, multiplication, and absolute value:
+\bprog
+@
+(+), (-), (*)           :: (Num a) => a -> a -> a
+negate, abs             :: (Num a) => a -> a
+@
+\eprog
+\syn{@negate@ is the function applied by Haskell's only prefix operator,
+minus; we can't call it @(-)@, because that is the subtraction
+function, so this name is provided instead.  For example,
+@-x*y@ is equivalent to @negate (x*y)@.  (Prefix minus has the same
+syntactic precedence as infix minus, which, of course, is lower
+than that of multiplication.)}
+
+Note that @Num@ does {\em not} provide a division operator; two
+different kinds of division operators are provided in two non-overlapping
+subclasses of @Num@:
+
+The class @Integral@ provides whole-number division and remainder
+operations.  The
+standard instances of @Integral@ are @Integer@ (unbounded or
+mathematical integers, also known as ``bignums'') and @Int@
+(bounded, machine integers, with a range equivalent to at least
+29-bit signed binary).  A particular Haskell implementation might
+provide other integral types in addition to these.  Note that
+@Integral@ is a subclass of @Real@, rather than of @Num@ directly;
+this means that there is no attempt to provide Gaussian integers.
+
+All other numeric types fall in the class @Fractional@, which provides
+the ordinary division operator @(/)@.  The further subclass
+@Floating@ contains trigonometric, logarithmic, and exponential functions.
+
+The @RealFrac@ subclass of @Fractional@  and @Real@ provides a function
+@properFraction@, which decomposes a number into its whole and
+fractional parts, and a collection of functions that round to
+integral values by differing rules:
+\bprog
+@
+properFraction          :: (Fractional a, Integral b) => a -> (b,a)
+truncate, round,
+floor, ceiling:         :: (Fractional a, Integral b) => a -> b
+@
+\eprog
+
+The @RealFloat@ subclass of @Floating@ and @RealFrac@ provides
+some specialized functions for efficient access to the components
+of a floating-point number, the {\em exponent} and {\em significand}.
+The standard types @Float@ and @Double@ fall in class @RealFloat@.
+
+\subsection{Constructed Numbers}
+
+Of the standard numeric types, @Int@, @Integer@, @Float@, and @Double@
+are primitive.  The others are made from these by type constructors.
+
+@Complex@ (found in the library @Complex@) is a type constructor that
+makes a complex type in class  @Floating@ from a @RealFloat@ type:
+\bprog
+@
+data (RealFloat a) => Complex a = !a :+ !a  deriving (Eq, Text)
+@
+\eprog
+The @!@ symbols are strictness flags; these were discussed in Section~
+\ref{tut-strict-flag}.
+Notice the context @RealFloat a@, which restricts the argument
+type; thus, the standard complex types are @Complex Float@ and
+@Complex Double@.  We can also see from the @data@ declaration
+that a complex number is written "x" @:+@ "y"; the arguments are
+the cartesian real and imaginary parts, respectively.  Since @:+@
+is a data constructor, we can use it in pattern matching:
+\bprog
+@
+conjugate               :: (RealFloat a) => Complex a -> Complex a
+conjugate (x:+y)        =  x :+ (-y)
+@
+\eprog
+
+Similarly, the type constructor @Ratio@ (found in the @Rational@
+library) makes a rational type in class @RealFrac@ from an instance of
+@Integral@. 
+(@Rational@ is a type synonym for @Ratio Integer@.)
+@Ratio@, however, is an abstract type constructor. 
+Instead of a data constructor like @:+@, rationals use the `@%@' function to
+form a ratio from two integers.  Instead of pattern matching,
+component extraction functions are provided:
+\bprog
+@
+(%)                     :: (Integral a) => a -> a -> Ratio a
+numerator, denominator  :: (Integral a) => Ratio a -> a
+@
+\eprog
+
+Why the difference?  Complex numbers in cartesian form are
+unique---there are no nontrivial identities involving @:+@.  On the
+other hand, ratios are not unique, but have a canonical (reduced) form
+that the implementation of the abstract data type must maintain; it is
+not necessarily the case, for instance, that @numerator (x%y)@ is
+equal to @x@, although the real part of @x:+y@ is always @x@.
+
+\subsection{Numeric Coercions and Overloaded Literals}
+\label{tut-num-constants}
+
+The Standard Prelude and libraries provide several overloaded functions
+that serve as explicit coercions:
+\bprog
+@
+fromInteger             :: (Num a) => Integer -> a
+fromRational            :: (Fractional a) => Rational -> a
+toInteger               :: (Integral a) => a -> Integer
+toRational              :: (RealFrac a) => a -> Rational
+fromIntegral            :: (Integral a, Num b) => a -> b
+fromRealFrac            :: (RealFrac a, Fractional b) => a -> b
+
+fromIntegral            =  fromInteger . toInteger
+fromRealFrac            =  fromRational . toRational
+@
+\eprog
+
+Two of these are implicitly used to provide overloaded numeric literals:
+An integer numeral (without a decimal point) is actually equivalent to
+an application of @fromInteger@ to the value of the numeral as an
+@Integer@.  Similarly, a floating numeral (with a decimal point) is
+regarded as an application of @fromRational@ to the value of the
+numeral as a @Rational@.  Thus, @7@ has the type @(Num a) => a@,
+and @7.3@ has the type @(Fractional a) => a@.  This means that we
+can use numeric literals in generic numeric functions, for example:
+\bprog
+@
+halve                   :: (Fractional a) => a -> a
+halve x                 =  x * 0.5
+@
+\eprog
+This rather indirect way of overloading numerals has the additional
+advantage that the method of interpreting a numeral as a number
+of a given type can be specified in an @Integral@ or @Fractional@
+instance declaration (since @fromInteger@ and @fromRational@ are
+operators of those classes, respectively).  For example, the
+@Num@ instance of @(RealFloat a) => Complex a@ contains this method:
+\bprog
+@
+fromInteger x           =  fromInteger x :+ 0
+@
+\eprog
+This says that a @Complex@ instance of @fromInteger@ is defined to
+produce a complex number whose real part is supplied by an appropriate
+@RealFloat@ instance of @fromInteger@.  In this manner, even
+user-defined numeric types (say, quaternions) can make use of
+overloaded numerals.
+
+As another example, recall our first definition of @inc@ from Section
+\ref{tut-values-etc}:
+\bprog
+@
+inc                     :: Integer -> Integer
+inc n                   =  n+1
+@
+\eprog 
+Ignoring the type signature, the most general type of @inc@ is 
+@(Num a) => a->a@.  The explicit type signature is legal,
+however, since it is {\em more specific} than the principal type (a
+more general type signature would cause a static error).  The type
+signature has the effect of restricting @inc@'s type, and in this
+case would cause something like @inc (1::Float)@ to be ill-typed.
+
+\subsection{Default Numeric Types}
+
+Consider the following function definition:
+\bprog
+@
+rms              :: (Floating a) => a -> a -> a
+rms x y          =  sqrt ((x^2 + y^2) * 0.5)
+@
+\eprog
+The exponentiation function @(^)@ (one of three different standard
+exponentiation operators with different typings, see \S{6.8.5}) has
+the type @(Num a, Integral b) => a -> b -> a@, and since @2@ has the
+type @(Num a) => a@, the type of @x^2@ is @(Num a, Integral b) => a@.
+This is a problem; there is no way to resolve the overloading
+associated with the type variable @b@, since it is in the context, but
+has otherwise vanished from the type expression.  Essentially, the
+programmer has specified that @x@ should be squared, but has not
+specified whether it should be squared with an @Int@ or an @Integer@
+value of two.  Of course, we can fix this:
+\bprog
+@
+rms x y          =  sqrt ((x ^ (2::Integer) + y ^ (2::Integer)) * 0.5)
+@
+\eprog
+It's obvious that this sort of thing will soon grow tiresome, however.
+
+In fact, this kind of overloading ambiguity is not restricted to
+numbers:
+\bprog
+@
+show (read "xyz")
+@
+\eprog
+As what type is the string supposed to be read?  This is
+more serious than the exponentiation ambiguity, because there, any
+@Integral@ instance will do, whereas here, very different behavior
+can be expected depending on what instance of @Text@ is used to
+resolve the ambiguity.
+
+Because of the difference between the numeric and general cases of the
+overloading ambiguity problem, Haskell provides a solution that is
+restricted to numbers: Each module may contain a {\em default
+declaration,} consisting of the keyword @default@ followed by a
+parenthesized, comma-separated list of numeric monotypes (types with
+no variables).  When an ambiguous type variable is discovered (such as
+@b@, above), if at least one of its classes is numeric and all of its
+classes are standard, the default list is consulted, and the first
+type from the list that will satisfy the context of the type variable
+is used.  For example, if the default declaration
+@default (Int, Float)@ is in effect, the ambiguous exponent above will
+be resolved as type @Int@.  (See \see{default-decls} for more details.)
+
+The ``default default'' is @(Integer, Double)@, but
+@(Integer, Rational, Double)@ may also be appropriate.  Very cautious
+programmers may prefer @default ()@, which provides no defaults.
+
+%**~footer

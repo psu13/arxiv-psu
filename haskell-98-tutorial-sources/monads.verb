@@ -1,0 +1,576 @@
+%**<title>A Gentle Introduction to Haskell: About Monads</title>
+
+%**~header
+
+\section{About Monads}
+\label{tut-monads}
+Many newcomers to Haskell are puzzled by the concept of {\em monads}.
+Monads are frequently encountered in Haskell: the IO system is constructed
+using a monad, a special syntax for monads has been provided (@do@
+expressions), and the standard libraries contain an entire module dedicated
+to monads.  In this section we explore monadic programming in more detail.
+
+This section is perhaps less ``gentle'' than the others.  Here we
+address not only the language features that involve monads but also
+try to reveal the bigger picture: why monads are such an important
+tool and how they are used.  There is no
+single way of explaining monads that works for everyone; more
+explanations can be found at {\tt haskell.org}.  Another good
+introduction to practical programming using monads is Wadler's 
+{\em Monads for Functional Programming}~\cite{wadler:mffp}.  
+
+\subsection{Monadic Classes}
+\label{tut-monadic-classes}
+The Prelude contains a number of classes defining monads are they
+are used in Haskell.  These classes are based on the monad construct
+in category theory; whilst the category theoretic terminology
+provides the names for the monadic classes and operations, it is not
+necessary to delve into abstract mathematics to get an intuitive
+understanding of how to use the monadic classes.
+
+A monad is constructed on top of a polymorphic type such as @IO@.  The
+monad itself is defined by instance declarations 
+associating the type with the some or all of the
+monadic classes, @Functor@, @Monad@,
+and @MonadPlus@.  None of the monadic classes are derivable.  In addition
+to @IO@, two other types in the Prelude are members of the monadic
+classes: lists (@[]@) and @Maybe@.  
+
+Mathematically, monads are governed by set of {\em laws} that should hold
+for the monadic operations.  This idea of laws is not unique to
+monads: Haskell includes other operations that are 
+governed, at least informally, by laws.  For example, @x /= y@ and
+@not (x == y)@ ought to be the same for any type of values being
+compared.  However, there is no guarantee of this: both @==@ and @/=@ are 
+separate methods in the @Eq@ class and there is no way to assure that
+@==@ and @=/@ are related in this manner.
+In the same sense, the monadic laws presented here are not enforced by
+Haskell, but ought be obeyed by any instances of a monadic class.
+The monad laws give insight into the underlying structure of monads:
+by examining these laws, we hope to give a feel for how monads are
+used. 
+
+The @Functor@ class, already discussed in section
+\ref{tut-type-classes},  defines a 
+single operation: @fmap@.  The map function applies an operation to the
+objects inside a container (polymorphic types can be thought of as
+containers for values  of another type), returning a container of the
+same shape. 
+These laws apply to @fmap@ in the class @Functor@:
+\[\ba{lcl}
+@fmap id@&=&@id@\\
+@fmap (f . g)@&=&@fmap f . fmap g@\\
+\ea\]
+These laws ensure that the container shape is unchanged by
+@fmap@ and that the contents of the container are not re-arranged by
+the mapping operation.   
+
+The @Monad@ class defines two basic operators: @>>=@ (bind) and @return@.
+\bprog
+@
+infixl 1  >>, >>=
+class  Monad m  where
+    (>>=)            :: m a -> (a -> m b) -> m b
+    (>>)             :: m a -> m b -> m b
+    return           :: a -> m a
+    fail             :: String -> m a
+
+    m >> k           =  m >>= \_ -> k
+@
+\eprog
+The bind operations, @>>@ and @>>=@, combine two monadic values while
+the @return@ operation injects a value into the monad (container).
+The signature of @>>=@  helps
+us to understand this operation: @ma >>= \v -> mb@ 
+combines a monadic value @ma@ containing values
+of type @a@ and a function which operates
+on a value @v@ of type @a@, returning the monadic value @mb@.  The
+result is to combine @ma@ and @mb@ into a 
+monadic value containing @b@.  The @>>@ 
+function is used when the function does not need the value produced by
+the first monadic operator.
+
+The precise meaning of binding depends, of course, on the monad.  For
+example, in the IO monad, @x >>= y@ performs two actions sequentially,
+passing the result of the first into the second.  For the other
+built-in monads, lists and the @Maybe@ type, these monadic operations
+can be understood in terms of passing zero or more values from one
+calculation to the next.  We will see examples of this shortly.
+
+The @do@ syntax provides a simple shorthand for chains of monadic
+operations.  The essential translation of @do@ is captured in the
+following two rules:
+\bprog
+@
+  do e1 ; e2      =        e1 >> e2
+  do p <- e1; e2  =        e1 >>= \p -> e2
+@
+\eprog
+When the pattern in this second form of @do@ is refutable, pattern
+match failure calls the @fail@ operation.  This may raise an error (as
+in the @IO@ monad) or return a ``zero'' (as in the list monad).  Thus
+the more complex translation is
+\bprog
+@
+   do p <- e1; e2  =   e1 >>= (\v -> case v of p -> e2; _ -> fail "s")    
+@
+\eprog
+where @"s"@ is a string identifying the location of the @do@ statement
+for possible use in an error message.  For example, in the I/O monad,
+an action such as @'a' <- getChar@ will call @fail@ if the character
+typed is not 'a'.  This, in turn, terminates the program since in the
+I/O monad @fail@ calls @error@.  
+
+The laws which govern @>>=@ and @return@ are:  
+\[\ba{lcl}
+@return a >>= k@&=&@k a@ \\
+@m >>= return@&=&@m@ \\
+@xs >>= return . f@&=&@fmap f xs@\\
+@m >>= (\x -> k x >>= h)@&=&@(m >>= k) >>= h@\\
+\ea\]
+
+The class @MonadPlus@ is used for monads that have a "zero" element
+and a "plus" operation:
+\bprog
+@
+class  (Monad m) => MonadPlus m  where
+    mzero             :: m a
+    mplus             :: m a -> m a -> m a
+@
+\eprog
+The zero element obeys the following laws: 
+\[\ba{lcl}
+@m >>= \x -> mzero@&=&@mzero@\\
+@mzero >>= m@&=&@mzero@\\
+\ea\]
+For lists, the zero value is @[]@, the empty list.  The I/O monad has
+no zero element and is not a member of this class.  
+
+The laws governing the @mplus@ operator are as follows:
+\[\ba{lcl}
+@m `mplus` mzero@&=&@m@\\
+@mzero `mplus` m@&=&@m@\\
+\ea\]
+The @mplus@ operator is ordinary list concatenation in the list monad.
+
+\subsection{Built-in Monads}
+Given the monadic operations and the laws that govern them, what can
+we build?  We have already examined the I/O monad in detail so we
+start with the two other built-in monads.  
+
+For lists, monadic binding involves joining together a set of
+calculations for each value in the list.  When used with lists, the
+signature of @>>=@ becomes:
+\bprog
+@
+(>>=)                   :: [a] -> (a -> [b]) -> [b] 
+@
+\eprog
+That is, given a list of @a@'s and a function that maps an @a@ onto a
+list of @b@'s, binding applies this function to each of the @a@'s in
+the input and returns all of the generated @b@'s concatenated into a
+list.  The @return@ function creates a singleton list.  These
+operations should already be familiar: list comprehensions can easily
+be expressed using the monadic operations 
+defined for lists.  These following three
+expressions are all different syntax for the same thing:
+\bprog
+@
+[(x,y) | x <- [1,2,3] , y <- [1,2,3], x /= y]
+
+do x <- [1,2,3]
+   y <- [1,2,3]
+   True <- return (x /= y)
+   return (x,y)
+
+[1,2,3] >>= (\ x -> [1,2,3] >>= (\y -> return (x/=y) >>=
+   (\r -> case r of True -> return (x,y)
+                    _    -> fail "")))
+@
+\eprog
+This definition depends on the definition of @fail@ in this monad as
+the empty list.  Essentially, each @<-@ is generating a set of values
+which is passed on into the remainder of the monadic computation.
+Thus @x <- [1,2,3]@ invokes the remainder of the monadic computation
+three times, once for each element of the list.  The returned
+expression, @(x,y)@, will be
+evaluated for all possible combinations of bindings that surround it.
+In this sense, the list monad can be thought of as describing
+functions of multi-valued arguments.  For example, this function:
+\bprog
+@
+mvLift2                :: (a -> b -> c) -> [a] -> [b] -> [c]
+mvLift2 f x y          =  do x' <- x
+                              y' <- y
+                              return (f x' y')
+@
+\eprog
+turns an ordinary function of two arguments (@f@) into a function over
+multiple values (lists of arguments), returning a value for each possible
+combination of the two input arguments.  For example, 
+\[\ba{lcl}
+@mvLift2 (+) [1,3] [10,20,30]@  \ \ \ &\red&\ \ \ @[11,21,31,13,23,33]@\\
+@mvLift2 (\a b->[a,b]) "ab" "cd"@  \ \ \ &\red&\ \ \ @["ac","ad","bc","bd"]@\\
+@mvLift2 (*) [1,2,4] []@\ \ \ &\red&\ \ \ @[]@\\
+\ea\]
+This function is a specialized version of the @LiftM2@ function in the
+monad library.  You can think of it as transporting a function from
+outside the list monad, @f@, into the list monad in which computations
+take on multiple values.  
+
+The monad defined for @Maybe@ is similar to the list monad: the value
+@Nothing@ serves as @[]@ and @Just x@ as @[x]@.  
+
+\subsection{Using Monads}
+Explaining the monadic operators and their associated laws doesn't
+really show what monads are good for.  What they really provide is
+{\em modularity}.  That is, by defining an operation monadically, we can
+hide underlying machinery in a way that allows new features to be
+incorporated into the monad transparently.  Wadler's paper~\cite{wadler:mffp}
+is an excellent example of how monads can be 
+used to construct modular programs.  We will start with a monad taken
+directly from this paper, the state monad, and then build a more
+complex monad with a similar definition. 
+
+Briefly, a state monad built around a state type @S@ looks
+like this:
+\bprog
+@
+data SM a = SM (S -> (a,S))  -- The monadic type
+
+instance Monad SM where
+  -- defines state propagation
+  SM c1 >>= fc2         =  SM (\s0 -> let (r,s1) = c1 s0 
+                                          SM c2 = fc2 r in
+                                         c2 s1)
+  return k              =  SM (\s -> (k,s))
+
+ -- extracts the state from the monad
+readSM                  :: SM S
+readSM                  =  SM (\s -> (s,s))
+
+ -- updates the state of the monad
+updateSM                :: (S -> S) -> SM ()  -- alters the state
+updateSM f              =  SM (\s -> ((), f s)) 
+
+-- run a computation in the SM monad
+runSM                   :: S -> SM a -> (a,S)
+runSM s0 (SM c)         =  c s0
+@
+\eprog
+This example defines a new type, @SM@, to be a computation that
+implicitly carries a type @S@.  That is, a computation of type @SM t@
+defines a value of type @t@ 
+while also interacting with (reading and writing) the state of type
+@S@.  The definition of @SM@ is simple: it consists of functions that take a
+state and produce two results: a returned value (of any type) and an
+updated state.  We can't use a type synonym here: we need a type name
+like @SM@ that can be used in instance declarations.  The @newtype@
+declaration is often used here instead of @data@.
+
+This instance declaration defines the `plumbing' of the monad: how to
+sequence two computations and the definition of an empty computation.
+Sequencing (the @>>=@ operator) defines a computation (denoted by the
+constructor @SM@) that passes an initial 
+state, @s0@, into @c1@, then passes the value coming out of this
+computation, @r@, to the function that returns the second computation,
+@c2@.  Finally, the state coming out of @c1@ is passed into @c2@ and
+the overall result is the result of @c2@.  
+
+The definition of @return@ is easier: @return@ doesn't change the
+state at all; it only serves to bring a value into the monad.  
+
+While @>>=@ and @return@ are the basic monadic sequencing operations,
+we also need some {\em monadic primitives}.  A monadic primitive is
+simply an operation that uses the insides of the monad abstraction and
+taps into 
+the `wheels and gears' that make the monad work.  For example, in the
+@IO@ monad, operators such as @putChar@ are primitive since they deal
+with the inner workings of the @IO@ monad.  Similarly, our state monad
+uses two primitives: @readSM@ and @updateSM@.  Note that these depend
+on the inner structure of the monad - a change to the definition of
+the @SM@ type would require a change to these primitives.
+
+The definition of @readSM@ and @updateSM@ are simple: @readSM@ brings
+the state out of the monad for observation while @updateSM@ allows the
+user to alter the state in the monad.  (We could also have used
+@writeSM@ as a primitive but update is often a more natural way of
+dealing with state).  
+
+Finally, we need a function that runs computations in the monad,
+@runSM@.  This takes an initial state and a computation and yields
+both the returned value of the computation and the final state.
+
+Looking at the bigger picture, what we are trying to do is define an
+overall computation as a series of steps (functions with type
+@SM a@), sequenced using @>>=@ and @return@.  These steps may interact
+with the state (via @readSM@ or @updateSM@) or may ignore the state.
+However, the use (or non-use) of the state is hidden: we don't invoke
+or sequence our computations differently depending on whether or not
+they use @S@.  
+
+Rather than present any examples using this simple state monad, we
+proceed on to a more complex example that includes the state monad.
+We define a small {\em embedded language} of resource-using
+calculations. 
+That is, we build a special purpose language implemented as a set of Haskell
+types and functions.  Such languages use the basic tools of Haskell,
+functions and types, to build a library of operations
+and types specifically tailored to a domain of interest.
+
+In this example, consider a computation that requires some sort of
+resource.  If the resource is available, computation proceeds; when the
+resource is unavailable, the computation suspends.  We use the type @R@
+to denote a computation using resources controlled by our monad.
+The definition of @R@ is as follows:
+\bprog
+@
+data R a = R (Resource -> (Resource, Either a (R a)))
+@
+\eprog
+Each computation is a function from available resources to remaining
+resources, coupled with either a result, of type @a@, or a
+suspended computation, of type @R a@, capturing the work done up
+to the point where resources were exhausted.
+
+The @Monad@ instance for @R@ is as follows:
+\bprog
+@
+instance Monad R where
+  R c1 >>= fc2          = R (\r -> case c1 r of
+                                (r', Left v)    -> let R c2 = fc2 v in
+                                                     c2 r'
+                                (r', Right pc1) -> (r', Right (pc1 >>= fc2)))
+  return v              = R (\r -> (r, (Left v)))
+@
+\eprog
+The @Resource@ type is used in the same manner as the state in
+the state monad.  This definition reads as follows: to combine two
+`resourceful' computations, @c1@ and @fc2@ (a function producing
+@c2@), pass the initial resources into @c1@.  The result will be
+either
+\begin{itemize}
+\item a value, @v@, and remaining resources, which are used to determine
+the next computation (the call @fc2 v@), or
+\item a suspended computation, @pc1@, and resources remaining at the
+point of suspension.  
+\end{itemize}
+The suspension must take the second computation into consideration:
+@pc1@ suspends only the first computation, @c1@, so we must bind @c2@
+to this to produce a suspension of the overall computation.
+The definition of @return@ leaves the resources unchanged while moving
+@v@ into the monad.
+
+This instance declaration defines the basic structure of the monad but
+does not determine how resources are used.  This monad could be
+used to control many types of resource or implement many different
+types of resource usage policies.  We will demonstrate a very simple
+definition of resources as an example: we choose @Resource@ to be an
+@Integer@, representing available computation steps:
+\bprog
+@
+type Resource           =  Integer
+@
+\eprog
+This function takes a step unless no steps are available:
+\bprog
+@
+step                    :: a -> R a
+step v                  =  c where
+                              c = R (\r -> if r /= 0 then (r-1, Left v)
+                                                     else (r, Right c))
+@
+\eprog
+The @Left@ and @Right@ constructors are part of the @Either@ type.
+This function continues computation in @R@ by returning @v@ so long as
+there is at least one computational step resource available.
+If no steps are available, the @step@ function suspends the current
+computation (this suspension is captured in @c@) and passes this
+suspended computation back into the monad.  
+
+So far, we have the tools to define a sequence of ``resourceful''
+computations (the monad) and we can express a form of resource usage
+using @step@.  Finally, we need to address how computations in this
+monad are expressed.  
+
+Consider an increment function in our monad:
+\bprog
+@
+inc                     :: R Integer -> R Integer
+inc i                   =  do iValue <- i
+                              step (iValue+1)
+@
+\eprog
+This defines increment as a single step of computation.  The @<-@ is
+necessary to pull the argument value out of the monad; the type of
+@iValue@ is @Integer@ instead of @R Integer@.  
+
+This definition isn't particularly satisfying, though, compared to the
+standard definition of the increment function.  Can we instead ``dress
+up'' existing operations like @+@ so that they work in our monadic
+world?  We'll start with a set of {\tt lifting} functions.  These 
+bring existing functionality into the monad.  Consider the definition
+of @lift1@ (this is slightly different from the @liftM1@ found in the
+@Monad@ library):
+\bprog
+@
+lift1                   :: (a -> b) -> (R a -> R b)
+lift1 f                 =  \ra1 -> do a1 <- ra1
+                                      step (f a1)
+@
+\eprog
+This takes a function of a single argument, @f@, and creates a
+function in @R@ that executes the lifted function in a single step.
+Using @lift1@, @inc@ becomes
+\bprog
+@
+inc                     :: R Integer -> R Integer
+inc i                   =  lift1 (i+1)
+@
+\eprog
+This is better but still not ideal.  First, we add @lift2@:
+\bprog
+@
+lift2                   :: (a -> b -> c) -> (R a -> R b -> R c)
+lift2 f                 =  \ra1 ra2 -> do a1 <- ra1
+                                          a2 <- ra2
+                                          step (f a1 a2)
+@
+\eprog
+Notice that this function explicitly sets the order of evaluation in
+the lifted function: the computation yielding @a1@ occurs before the
+computation for @a2@.
+
+Using @lift2@, we can create a new version of @==@ in the @R@ monad:
+\bprog
+@
+(==*)                   :: Ord a => R a -> R a -> R Bool
+(==*)                   =  lift2 (==)
+@
+\eprog
+We had to use a slightly different name for this new function since
+@==@ is already taken but in
+some cases we can use the same name for the lifted and unlifted
+function.  This instance declaration allows 
+all of the operators in @Num@ to be used in @R@:
+\bprog
+@
+instance Num a => Num (R a) where
+  (+)                   =  lift2 (+)
+  (-)                   =  lift2 (-)
+  negate                =  lift1 negate
+  (*)                   =  lift2 (*)
+  abs                   =  lift1 abs
+  fromInteger           =  return . fromInteger
+@
+\eprog
+The @fromInteger@ function is applied implicitly to all integer
+constants in a Haskell program (see Section \ref{tut-num-constants});
+this definition allows integer constants to have the type @R Integer@.
+We can now, finally, write increment in a completely natural style:
+\bprog
+@
+inc                     :: R Integer -> R Integer
+inc x                   =  x + 1
+@
+\eprog
+Note that we cannot lift the @Eq@ class in the same manner as the
+@Num@ class: the signature of @==*@ is not compatible with allowable
+overloadings of @==@ since the result of @==*@ is @R Bool@ instead of
+@Bool@.
+
+To express interesting computations in @R@ we will need a
+conditional.  Since we can't use @if@ (it requires that the test be of
+type @Bool@ instead of @R Bool@), we name the function @ifR@:
+\bprog
+@
+ifR                     :: R Bool -> R a -> R a -> R a
+ifR tst thn els         =  do t <- tst
+                              if t then thn else els
+@
+\eprog
+Now we're ready for a larger program in the @R@ monad:
+\bprog
+@
+fact                    :: R Integer -> R Integer
+fact x                  =  ifR (x ==* 0) 1 (x * fact (x-1))
+@
+\eprog
+Now this isn't quite the same as an ordinary factorial function but
+still quite readable.  The idea of providing new definitions for
+existing operations like @+@ or @if@ is an essential part of creating
+an embedded language in Haskell.  Monads are particularly useful for
+encapsulating the semantics of these embedded languages in a clean and
+modular way.
+
+We're now ready to actually run some programs.  This function runs a
+program in @M@ given a maximum number of computation steps:
+\bprog
+@
+run                     :: Resource -> R a -> Maybe a
+run s (R p)             =  case (p s) of 
+                             (_, Left v) -> Just v
+                             _           -> Nothing
+@
+\eprog
+We use the @Maybe@ type to deal with the possibility of the
+computation not finishing in the allotted number of steps.  We can now
+compute 
+\[\ba{lcl}
+@run 10 (fact 2)@  \ \ \ &\red&\ \ \ @Just 2@\\
+@run 10 (fact 20)@  \ \ \ &\red&\ \ \ @Nothing@\\
+\ea\]
+
+Finally, we can add some more interesting functionality to this
+monad.  Consider the following function:
+\bprog
+@
+(|||)                   :: R a -> R a -> R a
+@
+\eprog
+This runs two computations in parallel, returning the value of the
+first one to complete.  One possible definition of this function is:
+\bprog
+@
+c1 ||| c2                =  oneStep c1 (\c1' -> c2 ||| c1')
+   where
+        oneStep          :: R a -> (R a -> R a) -> R a
+        oneStep (R c1) f =
+             R (\r -> case c1 1 of
+                         (r', Left v) -> (r+r'-1, Left v)
+                         (r', Right c1') ->  -- r' must be 0
+                          let R next = f c1' in
+                            next (r+r'-1))
+@
+\eprog
+This takes a step in @c1@, returning its value of @c1@ complete or, if
+@c1@ returns a suspended computation (@c1'@), it evaluates
+@c2 ||| c1'@.  The @oneStep@ function takes a single step in its
+argument, either returning an evaluated value or passing the remainder
+of the computation into @f@.  The definition of @oneStep@ is simple:
+it gives @c1@ a 1 as its resource argument.  If a final value is
+reached, this is returned, adjusting the returned step count (it is
+possible that a computation might return after taking no steps so the
+returned resource count isn't necessarily 0).  If the computation
+suspends, a patched up resource count is passed to the final
+continuation. 
+
+We can now evaluate expressions like @run 100 (fact (-1) ||| (fact 3))@
+without looping since the two calculations are interleaved.  (Our
+definition of @fact@ loops for @-1@).  
+Many variations are possible on this basic
+structure.  For example, we could extend the state to include a trace
+of the computation steps.  We could also embed this monad inside the
+standard @IO@ monad, allowing computations in @M@ to interact with the
+outside world.
+ 
+While this example is perhaps more advanced than others in this tutorial,
+it serves to illustrate the power of monads as a tool for defining the
+basic semantics of a system.  We also present this example as a model
+of a small {\em Domain Specific Language}, something Haskell is
+particularly good at defining.  Many other DSLs have been developed in
+Haskell; see {\tt haskell.org} for many more examples.  Of particular
+interest are Fran, a language of reactive animations, and Haskore, a
+language of computer music.
+
+%**~footer
