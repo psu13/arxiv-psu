@@ -8,35 +8,53 @@
 \usepackage[margin=1.1cm]{caption}
 
 \usepackage[hyphens]{url}
-\usepackage{hyperref}
-\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,pdfpagemode=UseNone,pdfstartview={XYZ null null 1.00}}
-\hypersetup{breaklinks=true}
 
 
 % \pagestyle{plain}
-\linespread{1.2}
 % \setlength{\parskip}{3pt}
 
 \usepackage{amsmath, amsthm, amsopn, amssymb}
 \usepackage{xcolor}
 \usepackage{graphicx}
 
+%\usepackage{amsmath,amsthm,amscd,amssymb}
+\usepackage[colorlinks=true
+,breaklinks=true
+,urlcolor=blue
+,anchorcolor=blue
+,citecolor=blue
+,filecolor=blue
+,linkcolor=blue
+,menucolor=blue
+,linktocpage=true]{hyperref}
+\hypersetup{
+bookmarksopen=true,
+bookmarksnumbered=true,
+bookmarksopenlevel=10
+}
+\usepackage[papersize={6.5in, 10.0in}, left=.5in, right=.5in, top=1in, bottom=.9in]{geometry}
+\linespread{1.05}
+\sloppy
+\raggedbottom
+\pagestyle{plain}
 
+% these include amsmath and that can cause trouble in older docs.
+\input{../helpers/cmrsum}
+\input{../helpers/fix-underbrace.tex}
 
+\usepackage[small]{titlesec}
+\usepackage{cite}
 
+% make sure there is enough TOC for reasonable pdf bookmarks.
+\setcounter{tocdepth}{3}
 
-\usepackage[margin = 22mm, bottom=21mm,footskip=8mm,top=21mm]{geometry}
-\setlength{\parskip}{\medskipamount}
-\setlength{\parindent}{0pt}
-
-\addtolength{\intextsep}{6pt} %space between text and figures
-\addtolength{\abovecaptionskip}{10pt}
-\addtolength{\belowcaptionskip}{-5pt}
-
-\renewcommand{\baselinestretch}{1.11}
-
-
-
+%\usepackage[dotinlabels]{titletoc}
+%\titlelabel{{\thetitle}.\quad}
+%\input{../helpers/psu-plain-titles.tex}
+%\input{../helpers/psu-sc-headers.tex}
+%\input{../helpers/fix-revtex-12.tex}
+%\DeclareSymbolFont{CMlargesymbols}{OMX}{cmex}{m}{n}
+%\DeclareMathSymbol{\sum}{\mathop}{CMlargesymbols}{"50}
 
 \theoremstyle{plain}
 \newtheorem*{theorem*}{Theorem}
@@ -131,8 +149,8 @@ The paper is organized as follows.
 \end{itemize}
 \item In Section~\ref{sec:lp} we present two constructions obtained via LP solvers.
 \begin{itemize}
-    \item In~\S\ref{subsec:carla} we refute a conjecture of Aaronson–Groenland–Grzesik–Kielak–Johnston~\cite{aaronson} about a problem of covering certain subsets of the hypercube with few hyperplanes.
-    \item In~\S\ref{subsec:domotor} we answer a problem of Kir\'aly--Nagy--P\'alv\"olgyi--Visontai~\cite{domotor} about the maximum size of weakly cross-intersecting set-pair systems.
+    \item In~\S\ref{subsec:carla} we refute a conjecture of Aaronson, Groenland, Grzesik, Kielak, and Johnston\cite{aaronson} about a problem of covering certain subsets of the hypercube with few hyperplanes.
+    \item In~\S\ref{subsec:domotor} we answer a problem of Kir\'aly, Nagy, P\'alv\"olgyi, and Visontai~\cite{domotor} about the maximum size of weakly cross-intersecting set-pair systems.
 \end{itemize}
 \end{itemize}
 
@@ -158,12 +176,10 @@ We will generate constructions with the neural network as follows. We first ask 
 
 \begin{figure}[hbt]
     \centering
-    \includegraphics{nn.pdf}
+    \includegraphics[scale=.8]{nn.pdf}
     \caption{We are generating a graph, and so far the network has included edges 1,2,3,6, and rejected edges 4,5 (dotted), corresponding to the sequence 111001. We input this into the neural network to get a probability distribution on whether to include or reject the next edge.}
     \label{fig:nn_illustration}
 \end{figure}
-
-~
 
 \begin{algorithm}[H]
 \SetAlgoLined
@@ -190,6 +206,8 @@ We will generate constructions with the neural network as follows. We first ask 
  \caption{The deep cross-entropy method}
 \end{algorithm}
 
+\medskip
+
 The network receives feedback only when a session finishes, i.e.~when we have created the entire word. The feedback is given by a reward function that the neural network has no knowledge about and treats as a black box. This reward function is unique to every problem. When trying to create large antichains the reward might be the number of elements in the family minus the number of comparable pairs in it; when aiming to create a graph with a large third eigenvalue it might simply be the third eigenvalue, etc. This reward at the end of each session is the only feedback the network receives: at no point does it have any knowledge on what problem it is trying to solve and how the reward is calculated. 
 
 In every iteration we generate a large number of random sessions (constructions) following the above method. We calculate the reward for each, and throw away all but the top $y$ percentile. Next we let the neural network learn from the remaining sessions, meaning that we adjust the weights of the neural network a little bit to make it more likely to output moves that were used in the best performing sessions. The idea of this is to reinforce our neural network to carry out those actions that have led to good rewards.  
@@ -210,9 +228,9 @@ The full Python code used in Sections~\ref{subsec:matchingeigen} and~\ref{subsec
 
 We will use the following conjecture appearing in~\cite{aouch} to illustrate our method. 
 
-\begin{conjecture}[\cite{aouch}\label{conj:aouch}]
+\begin{conjecture}
 Let $G$ be a connected graph on $n\geq 3$ vertices, with largest eigenvalue $\lambda_1$ and matching number $\mu$. Then
-$$\lambda_1+\mu \geq \sqrt{n-1} +1.$$
+$$\lambda_1+\mu \geq \sqrt{n-1} +1.$$ \label{conj:aouch}
 \end{conjecture}
 
 Conjecture~\ref{conj:aouch} was originally obtained using AutoGraphiX~\cite{autographix}, a software that can be used to find conjectures about relations between various graph parameters in an automated way. After we have found a counterexample with our method, we have learned that Conjecture~\ref{conj:aouch} has already been disproved by Stevanovi\'c~\cite{stevanovic}. Nevertheless, we can use this conjecture to demonstrate how simple it can be to find constructions with the cross-entropy method. The counterexample given in~\cite{stevanovic} has $n=600$ vertices, but we can use our methods to find a smaller explicit counterexample.
