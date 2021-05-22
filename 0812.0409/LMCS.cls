@@ -342,31 +342,6 @@
 }
 \copyrightinfo{}{}
 
-\newinsert\copyins
-\skip\copyins=3pc
-\count\copyins=1000 % magnification factor, 1000 = 100%
-\dimen\copyins=.5\textheight % maximum allowed per page
-
-\renewcommand{\topfraction}{0.95}   % let figure take up nearly whole page
-\renewcommand{\textfraction}{0.05}  % let figure take up nearly whole page
-
-%% Specify the dimensions of each page
-
-\setlength{\oddsidemargin}{.25 in}  %   Note \oddsidemargin = \evensidemargin
-\setlength{\evensidemargin}{.25 in}
-\setlength{\marginparwidth}{0.07 true in}
-\setlength{\topmargin}{-0.7 in}
-\addtolength{\headheight}{1.84 pt}
-\addtolength{\headsep}{0.25in}
-\addtolength{\voffset}{0.7 in}
-\setlength{\textheight}{8.5 true in}  % Height of text (including footnotes & figures)
-\setlength{\textwidth}{6.0 true in}   % Width of text line.
-\setlength{\parindent}{20 pt}   % Width of text line.
-\widowpenalty=10000
-\clubpenalty=10000
-\@twosidetrue \@mparswitchtrue \def\ds@draft{\overfullrule 5pt}
-\raggedbottom
-
 %% Pagestyle
 
 %% Defines the pagestyle for the title page.
