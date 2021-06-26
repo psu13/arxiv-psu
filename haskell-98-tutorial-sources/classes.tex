@@ -1,0 +1,361 @@
+%**<title>A Gentle Introduction to Haskell: Classes</title>
+%**~header
+\section{Type Classes and Overloading}
+\label{tut-type-classes}
+
+There is one final feature of Haskell's type system that sets it apart
+from other programming languages.  The kind of polymorphism that we
+have talked about so far is commonly called {\em parametric}
+polymorphism.  There is another kind called {\em ad hoc} polymorphism,
+better known as {\em overloading}.  Here are some examples of {\em ad hoc}
+polymorphism:
+\begin{itemize}
+\item The literals \mbox{\tt 1}, \mbox{\tt 2}, etc. are often used to represent both
+fixed and arbitrary precision integers.
+
+\item Numeric operators such as \mbox{\tt +} are often defined to work on
+many different kinds of numbers.
+
+\item The equality operator (\mbox{\tt ==} in Haskell) usually works on
+numbers and many other (but not all) types.
+
+\end{itemize}
+Note that these overloaded behaviors are different for each type
+(in fact the behavior is sometimes undefined, or error), whereas in
+parametric polymorphism the type truly does not matter (\mbox{\tt fringe}, for
+example, really doesn't care what kind of elements are found in the
+leaves of a tree).  In Haskell, {\em type classes} provide a
+structured way to control {\em ad hoc} polymorphism, or overloading.
+
+Let's start with a simple, but important, example: equality.
+There are many types for which we would like equality defined, but
+some for which we would not.  For example, comparing the equality of
+functions is generally considered computationally intractable, whereas
+we often want to compare two lists for equality.\footnote{The kind of
+equality we are referring to here is ``value equality,'' and opposed
+to the ``pointer equality'' found, for example, with Java's \mbox{\tt ==}.
+Pointer equality is not referentially transparent, and thus does not
+sit well in a purely functional language.} To highlight the issue,
+consider this definition of the function \mbox{\tt elem} which tests for
+membership in a list:
+\bprog
+\mbox{\tt x\ `elem`\ \ []\ \ \ \ \ \ \ \ \ \ \ \ =\ False}\\
+\mbox{\tt x\ `elem`\ (y:ys)\ \ \ \ \ \ \ \ \ =\ x==y\ ||\ (x\ `elem`\ ys)}
+\eprog
+\syn{For the stylistic reason we discussed in Section \ref{tut-lambda},
+we have chosen to define \mbox{\tt elem} in infix form.  \mbox{\tt ==} and \mbox{\tt ||} are the
+infix operators for equality and logical or, respectively.}
+
+\noindent Intuitively speaking, the type of \mbox{\tt elem} ``ought'' to be:
+\mbox{\tt a->[a]->Bool}.  But this would imply that \mbox{\tt ==} has type \mbox{\tt a->a->Bool},
+even though we just said that we don't expect \mbox{\tt ==} to be defined for
+all types.
+
+Furthermore, as we have noted earlier, even if \mbox{\tt ==} were 
+defined on all types, comparing two lists for equality is very
+different from comparing two integers.  In this sense, we expect \mbox{\tt ==}
+to be {\em overloaded} to carry on these various tasks.
+
+{\em Type classes} conveniently solve both of these problems.  They
+allow us to declare which types are {\em instances} of which class,
+and to provide definitions of the overloaded {\em operations}
+associated with a class.  For example, let's define a type class
+containing an equality operator:
+\bprog
+\mbox{\tt class\ Eq\ a\ where\ }\\
+\mbox{\tt \ \ (==)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ a\ ->\ a\ ->\ Bool}
+\eprog
+Here \mbox{\tt Eq} is the name of the class being defined, and \mbox{\tt ==} is the
+single operation in the class.  This declaration may be read ``a type
+\mbox{\tt a} is an instance of the class \mbox{\tt Eq} if there is an (overloaded)
+operation \mbox{\tt ==}, of the appropriate type, defined on it.''  (Note that
+\mbox{\tt ==} is only defined on pairs of objects of the same type.)
+
+The constraint that a type \mbox{\tt a} must be an instance of the class \mbox{\tt Eq}
+is written \mbox{\tt Eq\ a}.  Thus \mbox{\tt Eq\ a} is not a type expression, but rather
+it expresses a constraint on a type, and is called a {\em context}.
+Contexts are placed at the front of type expressions.  For example,
+the effect of the above class declaration is to assign the following
+type to \mbox{\tt ==}:
+\bprog
+\mbox{\tt (==)\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Eq\ a)\ =>\ a\ ->\ a\ ->\ Bool}
+\eprog
+This should be read, ``For every type \mbox{\tt a} that is an instance of the
+class \mbox{\tt Eq}, \mbox{\tt ==} has type \mbox{\tt a->a->Bool}''.  This is the type that would
+be used for \mbox{\tt ==} in the \mbox{\tt elem} example, and indeed the constraint
+imposed by the context propagates to the principal type for \mbox{\tt elem}:
+\bprog
+\mbox{\tt elem\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Eq\ a)\ =>\ a\ ->\ [a]\ ->\ Bool}
+\eprog
+This is read, ``For every type \mbox{\tt a} that is an instance of the
+class \mbox{\tt Eq}, \mbox{\tt elem} has type \mbox{\tt a->[a]->Bool}''.  This is just what we
+want---it expresses the fact that \mbox{\tt elem} is not defined on all
+types, just those for which we know how to compare elements for
+equality.
+
+So far so good.  But how do we specify which types are instances of
+the class \mbox{\tt Eq}, and the actual behavior of \mbox{\tt ==} on each of those
+types?  This is done with an {\em instance declaration}.  For example:
+\bprog
+\mbox{\tt instance\ Eq\ Integer\ where\ }\\
+\mbox{\tt \ \ x\ ==\ y\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ x\ `integerEq`\ y}
+\eprog
+The definition of \mbox{\tt ==} is called a {\em method}.  The function \mbox{\tt integerEq}
+happens to 
+be the primitive function that compares integers for equality, but in
+general any valid expression is allowed on the right-hand side, just
+as for any other function definition.  The overall declaration is
+essentially saying: ``The type \mbox{\tt Integer} is an instance of the class \mbox{\tt Eq},
+and here is the definition of the method corresponding to the
+operation \mbox{\tt ==}.''  Given this declaration, we can now compare fixed
+precision integers for equality using \mbox{\tt ==}.  Similarly:
+\bprog
+\mbox{\tt instance\ Eq\ Float\ where}\\
+\mbox{\tt \ \ x\ ==\ y\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ x\ `floatEq`\ y}
+\eprog
+allows us to compare floating point numbers using \mbox{\tt ==}.
+
+Recursive types such as \mbox{\tt Tree} defined earlier can also be handled:
+\bprog
+\mbox{\tt instance\ (Eq\ a)\ =>\ Eq\ (Tree\ a)\ where\ }\\
+\mbox{\tt \ \ Leaf\ a\ \ \ \ \ \ \ \ \ ==\ Leaf\ b\ \ \ \ \ \ \ \ \ \ =\ \ a\ ==\ b}\\
+\mbox{\tt \ \ (Branch\ l1\ r1)\ ==\ (Branch\ l2\ r2)\ \ =\ \ (l1==l2)\ {\char'46}{\char'46}\ (r1==r2)}\\
+\mbox{\tt \ \ {\char'137}\ \ \ \ \ \ \ \ \ \ \ \ \ \ ==\ {\char'137}\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ False}
+\eprog
+Note the context \mbox{\tt Eq\ a} in the first line---this is necessary because
+the elements in the leaves (of type \mbox{\tt a}) are compared for equality in
+the second line.  The additional constraint is essentially saying that we can
+compare trees of \mbox{\tt a}'s for equality as long as we know how to compare
+\mbox{\tt a}'s for equality.  If the context were omitted from the instance
+declaration, a static type error would result.
+
+The Haskell Report, especially the Prelude, contains a wealth
+of useful examples of type classes.  
+Indeed, a class \mbox{\tt Eq} is defined
+that is slightly larger than the one defined earlier:
+\bprog
+\mbox{\tt class\ \ Eq\ a\ \ where}\\
+\mbox{\tt \ \ (==),\ (/=)\ \ \ \ \ \ \ \ \ \ \ \ ::\ a\ ->\ a\ ->\ Bool}\\
+\mbox{\tt \ \ x\ /=\ y\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ not\ (x\ ==\ y)}
+\eprog
+This is an example of a class with two operations, one for
+equality, the other for inequality.  It also demonstrates the use of a
+{\em default method}, in this case for the inequality operation \mbox{\tt /=}.
+If a method for a particular operation is omitted in an instance
+declaration, then the default one defined in the class declaration, if
+it exists, is used instead.  For example, the three instances of \mbox{\tt Eq}
+defined earlier will work perfectly well with the above class
+declaration, yielding just the right definition of inequality that we
+want: the logical negation of equality.
+
+Haskell also supports a notion of {\em class extension}.  For example,
+we may wish to define a class \mbox{\tt Ord} which {\em inherits} all of the
+operations in \mbox{\tt Eq}, but in addition has a set of comparison operations
+and minimum and maximum functions:
+\bprog
+\mbox{\tt class\ \ (Eq\ a)\ =>\ Ord\ a\ \ where}\\
+\mbox{\tt \ \ (<),\ (<=),\ (>=),\ (>)\ \ ::\ a\ ->\ a\ ->\ Bool}\\
+\mbox{\tt \ \ max,\ min\ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ a\ ->\ a\ ->\ a}
+\eprog 
+Note the context in the \mbox{\tt class} declaration.  We say that \mbox{\tt Eq} is a
+{\em superclass} of \mbox{\tt Ord} (conversely, \mbox{\tt Ord} is a {\em subclass} of
+\mbox{\tt Eq}), and any type which is an instance of \mbox{\tt Ord} must also be an
+instance of \mbox{\tt Eq}. 
+(In the next Section we give a fuller definition of \mbox{\tt Ord} taken from
+the Prelude.)
+
+One benefit of such class inclusions is shorter contexts: a type
+expression for a function that uses operations from both the \mbox{\tt Eq} and
+\mbox{\tt Ord} classes can use the context \mbox{\tt (Ord\ a)}, rather than 
+\mbox{\tt (Eq\ a,\ Ord\ a)}, since \mbox{\tt Ord} ``implies'' \mbox{\tt Eq}.  More importantly,
+methods for subclass operations can assume the existence of methods
+for superclass operations.  For example, the \mbox{\tt Ord} declaration in the
+Standard Prelude contains this default method for \mbox{\tt (<)}: 
+\bprog
+\mbox{\tt \ \ \ \ x\ <\ y\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ x\ <=\ y\ {\char'46}{\char'46}\ x\ /=\ y}
+\eprog
+As an example of the use of \mbox{\tt Ord}, the principal typing of \mbox{\tt quicksort}
+defined in Section \ref{tut-list-comps} is:
+\bprog
+\mbox{\tt quicksort\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ \ (Ord\ a)\ =>\ [a]\ ->\ [a]}
+\eprog
+In other words, \mbox{\tt quicksort} only operates on lists of values of 
+ordered types.  This typing for \mbox{\tt quicksort} arises because of the use
+of the comparison operators \mbox{\tt <} and \mbox{\tt >=} in its definition.
+
+Haskell also permits {\em multiple inheritance}, since classes may
+have more than one superclass.  For example, the declaration
+\bprog
+\mbox{\tt class\ (Eq\ a,\ Show\ a)\ =>\ C\ a\ where\ ...}
+\eprog
+creates a class \mbox{\tt C} which inherits operations from both \mbox{\tt Eq} and \mbox{\tt Show}.
+
+Class methods are treated as top level declarations in
+Haskell.  They share the same namespace as ordinary variables; a name
+cannot be used to denote both a class method and a variable or methods
+in different classes.
+
+Contexts are also allowed in \mbox{\tt data} declarations; see \see{datatype-decls}.
+
+Class methods may have additional class constraints on any type
+variable except the one defining the current class.  For example, in
+this class:
+\bprog
+\mbox{\tt class\ C\ a\ where}\\
+\mbox{\tt \ \ m\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ Show\ b\ =>\ a\ ->\ b}
+\eprog
+the method \mbox{\tt m} requires that type \mbox{\tt b} is in class \mbox{\tt Show}.  However, the
+method \mbox{\tt m} could not place any additional class constraints on type
+\mbox{\tt a}.  These would instead have to be part of the context in the class
+declaration. 
+
+So far, we have been using ``first-order'' types.  For example, the
+type constructor \mbox{\tt Tree} has so far always been paired with an
+argument, as in \mbox{\tt Tree\ Integer} (a tree containing \mbox{\tt Integer} values) or
+\mbox{\tt Tree\ a} 
+(representing the family of trees containing \mbox{\tt a} values).  But \mbox{\tt Tree}
+by itself is a type constructor, and as such takes a type as an
+argument and returns a type as a result.  There are no values in
+Haskell that have this type, but such ``higher-order'' types can be
+used in \mbox{\tt class} declarations.
+
+To begin, consider the following \mbox{\tt Functor} class (taken from the Prelude):
+\bprog
+\mbox{\tt class\ Functor\ f\ where}\\
+\mbox{\tt \ \ fmap\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (a\ ->\ b)\ ->\ f\ a\ ->\ f\ b}
+\eprog
+The \mbox{\tt fmap} function generalizes the \mbox{\tt map} function used previously.
+Note that the type variable \mbox{\tt f} is applied to other types in \mbox{\tt f\ a} and
+\mbox{\tt f\ b}.  Thus we would expect it to be bound to a type such as \mbox{\tt Tree}
+which can be applied to an argument.  An instance of \mbox{\tt Functor}
+for type \mbox{\tt Tree} would be:
+\bprog
+\mbox{\tt instance\ Functor\ Tree\ where}\\
+\mbox{\tt \ \ fmap\ f\ (Leaf\ x)\ \ \ \ \ \ \ =\ Leaf\ \ \ (f\ x)}\\
+\mbox{\tt \ \ fmap\ f\ (Branch\ t1\ t2)\ =\ Branch\ (fmap\ f\ t1)\ (fmap\ f\ t2)}
+\eprog
+This instance declaration declares that \mbox{\tt Tree}, rather than \mbox{\tt Tree\ a},
+is an instance of \mbox{\tt Functor}.  This capability is quite useful, and
+here demonstrates the ability to describe generic ``container'' types,
+allowing functions such as \mbox{\tt fmap} to work uniformly over arbitrary
+trees, lists, and other data types.
+
+\syn{Type applications are written in the same manner as
+function applications.  The type \mbox{\tt T\ a\ b} is parsed as \mbox{\tt (T\ a)\ b}.
+Types such as tuples which use special syntax can be written in an
+alternative style which allows currying.  For functions, \mbox{\tt (->)} is a
+type constructor; the types \mbox{\tt f\ ->\ g} and \mbox{\tt (->)\ f\ g} are the same.
+Similarly, the types \mbox{\tt [a]} and \mbox{\tt []\ a} are the same.  For tuples, the
+type constructors (as well as the data constructors) are \mbox{\tt (,)},
+\mbox{\tt (,,)}, and so on.}
+
+As we know, the type system detects typing errors in expressions.  But
+what about errors due to malformed type expressions?  The expression
+\mbox{\tt (+)\ 1\ 2\ 3} results in a type error since \mbox{\tt (+)} takes only two arguments.
+Similarly, the type \mbox{\tt Tree\ Int\ Int} should produce some sort of an
+error since the \mbox{\tt Tree} type takes only a single argument.  So, how
+does Haskell detect malformed type expressions?  The answer is a second
+type system which ensures the correctness of types!  Each
+type has an associated \mbox{$\it kind$} which ensures that the type is used
+correctly.
+
+Type expressions are classified into different {\em kinds} which take
+one of two possible forms:
+\begin{itemize}
+\item The symbol $\ast$ represents the kind of type associated with
+concrete data objects.  That is, if the value \mbox{$\it v$} has type \mbox{$\it t$}, the
+kind of \mbox{$\it v$} must be $\ast$.
+
+\item If $\kappa_1$ and $\kappa_2$ are kinds, then
+$\kappa_1\rightarrow\kappa_2$ is the kind of types that take a type of
+kind $\kappa_1$ and return a type of kind $\kappa_2$.
+\end{itemize}
+The type constructor \mbox{\tt Tree} has the kind $\ast\rightarrow\ast$; the
+type \mbox{\tt Tree\ Int} has the kind $\ast$.  Members of the \mbox{\tt Functor} class
+must all have the kind $\ast\rightarrow\ast$; a kinding error would
+result from an declaration such as 
+\bprog
+\mbox{\tt instance\ Functor\ Integer\ where\ ...}
+\eprog
+since \mbox{\tt Integer} has the kind $\ast$.  
+
+Kinds do not appear directly in Haskell programs.
+The compiler infers kinds before doing type checking without any need
+for `kind declarations'.  Kinds stay in the background of a Haskell
+program except when an erroneous  type signature leads to a kind
+error.  Kinds are 
+simple enough that compilers should be able to provide descriptive
+error messages when kind conflicts occur.  See 
+\see{type-syntax} and \see{kindinference} for more information about
+kinds.
+
+\paragraph*{A Different Perspective.}
+Before going on to further examples of the use of type classes, it is
+worth pointing out two other views of Haskell's type classes.
+The first is by analogy with object-oriented programming (OOP).  In the
+following general statement about OOP, simply substituting {\em type
+class} for {\em class}, and {\em type} for {\em object}, yields a valid
+summary of Haskell's type class mechanism:
+
+``{\em Classes} capture common sets of operations.  A particular
+{\em object} may be an instance of a {\em class}, and will have a
+method corresponding to each operation.  {\em Classes} may be arranged
+hierarchically, forming notions of super{\em classes} and sub{\em
+classes}, and permitting inheritance of operations/methods.
+A default method may also be associated with an operation.''
+
+In contrast to OOP, it should be clear that types are not
+objects, and in particular there is no notion of an object's or type's
+internal mutable state.  An advantage over some OOP languages is that
+methods in 
+Haskell are completely type-safe: any attempt to apply a method to a
+value whose type is not in the required class will be detected at
+compile time instead of at runtime.  In other words, methods are not
+``looked up'' at runtime but are simply passed as higher-order
+functions.
+
+A different perspective can be gotten by considering the relationship
+between parametric and {\em ad hoc} polymorphism.  We have shown how
+parametric polymorphism is useful in defining families of types by
+universally quantifying over all types.  Sometimes, however,
+that universal quantification is too broad---we wish to quantify over
+some smaller set of types, such as those types whose elements can be
+compared for equality.  Type classes can be seen as providing a
+structured way to do just this.  Indeed, we can think of parametric
+polymorphism as a kind of overloading too!  It's just that the
+overloading occurs implicitly over all types instead of a constrained
+set of types (i.e.~a type class).
+
+\paragraph*{Comparison to Other Languages.}
+
+The classes used by Haskell are similar to those used in other
+object-oriented languages such as C++ and Java.  However, there are
+some significant differences:
+\begin{itemize}
+\item Haskell separates the definition of a type from the definition
+of the methods associated with that type.  A class in C++ or Java
+usually defines both a data structure (the member variables) and the
+functions associated with the structure (the methods).  In Haskell,
+these definitions are separated.
+\item The class methods defined by a Haskell class correspond to
+virtual functions in a C++ class.  Each instance of a class provides
+its own definition for each method; class defaults correspond to
+default definitions for a virtual function in the base class. 
+\item Haskell classes are roughly similar to a Java interface.  Like
+an interface declaration, a Haskell class declaration defines a
+protocol for using an object rather than defining an object itself.
+\item Haskell does not support the C++ overloading style in which
+functions with different types share a common name. 
+\item The type of a Haskell object cannot be implicitly coerced; there
+is no universal base class such as \mbox{\tt Object} which values can be
+projected into or out of.
+\item C++ and Java attach identifying information (such as a VTable)
+to the runtime representation of an object.  In Haskell, such
+information is attached logically instead of physically to values,
+through the type system.
+\item There is no access control (such as public or private class
+constituents) built into the Haskell class system. Instead, the module
+system must be used to hide or reveal components of a class.
+\end{itemize}
+
+%**~footer

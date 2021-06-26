@@ -1,0 +1,919 @@
+\section{Raw type theories}
+\label{sec:typing}
+% not “sec:raw-type-theories” since that would be the more specific subsection below
+
+Having described raw syntax, we proceed with the formulation of raw type theories. These hold enough information to prevent syntactic irregularities, and can be used to specify derivations and derivability, but are qualified as ``raw'' because they allow arbitrariness and abnormalities that are generally considered undesirable.
+
+\subsection{Raw contexts}
+
+\begin{definition}
+  \label{def:raw-context}%
+  A \defemph{raw context~$\Gamma$} is a scope~$\gamma$ together with a family on $\ExprTy{\Sigma}{\gamma}$ indexed by $\position \gamma$, i.e., a map $\position{\gamma} \to \ExprTy{\Sigma}{\gamma}$.
+  %
+  The positions of $\gamma$ are also called the \defemph{variables} of~$\Gamma$.
+  % 
+  We often write just~$\Gamma$ for~$\gamma$, e.g., $i \in \position{\Gamma}$ instead of $i \in \position{\gamma}$, and $\Expr{c}{\Sigma}{\Gamma}$ instead of $\Expr{c}{\Sigma}{\gamma}$.
+  % 
+  We use a subscript for the application of a context $\Gamma$ to a variable $i$, such that $\Gamma_i$ is the type expression at index $i$.
+\end{definition}
+
+This definition is somewhat non-traditional for dependent type theories, in a couple of ways.
+%
+Contexts are more usually defined as lists, so their variables are ordered, and the type of each variable is assumed to depend only on earlier variables, i.e.~$A_i \in \ExprTy{\Sigma}{i}$.
+%
+In our definition, the variables form an arbitrary scope, with no order assumed; and each type may \emph{a priori} depend on any variables of the context.
+
+One may describe the two approaches as \emph{sequential} and \emph{flat} contexts, respectively.
+%
+The flat notion contains all the information needed when contexts are \emph{used} in derivations; we view the sequentiality as extra information that may be provided later by a derivation of well-formedness of a context, cf.\ \cref{sec:sequential-contexts}, but that is not needed at the raw level.
+
+\begin{example}%
+  \label{ex:de-bruijn-context}
+  With the de Bruijn index scope system, a raw context $\Gamma$ of scope $n$ may be written as
+  $\famtuple{A_i \in \ExprTy \Sigma n}{i \in \position n}$. A more familiar way to display $\Gamma$ is as list $[(n-1) \mto A_{n-1}, \ldots, 0 \mto A_0]$, where each $A_i \in \ExprTy{\Sigma}{n}$, but as raw contexts follow the flat approach, we should not think of this as imposing an order on the variables, and hence the list $[0 \mto A_0, \ldots, (n-1) \mto A_{n-1}]$ denotes the same context $\Gamma$.
+  %
+  Note, by the way, that at this stage contexts on de Bruijn indices are indistinguishable from contexts on de Bruijn levels.
+  %
+  The difference becomes apparent once we consider context extension, and the scope coproduct inclusions come into play.
+\end{example}
+
+\begin{definition}%
+  \label{def:context-extension}%
+  Let $\Gamma$ be a raw context, $\delta$ be a scope, and $\Delta : \position{\delta} \to \ExprTy{\Sigma}{\sumscope {\position{\Gamma}} {\delta}}$ a family of expressions indexed by $\position \delta$.
+  %
+  The \defemph{context extension}~$\ctxextend \Gamma \Delta$ is the raw context of scope~$\sumscope {\position \Gamma} \delta$, defined as
+  %
+  \begin{equation*}
+    (\ctxextend \Gamma \Delta)_{\inlscope j} \defeq (\act \inlscope \circ\, \Gamma)_j
+    \qquad\text{and}\qquad
+    (\ctxextend \Gamma \Delta)_{\inrscope k} \defeq \Delta_k.
+  \end{equation*}
+  %
+  In other words, the extended raw context~$\ctxextend \Gamma \Delta$ is the map $[\act \inlscope \circ\, \Gamma, \Delta]$ induced by the universal property of the coproduct~$\position{\sumscope {\position{\Gamma}} \delta}$.
+\end{definition}
+
+\begin{example}
+To continue \cref{ex:de-bruijn-context}, we can consider how context extension works for de Bruijn indices. Let $\Gamma = [2 \mto A_2, 1 \mto A_1, 0 \mto A_0]$, where each $A_i \in \ExprTy{\Sigma}{3}$, and $\Delta = [1 \mto B_1, 0 \mto B_0]$ with $B_j \in \ExprTy{\Sigma}{3 + 2}$. The coproduct inclusions are $\inlscope i = i + 2$ and $\inrscope j = j$. The context $\ctxextend \Gamma \Delta$ has scope $3 + 2 = 5$, and is given by $[\act {(i \mapsto i + 2)} \circ\, \Gamma, \Delta]$, which computes to $[4 \mto \act \inlscope A_2, 3 \mto \act \inlscope A_1, 2 \mto \act \inlscope A_0, 1 \mto B_1, 0 \mto B_0]$. The effect is that the variables from $\Gamma$ are renamed according to the scope of $\Delta$, and the renaming acts on the associated type expressions accordingly, i.e., by shifting all variables by 2.
+\end{example}
+
+Note that with raw contexts, we weaken types when extending a context.
+%
+In approaches using sequential contexts with scoped syntax, weakening is instead performed when types are taken \emph{out} of a context: that is, the variable rule (precisely stated) concludes $\isterm{\Gamma}{\synvar{i}}{\rename{\iota}\Gamma_i}$, where $\iota : i \to n$ is the inclusion of an initial segment into the full context.
+
+In concrete examples, we will write contexts in a more traditional style, as lists of variables names with their associated types:
+\[  x_1 \of A_1, \ldots, x_n \of A_n. \]
+
+Like other syntactic objects, raw contexts are acted upon by signature maps and instantiations. The functoriality and commutation properties for these actions follow directly from the corresponding properties for expressions.
+
+\begin{definition}
+  Given a signature map $F : \Sigma \to \Sigma'$ and a raw context $\Gamma$ over $\Sigma$, the \defemph{translation of $\Gamma$ by $F$} is the raw context $\act{F} \Gamma$ over $\Sigma'$, with $\position{\act{F} \Gamma} \defeq \position{\Gamma}$ and $(\act{F}\Gamma)_i \defeq \act{F}\Gamma_i$. 
+\end{definition}
+
+\begin{propositionwithqed}
+  The action of signature maps on raw contexts is functorial:
+  %
+  \begin{equation*}
+    \act{F}(\act{G} \Gamma) = \act{(F \circ G)}\Gamma
+    \qquad\text{and}\qquad
+    \act{{\idmap[\Sigma]}} \Gamma = \Gamma,
+  \end{equation*}
+  %
+  for all suitable $F$, $G$, $\Gamma$.
+\end{propositionwithqed}
+
+The action of instantiations is a little more subtle.
+%
+Acting pointwise on the expressions of the context  is not enough, since the instantiated expressions lie in a larger scope.
+%
+We need to supply extra types for the extra scope, i.e., the scope of the instantiation must itself underlie a raw context.
+
+\begin{definition}
+  An \defemph{instantiation $I$ in context $\Gamma$} over $\Sigma$ for arity $\alpha$ is an instantiation $I \in \Inst{\Sigma}{\position \Gamma}{\alpha}$.
+  %
+  Then for any raw context $\Delta$ over $\mvextend{\Sigma}{\alpha}$, the \defemph{context instantiation $\act{(I,\Gamma)}\Delta$} is the context over $\Sigma$ with scope $\sumscope{\position{\Gamma}}{\position{\Delta}}$ and with type expressions
+  \begin{align*}
+    \act{(I,\Gamma)}\Delta_{\inlscope(i)} &\defeq \tca{\inlscope}\Gamma_i & (i \in \gamma), \\
+    \act{(I,\Gamma)}\Delta_{\inrscope(j)}&\defeq \act{I}\Delta_j & (j \in \delta).
+  \end{align*}
+
+  Briefly, $\act{(I,\Gamma)}\Delta$ is the context extension of $\Gamma$ by the instantiations of the types of $\Delta$.
+\end{definition}
+
+\begin{propositionwithqed}
+  Given instantiations 
+  %
+  \begin{align*}
+    &\text{$I \in \Inst{\Sigma}{\position \Gamma}{\alpha}$ in context $\Gamma$,}\\
+    &\text{$K \in \Inst{\mvextend{\Sigma}{\alpha}}{\position \Delta}{\beta}$ in context $\Delta$, and}\\
+    &\text{$\Theta \in \Inst{\mvextend{(\mvextend{\Sigma}{\alpha})}{\beta}}{\position \Theta}{\gamma}$ in context $\Theta$},
+  \end{align*}
+  %
+  the equation
+  %
+  \begin{equation*}
+    \act{(I,\Gamma)} (\act{(K,\Delta)} \Theta) =
+    \act{(\act{I}K, \act{(I,\Gamma)} \Delta)} \Theta
+  \end{equation*}
+  %
+  holds modulo the canonical isomorphism between the scopes
+  $\sumscope{\position \Gamma}{(\sumscope{\position \Delta}{\position \Theta})}$ and $\sumscope{(\sumscope{\position \Gamma}{\position \Delta})}{\position \Theta}$ of their right- and left-hand sides.
+  % OLD FORMULATION:
+  % Given instantiations $I$ of $\alpha$ over $\Sigma$ in context $\Gamma$ and $K$ of $\beta$ over $\mvextend{\Sigma}{\alpha}$ in context $\Delta$, and a further context $\Theta$ over $\mvextend{(\mvextend{\Sigma}{\alpha})}{\beta}$, we have $\act{(I,\Gamma)}(\act{(K,\Delta)}{\Theta}) = \act{(\act{I}K,\act{(I,\Gamma)}\Delta)}\Theta$, modulo the associativity renaming between their scopes $\sumscope{\gamma}{(\sumscope{\delta}{\theta})}$, $\sumscope{(\sumscope{\gamma}{\delta})}{\theta}$.
+\end{propositionwithqed}
+
+\subsection{Judgements}
+
+Our type theories have four primitive judgement forms, following Martin-Löf \citep{martin-lof:bibliopolis}:
+%
+\begin{center}
+\begin{tabular}{ll}
+  $A \type$           &\qquad ``$A$ is a type'' \\
+  $t : A$             &\qquad ``term $t$ has type $A$'' \\
+  $A \judgeq B$       &\qquad ``$A$ and $B$ are equal as types''  \\
+  $s \judgeq t : A$   &\qquad ``$s$ and $t$ are equal as terms of type $A$''
+\end{tabular}
+\end{center}
+%
+These are represented with symbols $\Ty$, $\Tm$, $\TyEq$, and $\TmEq$, respectively.
+%
+For our needs we need to describe the judgement forms quite precisely. In fact, the following elaboration may seem a bit \emph{too} precise, but we found it quite useful in the formalisation to make explicit all the concepts involved and distinctions between them.
+
+Each judgement form has a family of \defemph{boundary slots} and possibly a \defemph{head slot}, where each slot has an associated syntactic class, as follows:
+%
+\begin{center}
+\begin{tabular}{lll}
+  Form & Boundary & Head \\
+  \midrule
+  $\Ty$ & $[]$ & $\Ty$ \\
+  $\Tm$ & $[\Ty]$ & $\Tm$ \\
+  $\TyEq$ & $[\Ty, \Ty]$ & \\
+  $\TmEq$ & $[\Tm, \Tm, \Ty]$ & \\
+\end{tabular}
+\end{center}
+%
+The table encodes the familiar constituent parts of the judgement forms:
+%
+\begin{enumerate}
+\item ``$A \type$'' has no boundary slots; the head slot, indicated by $A$, is a type.
+\item ``$t : A$'' has one boundary type slot indicated by $A$, called the \defemph{underlying type}; the head, indicated by $t$, is a term.
+\item ``$A \equiv B$'' has two type slots indicated by $A$ and $B$, called the \defemph{left-hand side} and \defemph{right-hand side}; there is no head.
+\item ``$s \equiv t : A$'' has two term slots indicated by $s$ and $t$, and a type slot indicated by~$A$, called the \defemph{left-hand side}, the \defemph{right-hand side} and the \defemph{underlying type}, respectively; there is no head.
+\end{enumerate}
+%
+The \defemph{slots} of a judgement form are the slots of its boundary, and the head, if present.
+
+\begin{definition}
+  \label{def:judgement}
+  %
+  Given a raw context $\Gamma$ and a judgement form~$\phi$, a \defemph{hypothetical judgement} of that form over~$\Gamma$ is a map $J$ taking each slot of $\phi$ of syntactic class $c$ to an element of $\Expr{c}{\Sigma}{\Gamma}$.
+  %
+  We write $\Judg{\Sigma}$ for the set of all hypothetical judgements over~$\Sigma$.
+  %
+  The types of $\Gamma$ are the \defemph{hypotheses} and $J$ is the \defemph{thesis} of the judgement.
+  %
+  When there is no ambiguity, we will (following traditional usage) speak of a \defemph{judgment} to mean either a whole hypothetical judgement $\Gamma \typesjudgement J$, or just a thesis $J$.
+ 
+  A hypothetical judgement is an \defemph{object judgement} if it is a term or a type judgement, and an \defemph{equality judgement} if it is a type or a term equality judgement.
+\end{definition}
+
+\begin{example}
+  The boundary and the head slots of the judgement form $\Tm$ are $[\Ty]$ and $\Tm$, respectively. Thus a hypothetical judgement of this form over a raw context~$\Gamma$ is a map taking the slot in the boundary to a type expression $A \in \ExprTy{\Sigma}{\Gamma}$ and the head slot to a term expression $t \in \ExprTm{\Sigma}{\Gamma}$.
+  %
+  This corresponds precisely to the information conveyed by a traditional hypothetical term judgement ``$\isterm{\Gamma}{t}{A}$''.
+\end{example}
+
+In view of the preceding example we shall write a hypothetical judgement over $\Gamma$ given by a map $J$ in the traditional type-theoretic way
+%
+\begin{equation*}
+  \Gamma \typesjudgement J
+\end{equation*}
+%
+where the elements of $J$ are displayed in the corresponding slots.
+
+Just like raw contexts, judgements are acted on by signature maps and instantiations.
+
+\begin{definition} \label{def:judgements-functorial}
+  Given a signature map $F : \Sigma \to \Sigma'$ and a judgement $\Gamma \typesjudgement J$ over $\Sigma$, the translation $\act{F}(\Gamma \typesjudgement J)$ is the judgement $\act{F} \Gamma \typesjudgement \act{F} J$ over $\Sigma'$ of the same form, where the thesis $\act{F} J$ is $J$ with $\act{F}$ applied pointwise to each expression.
+\end{definition}
+
+\begin{propositionwithqed} \label{prop:judgements-functorial}
+  This action is functorial: $\act{F}(\act{G} (\Gamma \typesjudgement J)) = \act{(FG)}(\Gamma \typesjudgement J)$, and $\act{(\idmap[\Sigma])}(\Gamma \typesjudgement J) = (\Gamma \typesjudgement J)$, for all suitable $F$, $G$, $\Gamma$, $J$.
+\end{propositionwithqed}
+
+\begin{definition} \label{def:instantiate-judgement}
+  Given a signature $\Sigma$, a hypothetical judgement $\Delta \typesjudgement J$ over a metavariable extension $\mvextend \Sigma \alpha$, a raw context $\Gamma$ over $\Sigma$, and an instantiation~$I$ of $\alpha$ in context $\Gamma$, the \defemph{judgement instantiation} $\act{(I,\Gamma)}{(\Delta \typesjudgement J)}$ is the judgement
+  $\ctxextend{\Gamma}{\act{I} \Delta} \typesjudgement {\act I J}$ over $\Sigma$, where the thesis $\act I J$ is just $J$ with $\act{I}$ applied pointwise.
+\end{definition}
+
+\begin{propositionwithqed} \label{prop:instantiate-instantiate-judgement}
+   Given instantiations
+   %
+   \begin{align*}
+     & \text{$I \in \Inst{\Sigma}{\position \Gamma}{\alpha}$ in context $\Gamma$ and}\\
+     & \text{$K \in \Inst{\mvextend{\Sigma}{\alpha}}{\position \Delta}{\beta}$ in context $\Delta$},
+   \end{align*}
+   and a judgement $\Theta \typesjudgement J$ over $\mvextend{(\mvextend{\Sigma}{\alpha})}{\beta}$, the equation
+   %
+   \begin{equation*}
+     \act{(I,\Gamma)}(\act{(K,\Delta)}{(\Theta \types J)}) = \act{(\act{I}K,\act{(I,\Gamma)}\Delta)}(\Theta \types J)
+   \end{equation*}
+   %
+   holds modulo the canonical associativity renaming between their scopes.
+\end{propositionwithqed}
+
+\subsection{Boundaries}
+\label{sec:boundaries}
+
+In many places, one wants to consider data amounting to a hypothetical judgement without a head expression (if it is of object form, and so should have a head).
+%
+For instance, a \emph{goal} or \emph{obligation} in a proof assistant is specified by such data;
+%
+or when adjoining a new well-formed rule to a type theory, before picking a fresh symbol for it (if it is an object rule), the conclusion is specified by such data. 
+
+These entities crop up frequently, and seem almost as fundamental as judgements, so deserve a name.
+
+\begin{definition}
+  Given a raw context $\Gamma$ and a judgement form~$\phi$, a \defemph{hypothetical boundary} of form $\phi$ over~$\Gamma$ is a map $B$ taking each \emph{boundary} slot of~$\phi$ of syntactic class $c$ to an element of  $\Expr{c}{\Sigma}{\Gamma}$.
+\end{definition}
+
+We display boundaries as judgements with a hole~$\bdryhead$ where the head should stand, or with $\qjudgeq$ in place of $\judgeq$:
+%
+\begin{equation*}
+  \bdryhead \type
+  \qquad\qquad
+  \bdryhead : A
+  \qquad\qquad
+  A \qjudgeq B
+  \qquad\qquad
+  s \qjudgeq t : A
+\end{equation*}
+%
+Since equality judgements have no heads, there is no difference in data between an equality judgement and an equality boundary, but there is one of sense: the judgement $A \judgeq B$ asserts an equality holds, whereas the boundary $A \qjudgeq B$ is a goal to be established or postulated.
+%
+Analogously,  $\bdryhead \type$ and $\bdryhead : A$ can be read as goals, the former that a type be constructed, and the latter that~$A$ be inhabited.
+
+The terminology about judgements, as well as many constructions, carry over to boundaries.
+%
+In particular, the action of signature maps and instantiations on boundaries is defined just as in \cref{def:judgements-functorial,def:instantiate-judgement}, and enjoys analogous properties to \cref{prop:judgements-functorial,prop:instantiate-instantiate-judgement}.
+
+Finally, and crucially, boundaries can be completed to judgements.
+%
+The data required depends on the form: completing an object boundary requires a head expression; completing an equality boundary, just a change of view.
+%
+\begin{definition} \label{def:completion-boundary}
+  Let $B$ be a boundary in scope $\gamma$ over $\Sigma$.
+  \begin{enumerate}
+  \item If $B$ is of object form, then given an expression $e$ of the class of $B$ in scope $\gamma$, write $\plug{B}{e}$ for the \defemph{completion} of $B$ with head $e$, a judgement over $\gamma$.
+  \item If $B$ is of equality form, then the completion of $B$ is just $B$ itself, viewed as a judgement.
+  \end{enumerate}
+\end{definition}
+
+\begin{propositionwithqed}
+  Completion of boundaries is natural with respect to signature maps: $\act{F}(\plug{B}{e}) = \plug{(\act{F}B)}{\act{F}e}$.
+\end{propositionwithqed}
+
+\subsection{Raw rules} \label{sec:raw-rules}
+
+We now come to raw rules, syntactic entities that capture the notion of ``templates'' that are traditionally used to display the inference rules of a type theory.
+%
+The raw rules include all the information needed in order to be \emph{used}, for defining derivations and derivability of judgements --- but they do not yet include the extra properties we typically check when considering rules, and which guarantee good properties of the resulting derivability predicates.
+%
+We return to these later, in \cref{sec:acceptable-rules}.
+
+\begin{definition}
+  \label{def:raw-rule}%
+  A \defemph{raw rule} $R$ over a signature $\Sigma$ consists of an arity $\arity{R}$,
+  %
+  together with a family of judgements over the extended signature $\mvextend{\Sigma}{\arity{R}}$, the \defemph{premises} of~$R$,
+  %
+  and one more judgement over $\mvextend{\Sigma}{\arity{R}}$, the \defemph{conclusion} of $R$.
+  %
+  An \defemph{object rule} is one whose conclusion is an object judgement, otherwise it is an \defemph{equality rule}.
+\end{definition}
+
+\begin{example}%
+\label{ex:raw-rule-app}
+  Following on from \cref{ex:pi-types-arities}, the raw rule for function application has arity
+  %
+  \begin{equation*}
+    \arity{\symapp} = [(\Ty,0), (\Ty,1), (\Tm,0),(\Tm,0)].
+  \end{equation*}
+  %
+  Writing $\symA$, $\symB$, $\symb{s}$, $\symb{t}$ for the metavariable symbols of the extended signature $\mvextend{\Sigma}{\arity{\symapp}}$, the premises of the rule are the four-element family:
+  %
+  \begin{equation*}
+    [\;
+    \istype{}{\symA}, \quad
+    \istype{[0 \mto \symA]}{\symB(\synvar{0})}, \quad
+    \isterm{}{\symb{s}}{\symPi(\symA, \symB(\synvar{0})}), \quad
+    \isterm{}{\symb{t}}{\symA}
+    \;] 
+  \end{equation*}
+  %
+  and its conclusion is the hypothetical judgement
+  %
+  \begin{equation*}
+    \isterm{}{\symapp(\symA, \symB(\synvar{0}), \symb{s}, \symb{t})}{\symB(\symb{t})}.
+  \end{equation*}
+  %
+  Of course, the traditional type-theoretic way of displaying such a rule is
+  %
+  \begin{equation*}
+  \inferrule
+    { \istype{ }{\symA} \\
+      \istype{x \of \symA}{\symB(x)} \\
+      \isterm{}{\symb{s}}{\symPi(\symA, \symB(x)}) \\
+      \isterm{}{\symb{t}}{\symA}
+    }{
+      \isterm{}{\symapp(\symA, \symB(x), \symb{s}, \symb{t})}{\symB(\symb{t})}
+    }
+  \end{equation*}
+  %
+  It may seem surprising that we have $\symB(x)$ and $\symB(\symb{t})$ rather than, say, $B$ and $B[\symb{t}/x]$, since this style is usually apologised for as an abuse of notation.
+  %
+  Here, it is precise and formal; $\symB$ is a metavariable \emph{symbol} in $\mvextend{\Sigma}{\arity{\symapp}}$, so it is applied to arguments when used in the syntax.
+  %
+  Also note that the occurrences of~$x$ in the third premise and the conclusion are implicitly bound by~$\symPi$ and~$\symapp$, as can be discerned from their arities.
+  %
+  When we instantiate the rule below with actual expressions $A$, $B$, $s$ and~$t$, then $\symB(x)$ and $\symB(\symb{t})$ will be translated into $B$ and $B[t/x]$ respectively.
+\end{example}
+
+\begin{definition}%
+  \label{def:raw-rule-fmap}
+  The functorial \defemph{action} of a signature map $F : \Sigma \to \Sigma'$ is the map $\act{F}$ which takes a rule $R$ over $\Sigma$ to the rule~$\act{F} R$ over~$\Sigma'$ whose arity is the arity~$\arity{R}$ of~$R$, and its premises and conclusion are those of $R$, all translated along the action of the induced map $\mvextend{F}{\arity{R}} : \mvextend{\Sigma}{\arity{R}} \to \mvextend{\Sigma'}{\arity{R}}$.
+\end{definition}
+
+A raw rule should not itself be thought of as a closure rule (though formally it is one), but rather as a template specifying a whole family of closure rules.
+
+\begin{definition}
+  \label{def:induced-closure-rule}\label{def:associated-closure-system}
+  Given a rule $R$, a raw context $\Gamma$, and an instantiation $I$ of its arity~$\arity{R}$ over $\Gamma$, all over a signature~$\Sigma$, the \defemph{instantiation of $R$ under $I$, $\Gamma$}, is the closure rule $\act{(I,\Gamma)} R$ on $\Judg{\Sigma}$ whose premises and conclusion are the instantiations of the corresponding judgements of~$R$ under~$I$, $\Gamma$.
+  %
+  The \defemph{closure system $\clos R$ associated to $R$} is the family
+  $\famtuple{\act{(I,\Gamma)} R}{\Gamma \in \Context{\Sigma},\, I \in \Inst{\Sigma}{\Gamma}{\arity R}}$
+  of all such instantiations.
+\end{definition}
+
+\begin{example}
+  Continuing \cref{ex:raw-rule-app}, the raw rule $R_\symapp$ for application gives the closure system $\clos(R_\symapp)$, containing for each raw context~$\Gamma$ (with scope~$\gamma$) and expressions $A, B \in \ExprTy{\Sigma}{\gamma}$, $s, t \in \ExprTm{\Sigma}{\gamma}$ a closure rule
+   %
+   \begin{align*}
+    \inferrule
+     { \istype{\Gamma}{A} \\
+       \istype{\Gamma, x \of A}{B} \\
+       \isterm{\Gamma}{s}{\symPi(A,B)} \\
+       \isterm{\Gamma}{t}{A}
+     }{
+       \isterm{\Gamma}{\symapp(A, B, s, t)}{B[t/x]}.
+     }
+  \end{align*}
+  
+  This is visually similar to $R_\symapp$ itself, but not to be confused with it.
+  %
+  The instantiation is a single closure rule, written over the ambient signature $\Sigma$; the original raw rule, written over $\mvextend{\Sigma}{\arity{\symapp}}$, is a template specifying the whole family of such closure rules.
+  %
+  In the raw rule, $\symA$, $\symB$, $\symb{s}$, $\symb{t}$ are metavariable symbols from the extended signature $\mvextend{\Sigma}{\arity{\symapp}}$; in the instantiatiaion, the symbols $A$, $B$, $s$, $t$ (note the difference in fonts) are the actual syntactic expressions the raw rule was instantiated with.
+\end{example}
+
+This construction of $\clos$ formalises the usual informal explanation that a single written rule is a shorthand for a scheme of closure conditions, with the quantification of the scheme inferred from the written rule.
+
+\begin{proposition} \label{prop:closure-system-of-raw-rule-under-signature-map}
+  %
+  The construction $\clos$ is \emph{laxly natural} in signature maps,
+  % 
+  in that given $F : \Sigma \to \Sigma'$ and a rule $R$ over $\Sigma$, there is an induced simple map of closure systems $\clos R \to \clos \act{F}R$, over $\act{F} : \Judg \Sigma \to \Judg \Sigma'$.
+\end{proposition}
+
+\begin{proof}
+  For each instantiation $I \in \Inst{\Sigma}{\position \Gamma}{\arity{R}}$, we have $\act{F}I \in \Inst{\Sigma'}{\position \Gamma}{\arity{R}}$ and $\act{(\act{F} I, \act{F} \Gamma)} R = \act{F} (\act{(I, \Gamma)} R)$.
+\end{proof}
+
+This is lax in the sense that the resulting map $\clos R \to \clos \act{F} R$ will not usually be an isomorphism: in general, not every instantiation of $\arity{R}$ over~$\Sigma'$ is of the form~$\act{F} I$.
+%
+This illustrates the need for considering raw rules formally, rather than just viewing a type theory as a collection of closure rules: when translating a type theory between signatures, we want not just the translations of the original closure rules, but all instantiations of the translated raw rules.
+
+One might hope for $\clos$ to be similarly laxly natural under instantiations.
+%
+However, this is not so straightforwardly true; we will return to this in \cref{prop:instantiation-of-closure-system-of-raw-rule}, once the structural rules are introduced, and show a weaker form of naturality.
+
+\subsection{Structural rules}
+
+The rules used in derivations over a type theory will fall into two groups:
+%
+\begin{enumerate}
+\item the \defemph{structural rules}, governing generalities common to all type theories;
+\item the \defemph{specific rules} of the particular type theory.
+\end{enumerate}
+
+The structural rules over a signature~$\Sigma$ are a family of closure rules on $\Judg{\Sigma}$, which we now lay out.
+%
+They are divided into four families:
+%
+\begin{itemize}
+\item the variable rules,
+\item rules stating that equality is an equivalence relation,
+\item rules for conversion of terms and term equations between equal types, and
+\item rules for substitutions,
+\end{itemize}
+%
+We have chosen the rules so that the development of the general setup requires no hard meta-theorems, as far as possible. In particular, we include the substitution rules into the formalism so that we can postpone proving elimination of substitution until \cref{sec:elimination-substitution}. You might have expected to see congruence rules among the structural rules, but those we take care of separately in \cref{sec:congruence-rules} because they depend on the specific rules.
+
+The first three families of structural rules are straightforward.
+
+\begin{definition}
+  \label{def:variable-rule}%
+  For each raw context $\Gamma$ over a signature $\Sigma$, and for each $i \in \position{\Gamma}$, the corresponding \emph{variable rule} is the closure rule
+  % 
+  \begin{equation*}
+    \infer{
+      \istype{\Gamma}{\Gamma_i}
+    }{
+      \isterm{\Gamma}{\synvar{i}}{\Gamma_i}
+    }
+  \end{equation*}
+  %
+  Taken together, the variable rules form a family indexed by such pairs $(\Gamma, i)$.
+\end{definition}
+
+While this had to be given directly as a family of closure rules, the next two groups of structural rules can be expressed as raw rules.
+
+\begin{definition}
+  \label{def:equivalence-relation-rule}%
+  %
+  The \defemph{raw equivalence relation rules} are the following raw rules:
+  %
+\begin{mathpar}
+%
+\infer
+  {
+    \istype{}\symA
+  }{
+    \eqtype{}{\symA}{\symA}
+  }
+%
+\and
+%
+\infer{
+  \istype{}{\symA}
+  \\
+  \istype{}{\symB}
+  \\
+  \eqtype{}{\symA}{\symB}
+}{
+  \eqtype{}{\symB}{\symA}
+}
+%
+\and
+%
+\infer{
+  \istype{}{\symA}
+  \\
+  \istype{}{\symB}
+  \\
+  \istype{}{\symC}
+  \\
+  \eqtype{}{\symA}{\symB}
+  \\
+  \eqtype{}{\symB}{\symC}
+}{
+  \eqtype{}{\symA}{\symC}
+}
+%
+\and
+%
+\infer
+  {
+   \istype{} \symA
+   \\
+   \isterm{}{\symb{s}} \symA
+  }{
+    \eqterm{}{\symb{s}}{\symb{s}} \symA
+  }
+%
+\and
+%
+\infer{
+  \istype{}{\symA}
+  \\
+  \isterm{}{\symb{s}} \symA
+  \\
+  \isterm{}{\symb{t}} \symA
+  \\
+  \eqterm{}{\symb{s}}{\symb{t}}\symA
+}{
+  \eqterm{}{\symb{t}}{\symb{s}}\symA
+}
+%
+\and
+%
+\infer{
+  \istype{}{\symA}
+  \\
+  \isterm{}{\symb{s}} \symA
+  \\
+  \isterm{}{\symb{t}} \symA
+  \\
+  \isterm{}{\symb{u}} \symA
+  \\
+  \eqterm{}{\symb{s}}{\symb{t}} \symA
+  \\
+  \eqterm{}{\symb{t}}{\symb{u}} \symA
+}{
+  \eqterm{}{\symb{s}}{\symb{u}} \symA
+}
+\end{mathpar}
+%
+The \defemph{equivalence relation rules over~$\Sigma$} is the sum of the closure systems associated to the above equivalence relation rules, over a given signature~$\Sigma$.
+\end{definition}
+
+We trust the reader to be able read off the arities of the metavariable symbols appearing in raw rules.
+%
+For instance, from the use of~$\symA$ and~$\symb{s}$ in the above term reflexivity rule
+we can tell that the rule has arity $[(\Ty,0),(\Tm,0)]$.
+
+The conversion rules are written as raw rules, as well.
+
+\begin{definition}
+  \label{def:conversion-rule}%
+  The \defemph{raw conversion rules} are the following raw rules:
+  %
+  \begin{mathpar}
+  \infer{
+    \istype{}{\symA}
+    \\
+    \istype{}{\symB}
+    \\
+    \isterm{}{\symb{s}}{\symA}
+    \\
+    \eqtype{} \symA \symB
+  }{
+    \isterm{}{\symb{s}}{\symB}
+  }
+  %
+  \and
+  %
+  \infer{
+    \istype{}{\symA}
+    \\
+    \istype{}{\symB}
+    \\
+    \isterm{}{\symb{s}}{\symA}
+    \\
+    \isterm{}{\symb{t}}{\symA}
+    \\
+    \eqterm{}{\symb{s}}{\symb{t}}{\symA}
+    \\
+    \eqtype{}{\symA} \symB
+  }{
+    \eqterm{}{\symb{s}}{\symb{t}}{\symB}
+  }
+\end{mathpar}
+%
+Again, the \defemph{conversion rules over $\Sigma$} is the sum of the closure systems associated to the above conversion rules, over a signature~$\Sigma$.
+\end{definition}
+
+The remaining groups are the substitution and equality-substitution rules.
+
+The substitution rule should formalize the notion that ``well-typed'' substitutions preserve derivability of judgements.
+%
+Treatments taking simultaneous substitution as primitive usually say something like: a raw substitution $f : \Delta \to \Gamma$ is well-typed if $\isterm{\Delta}{f(i)}{\tca{f}\Gamma_i}$ for each $i \in \position{\Gamma}$.
+%
+However, taking all these judgements as premises in the substitution rule is rather profligate: most substitutions in practice act non-trivially only on a small part of the context.
+%
+For instance, a single-variable substitution may be represented as a raw substitution $\Gamma \to \ctxextend{\Gamma}{A}$ acting trivially on $\Gamma$, so no checking should be required there.
+%
+Indeed, in treatments taking single-variable substitution as primitive, only require checking of the substituted expression.
+%
+To abstract this situation, we define the substitution rule as follows. Recall that a subset $X \subseteq Y$ is \emph{complemented} when $X \cup (Y \setminus X) = Y$, a condition that is vacuously true in classical logic.
+
+\begin{definition}
+  \label{def:substitution-rule}%
+  % NB: the names of the sets K and L is chosen so because I, J, T are taken (instantiation, judgement, theory)!
+  A \defemph{raw substitution} $f : \Delta \to \Gamma$ \defemph{acts trivially at $i \in \position{\Gamma}$} when there is some (necessarily unique) $j \in \position{\Delta}$ such that $f(i) = \synvar{j}$ and $\Delta_j = \tca{f} \Gamma_i$.
+  %
+  Given a complemented subset $K \subseteq \position{\Gamma}$ on which~$f$ acts trivially, the corresponding \defemph{substitution rule} is the closure rule
+  %
+  \begin{equation}
+    \label{eq:substitution-rule}
+    \infer{
+      \Gamma \typesjudgement J
+      \\\\
+     \text{for each $i \in \position{\Gamma} \setminus K$:} \quad
+     \isterm{\Delta}{f(i)}{\tca{f}\Gamma_i}
+    }{
+      \Delta \typesjudgement \tca{f}J
+    }
+  \end{equation}
+  %
+  The substitution rules form a family of closure rules, indexed by $f : \Delta \to \Gamma$, $K$, and $\Gamma \typesjudgement J$.
+\end{definition}
+
+\noindent
+%
+In the above definition, $K$ is thought of as a set of positions at which~$f$ is
+\emph{guaranteed} to act trivially, but it may also do so outside~$K$, as there is no harm in checking positions at which~$f$ acts trivially.
+
+The substitution rules are formulated carefully for another, more technical reason.
+%
+In inductions over derivations (e.g.\ for \cref{lem:admissibility-substitution}), when a substitution descends under a binder, it gets extended to act trivially on the  variables introduced by the binder.
+%
+Within the inductive cases, we may not yet have enough information to conclude that the types of the bound variables are well-formed, but we can rely on the trivial action of the substitution.
+%
+Keeping substitution rules flexible and economical in this way therefore keeps these inductive proofs much cleaner.
+
+Along similar lines, we have rules stating that substitution of equal terms gives equal results.
+%
+\begin{definition}
+  \label{def:equality-substitution-rule}%
+  %
+  Raw substitutions $f, g : \Delta \to \Gamma$ \defemph{act jointly trivially} at $i \in \position{\Gamma}$ when there is some (necessarily unique) $j \in \position{\Delta}$ such that $f(i) = g(i) = \synvar{j}$ and $\Delta_j = \tca{f} \Gamma_i = \tca{g} \Gamma_i$.
+  %
+  Given a complemented subset $K \subseteq \position{\Gamma}$ on which $f$ and $g$ act jointly trivially,
+  the corresponding \defemph{equality-substitution rules} are the closure rules
+  %
+  \begin{mathpar}
+    \infer{
+      \istype{\Gamma}{A}
+      \\\\
+      \text{for each $i \in \position{\Gamma} \setminus K$:}\\\\
+      \isterm \Delta {f(i)} {\tca f \Gamma_i}\\
+      \isterm \Delta {g(i)} {\tca g \Gamma_i} \\
+      \eqterm{\Delta}{f(i)}{g(i)}{\tca{f}\Gamma_i}
+    }{
+      \eqtype{\Delta}{\tca{f}A}{\tca{g}A}
+    }
+    %
+    \and
+    %
+    \infer{
+      \isterm{\Gamma}{t}{A}
+      \\\\
+      \text{for each $i \in \position{\Gamma} \setminus K$:}\\\\
+      \isterm \Delta {f(i)} {\tca f \Gamma_i}\\
+      \isterm \Delta {g(i)} {\tca g \Gamma_i} \\
+      \eqterm{\Delta}{f(i)}{g(i)}{\tca{f}\Gamma_i}
+    }{
+      \eqterm{\Delta}{\tca{f} t}{\tca{g} t}{\tca{f} A}
+    }
+  \end{mathpar}
+  %
+  The equality-substitution rules form a family of closure rules, indexed by $f : \Delta \to \Gamma$, $K$, and either $\istype{\Gamma}{A}$ or $\isterm{\Gamma}{t}{A}$.
+\end{definition}
+
+\begin{definition}
+  \label{def:structural-rules}
+  The \defemph{structural rules over $\Sigma$}, denoted $\StructuralRules \Sigma$, is the sum of the families of closure rules set out above: the variable, equivalence relation, conversion, substitution, and equality-substitution rules.
+\end{definition}
+
+\begin{proposition}
+  \label{prop:structural-rules-under-signature-map}%
+  Given a signature map $F : \Sigma \to \Sigma'$, there is a simple map of closure systems $\StructuralRules \Sigma \to \StructuralRules \Sigma'$ over $\act{F} : \Judg \Sigma \to \Judg \Sigma'$.
+\end{proposition}
+
+\begin{proof}
+  This is straightforward, amounting to checking that for each instance of a structural rule over $\Sigma$, $F$ acts on the data to give an instance of the same structural rule over $\Sigma'$, and the resulting closure condition is the translation along $\act{F}$ of the original closure condition over $\Sigma$.
+\end{proof}
+
+Before giving a similar statement about instantiations of structural rules, we must first tie up the loose end from above about instantiation of closure systems of raw rules.
+
+\begin{proposition} \label{prop:instantiation-of-closure-system-of-raw-rule}
+  Let $R$ be a raw rule over $\Sigma$, $\mvextend{R}{\beta}$ its translation to an extension $\mvextend{\Sigma}{\beta}$, and $I$ an instantiation of~$\beta$ in some context~$\Gamma$.
+  %
+  Then there is a closure system map $\clos (\mvextend{R}{\beta}) \to \clos R + \StructuralRules \Sigma$, over $\act{(I,\Gamma)} : \Judg{(\mvextend{\Sigma}{\beta})} \to \Judg \Sigma$.
+\end{proposition}
+
+\begin{proof}
+  We need to show that for each instantiation $K \in \Inst{\mvextend{\Sigma}{\beta}}{\position \Delta}{\arity{R}}$ in some context~$\Delta$, the closure condition $\act{I} (\act{(K,\Gamma)} R)$ is derivable from $\clos R + \StructuralRules \Sigma$.
+
+  Given such $K$ and $\Gamma$, we can instantiate both under $I$ to get an instantiation of~$R$ over $\Sigma$.
+  %
+  We might hope that $\act{(\act{I}K,\act{I}\Gamma)}R = \act{I}\left(\act{(K,\Gamma)}(\mvextend{R}{\beta}\right)$;
+  %
+  by \cref{prop:instantiate-instantiate-judgement}, we see that this does not strictly, but only up to an associativity renaming in each judgement.
+
+  The substitution structural rule comes to our rescue here.
+  %
+  For each judgement $J$ involved in $R$, with context $\Theta$, the associativity renamings give substitutions between $\act{I}(\act{K}\Theta)$ and $\act{(\act{I}K)}\Theta$ acting trivially at every position, so the substitution rule lets us derive $\act{I}(\act{K}J)$ from $\act{(\act{I}K)}J$ (with no further premises), and vice versa.
+
+  The desired derivation of $\act{I}\left(\act{(K,\Gamma)}(\mvextend{R}{\beta}\right)$ from $\clos R + \StructuralRules \Sigma$ therefore consists of $\act{(\act{I}K,\act{I}\Gamma)}R$, together with an instance of the substitution rule after the conclusion and before each premise, implementing the associativity renamings.
+\end{proof}
+
+\begin{proposition}  \label{prop:instantiation-of-structural-rules}%
+  Let $I \in \Inst{\Sigma}{\position \Gamma}{\alpha}$ be an instantiation in context $\Gamma$.
+  %
+  Then there is a closure system map $\StructuralRules (\mvextend{\Sigma}{\alpha}) \to \StructuralRules \Sigma$, over $\act{(I,\Gamma)} : \Judg {(\mvextend{\Sigma}{\alpha})} \to \Judg{\Sigma}$.
+\end{proposition}
+
+\begin{proof}
+  For the structural rules given as raw rules, the required derivations are given by \cref{prop:instantiation-of-closure-system-of-raw-rule}.
+  
+  For the other structural rules, we start as in \cref{prop:structural-rules-under-signature-map}.
+  %
+  Given an instance of a structural rule over $\mvextend{\Sigma}{\alpha}$, we instantiate its data under $I$ to get an instance of the same structural rule over $\Sigma$.
+  %
+  Wrapping this instance in associativity renamings, derived by the substitution rule as in \cref{prop:instantiation-of-closure-system-of-raw-rule}, gives the required derivation of the instantiation of the original instance.
+\end{proof}
+
+\subsection{Congruence rules}
+\label{sec:congruence-rules}
+
+Congruence rules, which state that judgemental equality commutes with type and term symbols, are peculiar enough to demand special attention.
+
+They are present in almost all type theories, but rarely explicitly written out, and are often classified as structural rules.
+%
+We reserve that term for the rules of the preceding section, which are independent of the specific theory under consideration.
+%
+Congruence rules, by contrast, depend on the specific rules of a theory; for instance, the congruence rule for~$\symPi$ is determined by the formation rule for~$\symPi$.
+
+In this section we define how any object rule determines an associated congruence rule.
+%
+We first set up an auxiliary definition, associating equality judgements to object judgements.
+
+\begin{definition}
+  \label{def:judgement-associated-congruence}
+  For signature maps $\ell, r : \Sigma \to \Sigma'$ and an object judgement $J$ over~$\Sigma$, we define the equality judgment $\tca{(\ell,r)}J$ over~$\Sigma'$ by
+  %
+  \begin{align*}
+     \tca{(\ell,r)}(\istype{\Gamma}{A})
+    \ &\defeq \ 
+    (\eqtype{\act{\ell} \Gamma}{\act{\ell} A}{\act{r} A}),
+    \\
+    \tca{(\ell,r)}(\isterm{\Gamma}{t}{A})
+    \  &\defeq \ 
+    (\eqterm{\act{\ell} \Gamma}{\act{\ell} t}{\act r t}{\act{\ell} A}).
+  \end{align*}
+\end{definition}
+
+\begin{definition}
+  \label{def:congruence-rule}%
+  Suppose $R$ is a raw object rule over a signature $\Sigma$, with premises $\famtuple{P_i}{i \in I}$ and conclusion $C$.
+  %
+  Let $\phi_i$ be the judgement form of $P_i$, and take $I_{\ob} \defeq \set{i \in I \such \phi_i \in \set{\Ty, \Tm}}$, the set of object premises of~$R$.
+  %
+  The \defemph{associated congruence rule} $\congrule{R}$ is a raw rule with arity
+  $\arity{\congrule{R}} \defeq \arity{R} + \arity{R}$, defined as follows, where
+  $\ell, r : \mvextend{\Sigma}{\arity{R}} \to \mvextend{\Sigma}{\arity{\congrule{R}}}$ are signature maps
+  %
+  \begin{align*}
+    \ell(\inl(S)) &\defeq \inl(S), &
+    r(\inl(S)) &\defeq \inl(S), \\
+    \ell(\inr(M)) &\defeq \inr(\inl(M)), &
+    r(\inr(M)) &\defeq \inr(\inr(M)):
+  \end{align*}
+  %
+  \begin{enumerate}
+  %
+  \item The premises of $\congrule{R}$ are indexed by the set $I + I + I_{\ob}$, and are given by:
+    \begin{enumerate}
+    \item the $\inl(i)$-th premise is $\act{\ell} P_i$,
+    \item the $\inr(j)$-th premise is $\act{r} P_j$,
+    \item the $\iota_2(k)$-th premise is the equality $\tca{(\ell,r)} P_k$, cf.\ \cref{def:judgement-associated-congruence}.
+    \end{enumerate}
+
+  \item The conclusion of $\congrule{R}$ is $\tca{(\ell,r)}C$.
+  \end{enumerate}
+\end{definition}
+
+\begin{example}
+  \label{ex:pi-congruence-rule}%
+  \Cref{def:congruence-rule} works as expected. For example, the congruence rule
+  associated with the usual product formation rule
+  %
+  \begin{equation*}
+    \inferrule{
+      \istype{}{\symA} \\
+      \istype{x \of \symA}{\symB(x)}
+    }{
+      \istype{}{\symPi(\symA, \symB(x))}
+    }
+  \end{equation*}
+  %
+  comes out to be
+  %
+  \begin{equation*}
+    \inferrule{
+      \istype{}{\symA'} \\
+      \istype{x \of \symA'}{\symB'(x)} \\\\
+      \istype{}{\symA''} \\
+      \istype{x \of \symA''}{\symB''(x)} \\
+      \\\\
+      \eqtype{}{\symA'}{\symA''}
+      \\
+      \eqtype{x \of \symA'}{\symB'(x)}{\symB''(x)}
+    }{
+      \eqtype{}{\symPi(\symA', \symB''(x))}{\symPi(\symA'', \symB''(x))}
+    }
+  \end{equation*}
+\end{example}
+
+
+\subsection{Raw type theories}
+
+After a considerable amount of preparation, we are finally in position to formulate what a rudimentary general type theory is.
+
+\begin{definition}
+  \label{def:raw-type-theory}%
+  A \defemph{raw type theory}~$T$ over a signature $\Sigma$ is a family of raw rules over~$\Sigma$.
+\end{definition}
+
+\begin{definition} \label{def:closure-system-of-type-theory}
+  The \defemph{associated closure system} of a raw type theory~$T$ over~$\Sigma$ is the closure system $\clos T \defeq \StructuralRules \Sigma + \coprod_{R \in T} \clos R$ on $\Judg{\Sigma}$; that is, it consists of the structural rules for~$\Sigma$, and the closure rules generated by the instantiations of the rules of~$T$.
+  %
+  A \defemph{derivation in $T$} is a derivation over the closure system $\clos T$, in the sense of \cref{def:closure-system-derivation}.
+\end{definition}
+
+Note that we have not included the congruence rules into the closure system associated with a raw type theory. Instead, the presence of congruence rules will be required separately as a well-behavedness condition in \cref{sec:acceptable-type-theories}.
+%
+Derivability and admissibility of rules may now be defined as follows.
+
+\begin{definition} \label{def:derivable-raw-rule}
+  Let $T$ be a raw type theory over~$\Sigma$, and $R$ a raw rule over~$\Sigma$.
+  %
+  \begin{enumerate}
+  \item $R$ is \defemph{derivable} from~$T$ if its conclusion is derivable from its premises, over $\mvextend{T}{\arity{R}}$.
+  \item $R$ is \defemph{admissible} for~$T$ if for every instance $\act{(I,\Gamma)}R$,
+    its conclusion is derivable if its premises are derivable, all over~$T$.
+  \end{enumerate}
+\end{definition}
+
+We record the basic category-theoretic structure of raw type theories.
+
+\begin{definition}
+  Given a signature map $F : \Sigma \to \Sigma'$, and raw type theories $T$, $T'$ over $\Sigma$ and $\Sigma'$ respectively, a \defemph{simple map $\bar{F} : T \to T'$ over $F$} is a family map $T \to T'$ over $\act{F} : \RawRule{\Sigma} \to \RawRule{\Sigma'}$.
+  %
+  Such $\bar{F}$ is thus a map giving for each rule~$R$ of~$T$ a rule~$\bar{F}(R)$ of~$T'$, whose premises and conclusion are the translations along~$F$ of those of~$R$.
+  %
+  There are evident identity simple maps, and composites over composites of signature maps, forming a category over the category of signatures.
+
+  Furthermore, a signature map $F : \Sigma \to \Sigma'$ \defemph{acts on a raw type theory} $T$ over $\Sigma$, to give a raw type theory $\act{F}(T)$
+  over $\Sigma'$, which consists of the translations $\act{F} R$ of the rules~$R$ of~$T$.
+  %
+  As with family maps, maps $T \to T'$ over $F$ correspond precisely to maps $\act{F} T \to T'$ over $\idmap[\Sigma']$.
+  %
+  In the case of the inclusion to a metavariable extension $\inl : \Sigma \to \mvextend{\Sigma}{\alpha}$, we write $\mvextend{T}{\alpha}$ for the translation $\act{{\inl}} T$ of $T$ to $\mvextend{\Sigma}{\alpha}$. 
+\end{definition}
+
+\begin{proposition}%
+  \label{prop:cl-functorial-simple-maps} \label{prop:derivations-functorial-simple-maps}
+  The construction $\clos{}$ is functorial in simple maps:
+  %
+  a simple map of raw type theories $\bar{F} : T \to T'$ over $F : \Sigma \to \Sigma'$ induces a map $\act{\bar{F}} : \clos{T} \to \clos{T'}$ over $\act{F} : \Judg{\Sigma} \to \Judg{\Sigma'}$,
+  %
+  and hence provides a translation of any derivation~$D \in \derivation{T}{H}{(\Gamma \typesjudgement J)}$ to a derivation $\act{\bar{F}} D \in \derivation{T'}{\act{F} H}{(\act{F} \Gamma \typesjudgement \act{F} J)}$.
+\end{proposition}
+
+\begin{proof}
+  Direct from the functoriality and naturality properties of structural rules (\cref{prop:structural-rules-under-signature-map}) and of the closure systems associated to raw rules (\cref{prop:closure-system-of-raw-rule-under-signature-map}).
+\end{proof}
+
+\begin{corollary} \label{cor:derivations-functorial-signature-maps}
+  A signature map $F : \Sigma \to \Sigma'$ acts on
+  $D \in \derivation{T}{H}{(\Gamma \typesjudgement J)}$ to give a derivation
+  $\act{F} D \in \derivation{\act{F} T}{\act{F} H}{\act{F}(\Gamma \typesjudgement J)}$, functorially so.
+\end{corollary}
+
+\begin{proof}
+ By \cref{prop:derivations-functorial-simple-maps}, using the canonical simple map $T \to \act{F}T$ over~$F$.
+\end{proof}
+
+We use the previously corollary quite frequently to translate a derivation over a raw type theory to its extension. We mostly leave such applications implicit, as they are easily detected.
+
+Instantiations also preserve derivability, but this is a significantly more involved construction --- more so than one might expect --- bringing together many earlier constructions and lemmas, and relying in particular on almost all the properties of \cref{prop:instantiation-boilerplate}.
+
+\begin{proposition} \label{cor:instantiation-acts-on-flattening}
+  Given a raw type theory $T$ over $\Sigma$, an instantiation $I \in \Inst{\Sigma}{\Gamma}{\alpha}$ induces a closure system map $\act{(I,\Gamma)} : \clos{\mvextend{T}{\alpha}} \to \clos{T}$ over $\act{(I,\Gamma)} : \Judg{\mvextend{\Sigma}{\alpha}} \to \Judg{\Sigma}$, where $\mvextend{T}{\alpha}$ is the translation of~$T$ by the inclusion $\Sigma \to \mvextend{\Sigma}{\alpha}$.
+\end{proposition}
+
+\begin{proof}
+  Again, direct from similar properties of structural rules (\cref{prop:instantiation-of-structural-rules}) and closure systems of raw rules (\cref{prop:instantiation-of-closure-system-of-raw-rule}).
+\end{proof}
+
+\begin{corollary} \label{cor:instantiation-of-derivations}
+  Let $T$ be a raw type theory over~$\Sigma$.
+  %
+  An instantiation $I \in \Inst{\Sigma}{\Gamma}{\alpha}$ acts on a derivation $D \in \derivation{\mvextend{T}{\alpha}}{H}{(\Delta \typesjudgement J)}$ to give the \defemph{instantiation} $\act{(I, \Gamma)} D \in \derivation{T}{\act{(I, \Gamma)} H}{\act{I}(\Delta \typesjudgement J)}$.
+  %
+\end{corollary}
+
+Note that the hypotheses $H$ and the judgement $\Delta \typesjudgement J$ in the statement reside in the translation $\mvextend{T}{\alpha}$ by the inclusion $\Sigma \to \mvextend{\Sigma}{\alpha}$.
+
+
+\subsection{Summary}
+
+\emph{Raw type theories} give a conceptually minimal way to make precise what is meant by traditional specifications of type theories, and a similarly minimal amount of data from which to define \emph{derivability} on judgements.
+
+As the name suggests, raw type theories are not a finished product.
+%
+Type theories in nature almost always satisfy further well-formedness properties, and are rejected by audiences if they do not.
+%
+In the next two sections, we will discuss these well-formedness properties.
+
+In some ways, raw type theories may therefore be viewed as an unnatural or undesirable notion.
+%
+However, most of the well-behavedness properties --- or rather, the conditions on rules implying well-behavedness --- themselves involve checking derivability of certain judgements.
+%
+So raw type theories, as the minimal data for defining derivability, give a natural intermediate stage on the way to our main definition of “reasonable” type theories.
+
+%%% Local Variables:
+%%% mode: latex
+%%% End:

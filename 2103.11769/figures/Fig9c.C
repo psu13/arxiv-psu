@@ -1,0 +1,84 @@
+void 14eeAngleTrig0()
+{
+//=========Macro generated from canvas: canv/canv
+//=========  (Thu Mar 18 17:20:55 2021) by ROOT version6.08/06
+   TCanvas *canv = new TCanvas("canv", "canv",0,0,800,600);
+   gStyle->SetOptStat(0);
+   gStyle->SetOptTitle(0);
+   canv->SetHighLightColor(2);
+   canv->Range(-0.08641975,0.8594937,0.5308642,1.112658);
+   canv->SetFillColor(0);
+   canv->SetBorderMode(0);
+   canv->SetBorderSize(2);
+   canv->SetLeftMargin(0.14);
+   canv->SetRightMargin(0.05);
+   canv->SetTopMargin(0.05);
+   canv->SetBottomMargin(0.16);
+   canv->SetFrameLineWidth(2);
+   canv->SetFrameBorderMode(0);
+   canv->SetFrameLineWidth(2);
+   canv->SetFrameBorderMode(0);
+   Double_t xAxis1[9] = {0, 0.063, 0.086, 0.11, 0.13, 0.16, 0.2, 0.25, 0.5}; 
+   
+   TH1F *rJPsi0__1 = new TH1F("rJPsi0__1","eeYield",8, xAxis1);
+   rJPsi0__1->SetBinContent(1,0.9906105);
+   rJPsi0__1->SetBinContent(2,1.013601);
+   rJPsi0__1->SetBinContent(3,0.9960107);
+   rJPsi0__1->SetBinContent(4,0.993124);
+   rJPsi0__1->SetBinContent(5,1.014015);
+   rJPsi0__1->SetBinContent(6,0.9996246);
+   rJPsi0__1->SetBinContent(7,0.9939362);
+   rJPsi0__1->SetBinContent(8,0.9957583);
+   rJPsi0__1->SetBinError(1,0.008351738);
+   rJPsi0__1->SetBinError(2,0.01017671);
+   rJPsi0__1->SetBinError(3,0.01020932);
+   rJPsi0__1->SetBinError(4,0.01208249);
+   rJPsi0__1->SetBinError(5,0.01154628);
+   rJPsi0__1->SetBinError(6,0.0122281);
+   rJPsi0__1->SetBinError(7,0.01442707);
+   rJPsi0__1->SetBinError(8,0.04636508);
+   rJPsi0__1->SetMinimum(0.9);
+   rJPsi0__1->SetMaximum(1.1);
+   rJPsi0__1->SetEntries(20868.78);
+   rJPsi0__1->SetStats(0);
+   rJPsi0__1->SetLineWidth(2);
+   rJPsi0__1->SetMarkerStyle(20);
+   rJPsi0__1->GetXaxis()->SetTitle("#alpha(#it{l^{+}}, #it{l^{#minus}}) [rad]");
+   rJPsi0__1->GetXaxis()->SetNdivisions(505);
+   rJPsi0__1->GetXaxis()->SetLabelFont(132);
+   rJPsi0__1->GetXaxis()->SetLabelOffset(0.01);
+   rJPsi0__1->GetXaxis()->SetLabelSize(0.057);
+   rJPsi0__1->GetXaxis()->SetTitleSize(0.0684);
+   rJPsi0__1->GetXaxis()->SetTitleOffset(0.95);
+   rJPsi0__1->GetXaxis()->SetTitleFont(132);
+   rJPsi0__1->GetYaxis()->SetTitle("r_{J/#psi} / #LT r_{J/#psi} #GT");
+   rJPsi0__1->GetYaxis()->SetNdivisions(505);
+   rJPsi0__1->GetYaxis()->SetLabelFont(132);
+   rJPsi0__1->GetYaxis()->SetLabelOffset(0.01);
+   rJPsi0__1->GetYaxis()->SetLabelSize(0.057);
+   rJPsi0__1->GetYaxis()->SetTitleSize(0.0684);
+   rJPsi0__1->GetYaxis()->SetTitleOffset(0.95);
+   rJPsi0__1->GetYaxis()->SetTitleFont(132);
+   rJPsi0__1->GetZaxis()->SetLabelFont(132);
+   rJPsi0__1->GetZaxis()->SetLabelSize(0.057);
+   rJPsi0__1->GetZaxis()->SetTitleSize(0.0684);
+   rJPsi0__1->GetZaxis()->SetTitleOffset(1.2);
+   rJPsi0__1->GetZaxis()->SetTitleFont(132);
+   rJPsi0__1->Draw("E1");
+   TLine *line = new TLine(0,1,0.5,1);
+   line->SetLineStyle(3);
+   line->SetLineWidth(2);
+   line->Draw();
+   
+   TPaveText *pt = new TPaveText(0.2,0.8,0.38,0.91,"BRNDC");
+   pt->SetBorderSize(0);
+   pt->SetFillColor(0);
+   pt->SetLineWidth(2);
+   pt->SetTextAlign(12);
+   pt->SetTextFont(132);
+   TText *AText = pt->AddText("LHCb");
+   pt->Draw();
+   canv->Modified();
+   canv->cd();
+   canv->SetSelected(canv);
+}

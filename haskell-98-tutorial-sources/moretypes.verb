@@ -1,0 +1,261 @@
+%**<title>A Gentle Introduction to Haskell: Types, Again</title>
+%**~header
+\section{Types, Again}
+
+Here we examine some of the more advanced aspects of type
+declarations.  
+
+\subsection{The Newtype Declaration}
+
+A common programming practice is to define a type whose representation
+is identical to an existing one but which has a separate identity in
+the type system.  
+In Haskell, the @newtype@ declaration creates a new type from an
+existing one.  For example, natural numbers can be represented by
+the type @Integer@ using the following declaration:
+\bprog
+@
+newtype Natural = MakeNatural Integer
+@
+\eprog
+This creates an entirely new type, @Natural@, whose only
+constructor contains a single @Integer@.  The constructor @MakeNatural@ 
+converts between an @Natural@ and an @Integer@:
+\bprog
+@
+toNatural               :: Integer -> Natural
+toNatural x | x < 0     = error "Can't create negative naturals!" 
+            | otherwise = MakeNatural x
+
+fromNatural             :: Natural -> Integer
+fromNatural (MakeNatural i) = i
+@
+\eprog
+The 
+following instance declaration admits @Natural@ to the @Num@ class:
+\bprog
+@
+instance Num Natural where
+    fromInteger         = toNatural
+    x + y               = toNatural (fromNatural x + fromNatural y)
+    x - y               = let r = fromNatural x - fromNatural y in
+                            if r < 0 then error "Unnatural subtraction"
+                                     else toNatural r
+    x * y               = toNatural (fromNatural x * fromNatural y)
+@
+\eprog
+Without this declaration, @Natural@ would not be in @Num@.  Instances
+declared for the old type do not carry over to the new one.  Indeed,
+the whole purpose of this type is to introduce a different @Num@
+instance.  This would not be possible if @Natural@ were
+defined as a type synonym of @Integer@.  
+
+All of this works using a @data@ declaration instead of a
+@newtype@ declaration.  However, the @data@ declaration 
+incurs extra overhead in the representation of @Natural@ values.  The
+use of @newtype@ avoids the extra level of indirection (caused by
+laziness) that the @data@ declaration would introduce.  
+See section 
+\ref{datatype-renaming} of the report for a more discussion of the
+relation between @newtype@, @data@, and @type@ declarations.
+ 
+\syn{Except for the keyword, the @newtype@ declaration uses the same
+syntax as a @data@ declaration with a single constructor containing a
+single field.  This is appropriate since types defined using @newtype@
+are nearly identical to those created by an ordinary @data@
+declaration.}
+
+\subsection{Field Labels}
+
+The fields within a Haskell data type can be accessed either
+positionally or by name using "field labels".
+Consider a data type for a two-dimensional point:
+\bprog
+@
+data Point = Pt Float Float
+@
+\eprog
+The two components of a @Point@ are the first and second arguments to the
+constructor @Pt@.  A function such as
+\bprog
+@
+pointx                  :: Point -> Float
+pointx (Pt x _)         =  x
+@
+\eprog
+may be used to refer to the first component of a point in a more
+descriptive way, but, for large structures, it becomes tedious to
+create such functions by hand.
+
+Constructors in a @data@ declaration may be declared
+with associated "field names", enclosed in braces.  These field names
+identify the components of constructor by name rather than by position.
+This is an alternative way to define @Point@:
+\bprog
+@
+data Point = Pt {pointx, pointy :: Float}
+@
+\eprog
+This data type is identical to the earlier definition
+of @Point@.  The constructor @Pt@ is the same in both cases.  However,
+this declaration also defines two field names, @pointx@
+and @pointy@.  These field names can be used as "selector functions" to
+extract a component from a structure.  In this example, the selectors
+are:
+\bprog
+@
+pointx                  ::   Point -> Float 
+pointy                  ::   Point -> Float 
+@
+\eprog
+This is a function using these selectors: 
+\bprog
+@
+absPoint                :: Point -> Float
+absPoint p              =  sqrt (pointx p * pointx p + 
+                                 pointy p * pointy p)
+@
+\eprog
+
+Field labels can also be used to construct new values.  The expression
+@Pt {pointx=1, pointy=2}@ is identical to @Pt 1 2@.  The use of field
+names in the declaration of a data constructor does not preclude the
+positional style of field access; both
+@Pt {pointx=1, pointy=2}@ and @Pt 1 2@ are allowed.  
+When constructing a value using field names, some fields may be
+omitted; these absent fields are undefined.   
+
+Pattern matching using field names uses a similar syntax for the
+constructor @Pt@:
+\bprog
+@
+absPoint (Pt {pointx = x, pointy = y}) = sqrt (x*x + y*y) 
+@
+\eprog
+
+An update function uses field values in an existing structure to fill
+in components of a new structure.  If @p@ is a @Point@, then 
+@p {pointx=2}@ is a point with the same @pointy@ as @p@ but with
+@pointx@ replaced by @2@.  This is not a destructive update:
+the update function merely creates a new copy of the object, filling
+in the specified fields with new values.
+
+\syn{The braces used in conjunction with field labels are somewhat
+special: Haskell syntax usually allows braces to be omitted using the
+"layout rule" (described in Section \ref{tut-layout}).  However, the
+braces associated with field names must be explicit.}
+
+%Within the braces used to name the fields of a structure, {\em
+%punning}---using the same word in two different ways---can be used to
+%abbreviate bindings which associate a field name with a local variable
+%of the same name.  That is, @{pointx}@ abbreviates @{pointx = pointx}@
+%in a field list.  Thus, the @abs@ function could also be written
+%\bprog
+%
+%abs (Pt {pointx, pointy}) = sqrt (pointx*pointx + pointy*pointy)
+%
+%\eprog
+
+Field names are not restricted to types with a single constructor
+(commonly called `record' types).  In a type with multiple
+constructors, selection or update operations using field names may
+fail at runtime.  This is similar to the behavior of the @head@
+function when applied to an empty list.
+
+Field labels share the top level namespace with ordinary variables and
+class methods.
+A field name cannot be used in more than one data type in scope.
+However, within a data type, the same field
+name can be used in more than one of the constructors so long as it
+has the same typing in all cases.  For example, in this data type
+\bprog
+@
+data T = C1 {f :: Int, g :: Float}
+       | C2 {f :: Int, h :: Bool}
+@
+\eprog
+the field name @f@ applies to both constructors in @T@.  Thus if
+@x@ is of type @T@, then @x {f=5}@ will work for values created by
+either of the constructors in @T@.
+
+Field names does not change the basic nature of an algebraic
+data type; they are simply a convenient syntax for accessing the
+components of a data structure by name rather than by position.  They
+make constructors with many components 
+more manageable since fields can be added or removed without changing
+every reference to the constructor.  For full details of field labels
+and their semantics, see Section~\see{field-labels}.
+
+\subsection{Strict Data Constructors}
+\label{tut-strict-flag}
+Data structures in Haskell are generally "lazy": the
+components are not evaluated until 
+needed.  This permits structures that contain elements which, if
+evaluated, would lead to an error or fail to terminate.  Lazy data
+structures enhance the expressiveness of Haskell and are an
+essential aspect of the Haskell programming style.
+
+Internally, each field of a lazy data object is wrapped up in a structure
+commonly referred to as a "thunk" that encapsulates the computation
+defining the field value.  This thunk is not entered until
+the value is needed; thunks which contain errors ("\bot") do not affect other
+elements of a data structure.   For 
+example, the tuple @('a',@"\bot"@)@ is a perfectly legal Haskell
+value.  The
+@'a'@ may be used without disturbing the other component of the tuple.
+Most programming languages are 
+"strict" instead of lazy: that is, all components of a data structure
+are reduced to values before being placed in the structure.
+
+There are a number of overheads associated with thunks: they take time to
+construct and evaluate, they occupy space in the heap, and they cause
+the garbage collector to retain other structures needed for the
+evaluation of the thunk.  
+To avoid these overheads, {\em strictness flags} in @data@ declarations
+allow specific fields of a constructor to be evaluated immediately,
+selectively suppressing laziness.  A field
+marked by "@!@" in a @data@ declaration is evaluated when
+the structure is created instead of delayed in a thunk.
+ 
+There are a number of situations where it may be appropriate to use
+strictness flags:
+\begin{itemize}
+\item Structure components that are sure to be evaluated at some
+point during program execution.  
+\item Structure components that are simple to evaluate and never
+cause errors. 
+\item Types in which partially undefined values are not meaningful.
+\end{itemize}
+For example, the complex number library defines the @Complex@ type as:
+\bprog
+@
+data RealFloat a => Complex a = !a :+ !a
+@
+\eprog
+\syn{note the infix definition of the constructor @:+@.} This definition
+marks the two components, the real and imaginary parts, of the complex
+number as being strict.  This is a more compact representation of
+complex numbers but this comes at the expense of making a complex
+number with an undefined component, @1 :+ @ "\bot"  for example,
+totally undefined ("\bot").  As there is no real need for partially 
+defined complex numbers, it makes sense to use strictness flags to
+achieve a more efficient representation.
+
+Strictness flags may be used to address memory leaks: structures
+retained by the garbage collector but no longer necessary for computation.
+
+The strictness flag, @!@, can only appear in @data@ declarations.
+It cannot be used in other type
+signatures or in any other type definitions.  There is no
+corresponding way to mark function arguments as being strict, although
+the same effect can be obtained using the @seq@ or @!$@ functions.  See
+~\see{strictness-flags} for further details. 
+
+It is difficult to present exact guidelines for the use of strictness
+flags.  They should be used with caution: laziness is one of the
+fundamental properties of Haskell and adding strictness flags may lead
+to hard to find infinite loops or have other unexpected consequences.
+
+%**~footer
+
+

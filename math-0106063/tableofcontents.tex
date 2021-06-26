@@ -1,0 +1,103 @@
+%!TEX root = IntroArithGrps.tex
+
+%% TABLE OF CONTENTS
+
+
+
+%%% manually choose better page breaks in the TOC
+\newif\iftoceject \tocejectfalse
+\newcommand{\toceject}{\ifportable\else\iftoceject\eject\fi\fi}
+
+
+\cleardoublepage
+\setcounter{page}{1}
+
+\makeatletter
+
+\newcommand{\tocchapterhead}[1]{\topskip 0pc\relax
+  \begingroup
+  \fontsize{\@xivpt}{18}\bfseries\sffamily\centering
+  #1\par \endgroup
+  \skip@34\p@ \advance\skip@-\normalbaselineskip
+  \vskip\skip@ }
+  
+  \newcommand{\tocchapterstyle}{\bfseries\mathversion{bold}}
+
+ \renewcommand{\l@part}[2]{\vskip0.25in \centerline{\bf \sffamily#1\hss}}
+
+\newlength{\tocchaplabelwidth}
+
+\renewcommand{\tocchapter}[3]{\sffamily\@ifnotempty{#2}{\tocchapterstyle}%
+ \setbox0\hbox{#1 99.\enspace}\setlength{\tocchaplabelwidth}{\wd0}
+  \indentlabel{\hbox to \wd0{\@ifnotempty{#2}{\ignorespaces#1 #2.}\hss}}#3}
+ 
+\renewcommand{\tocappendix}[3]{\tocchapter{#1}{#2}{#3}}
+
+\newlength{\intertoccorrection}
+
+\makeatother
+
+% list of chapters needs less vertical space, so it will fit on one page
+\setlength{\intertoccorrection}{-5.275pt}
+
+\begingroup %% Print a list of the numbered chapters (not frontmatter or indexes)
+\pdfbookmark[0]{List of Chapters}{chapterlist}
+
+\def\\{ \ignorespaces} % don't want line breaks in the chapter titles
+\makeatletter \@fileswfalse \makeatother %% don't erase the TOC file
+\renewcommand{\contentsname}{List of Chapters}
+ \makeatletter
+\renewcommand{\tocchapterstyle}{} % don't need chapter names to be bold
+\renewcommand{\@afterheading}{\vskip-0.3in} % less space after "List of Chapters" heading
+\renewcommand{\l@section}[2]{} % don't print the sections in this toc
+\renewcommand{\l@schapter}[2]{} % don't print unnumbered chapters in this toc
+\renewcommand{\@makeschapterhead}{\tocchapterhead}
+ \makeatother
+ \tableofcontents
+\bigskip
+ \endgroup % resume listing sections in the toc
+
+ \makeatletter \@fileswtrue \makeatother %% now can erase the TOC file
+ 
+
+
+\tocejecttrue % we do force page breaks in the full Table of Contents
+
+% table of contents can use default vertical spacing
+\setlength{\intertoccorrection}{0pt}
+
+
+\begingroup
+\def\\{ \ignorespaces} % don't want line breaks in the chapter titles
+
+\makeatletter
+\newlength{\tocsectlabelwidth}
+\setbox0\hbox{\S99.9.\hskip0.3em}\global\setlength{\tocsectlabelwidth}{\wd0}%
+
+\renewcommand{\tocchapter}[3]{%
+\setbox0\hbox{#2M.\hskip0.3em}\global\setlength{\tocsectlabelwidth}{\wd0}%
+\sffamily\@ifnotempty{#2}{\tocchapterstyle}%
+  \indentlabel{\@ifnotempty{#2}{\ignorespaces#1 #2.\enspace}}#3}
+
+\renewcommand{\tocsection}[3]{\normalfont
+\setbox0\hbox{\S#2}
+  \indentlabel{\hbox to \tocsectlabelwidth{\@ifnotempty{#2}{\hss\ignorespaces#1 
+  \ifdim\wd0<15pt \hphantom{0}\fi\ifnotappendixtoc\S\fi#2.\ }}}#3}
+
+\notappendixtoctrue % want \S on section lines, unless in appendix
+
+\cleardoublepage
+\thispagestyle{empty}
+\refstepcounter{section}% to correct the PDF bookmarks
+ \chaptermark{Contents}
+\pdfbookmark[0]{Table of Contents}{toc}%
+\@makeschapterhead{Contents}
+
+\@input{\jobname.toc}
+    \if@filesw
+      \newwrite\tf@toc
+      \immediate\openout\tf@toc \jobname.toc\relax
+      \fi
+\makeatother
+\cleardoublepage
+\endgroup

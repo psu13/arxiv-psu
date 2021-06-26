@@ -1,0 +1,364 @@
+
+\subsection{The well-founded replacement}
+\label{sec:well-founded-replacement}
+
+\Cref{def:theory-good-properties} of acceptable type theories allows cyclic references of three kinds: between types of a context, premises of a rule, or rules of a type theory.
+%
+We shall not concern ourselves with the former two, since type theories occurring in practice all avoid them by using sequential contexts and sequential rules from \cref{sec:sequential-contexts,sec:sequential-rules}. We address the latter one, to
+vindicate our design choices from earlier sections, to demonstrate that our setup supports non-trivial meta-theoretic methods, and to give an interesting new construction that likely has further applications.
+
+For the remainder of this section, all contexts, raw rules, and rule-boundaries are presumed to be sequential. Also, it will be convenient to speak of a raw theory~$T$ without explicitly displaying its underlying signature. When we need to refer to the signature, we do so by writing $\Sigma_T$.
+
+In \cref{ex:type-in-type} an acceptable type theory was rectified to a well-founded one by the introduction of a new symbol and an equation. When one looks at other specific examples the same strategy works, possibly with the introduction of several symbols and equations.
+%
+In order to present a general method we first lay some category-theoretic groundwork. We save the adventure of spiralling into the depths of category theory for another day, and instead establish just enough structure to keep the syntactic constructions organized.
+
+\begin{definition}
+  \label{def:raw-syntax-map}%
+  %
+  A \defemph{raw syntax map} $f : \Sigma \to \Sigma'$ is given by a family of expressions
+  $f_S \in \Expr{\class{S}}{\mvextend{\Sigma'}{\args{S}}}{\emptyscope}$, one for each
+  $S \in \Sigma$.
+  %
+  Such a map acts on $e \in \Expr{c}{\Sigma}{\gamma}$ to give $\act{f} e \in \Expr{c}{\Sigma'}{\gamma}$ by
+  %
+  \begin{equation}
+    \label{eq:raw-syntax-map}%
+    \act{f} (\synvar{i}) \defeq \synvar{i}
+    \qquad\text{and}\qquad
+    \act{f} (S(e)) \defeq \act{(\act{f} \circ e)} f_S.
+  \end{equation}
+  %
+  The \defemph{metavariable extension} $\mvextend{f}{\alpha} : \mvextend{\Sigma}{\alpha} \to \mvextend{\Sigma'}{\alpha}$ by arity~$\alpha$ is the raw syntax map defined by
+  %
+  \begin{equation*}
+    (\mvextend{f}{\alpha})_S \defeq f_S
+    \qquad\text{and}\qquad
+    (\mvextend{f}{\alpha})_{\synmeta{i}} \defeq 
+    \synmeta{i}(\fammap{\synvar{j}}{j \in \argbinder{\alpha}{i}})
+  \end{equation*}
+\end{definition}
+
+In words, a raw syntax map $\Sigma \to \Sigma'$ interprets each symbol in~$\Sigma$ as a suitable compound expression over~$\Sigma'$, the interpretation extends compositionally to all expressions over~$\Sigma$, and metavariable extensions act on such a map by extending it trivially.
+
+Let us unravel the second clause in~\eqref{eq:raw-syntax-map}, as it is a bit terse. Given a symbol~$S \in \Sigma$ and its arguments
+%
+$e \in
+   \prod_{i \in \args S} 
+   \Expr{\argclass{S}{i}}{\Sigma}{\sumscope{\gamma}{\argbinder{S}{i}}}
+$,
+the composition $\act{f} \circ e$ takes each $i \in \args{S}$ to
+$\act{f} e_i \in 
+   \Expr{\argclass{S}{i}}{\Sigma'}{\sumscope{\gamma}{\argbinder{S}{i}}}
+$ -- it is an instantiation of arity $\args{S}$, which thus acts on~$f_S$ to yield an expression $\act{(\act{f} \circ e)} f_S \in \Expr{\class{S}}{\Sigma'}{\gamma}$, where we took into account that $\sumscope{\gamma}{\emptyscope} = \gamma$.
+
+The action of a raw syntax map evidently extends from expressions to context, judgements,
+and boundaries, and thanks to the metavariable extensions also to raw rules and rule-boundaries.
+
+\begin{proposition}
+  Signatures and raw syntax maps form a category:
+  %
+  \begin{itemize}
+
+  \item
+    The identity morphism $\idmap[\Sigma] : \Sigma \to \Sigma$ takes $S \in \Sigma$ to the generic application~$\genapp{S}$.
+
+  \item
+    The composition of $f : \Sigma \to \Sigma'$ and $g : \Sigma' \to \Sigma''$ is the
+    map $g \circ f : \Sigma \to \Sigma''$ that interprets each $S \in \Sigma$ as $(g \circ f)_S \defeq \act{g} f_S$.
+  \end{itemize}
+  %
+  Raw syntax map actions are functorial.
+\end{proposition}
+
+\begin{proof}
+  A straightforward application of the basic properties of instantiations.
+\end{proof}
+
+Given raw theories $T$ and $T'$, a raw syntax map $f : \Sigma_T \to \Sigma'_T$ between the underlying signatures may be entirely unrelated to~$T$ and~$T'$. Requiring it to map derivable judgements in~$T$ to derivable judgements in~$T'$ helps, but ignores the fact that raw theories are families of raw rules, not derivable judgements. Here is a better definition.
+
+\begin{definition}
+  A \defemph{raw theory map} $f : T \to T'$ is a raw syntax map $f : \Sigma_T \to \Sigma'_T$ on the underlying signatures which maps each specific rule~$R$ of~$T$ to a derivation of $\act{f} R$ in~$T'$.
+\end{definition}
+
+\begin{proposition}
+  Raw theories and raw theory maps form a category $\RawTh$.
+  %
+  A raw theory map $f : T \to T'$ acts functorially on a derivation $D$ of $\Gamma \typesjudgement J$ in~$T$ to give a derivation $\act{f} D$ of $\act{f} \Gamma \typesjudgement \act{f} J$ in $T'$.
+\end{proposition}
+
+
+\begin{proof}
+  Let us first describe the action of $f$ on a derivation $D$ of $\Gamma \types J$.
+  %
+  We proceed by recursion on the structure of~$D$.
+
+  Structural rules are mapped to the corresponding structural rules, e.g., if $D$ concludes with a variable rule $\isterm{\Gamma}{\synvar{i}}{\Gamma_i}$ then $\act{f} D$ concludes with the variable rule $\isterm{\act{f} \Gamma}{\synvar{i}}{\act{f} \Gamma_i}$, and similarly for other structural rules.
+
+  Consider the case where $D$ ends with an instantiation $\act{I} R$ of a specific rule~$R$ of~$T$, whose premises are $\fammap{\Gamma_k \types J_k}{k \in K}$. Suppose~$f$ takes $R$ to the derivation $D_R$ of $\act{f} R$ in~$T'$.
+  %
+  First we recursively map each derivation $D_k$ of the $k$-th premise $\act{I} \Gamma_k \types \act{I} J_k$ to a derivation $\act{f} D_k$ of $\act{f} (\act{I} \Gamma_k \types \act{I} J_k)$ in~$T'$, which is the same as $\act{(\act{f} I)} \Gamma_k \types \act{(\act{f} I)} J_k$, because acting by~$I$ and then by~$f$ is the same as acting by the instantiation $\act{f} I$.
+  %
+  We then take $\act{f} D$ to be the derivation $\act{(\act{f} I)} R_D$ with the derivations $\act{f} D_k$ of its hypotheses grafted onto it, as in \cref{def:derivation-grafting}.
+
+  It is straightforward to verify that the action on derivations so constructed satisfies functoriality, $\act{(g \circ f)} D = \act{g} (\act{f} D)$.
+
+  The categorical structure of $\RawTh$ is inherited from the structure of raw syntax maps. Additionally, given composable raw theory maps $f$ and $g$, we let their composition $g \circ f$ take a specific rule $R$ to the derivation $\act{g} D_R$, where $D_R$ is the derivation of $\act{f} R$ provided by~$f$.
+\end{proof}
+
+It may happen that a raw theory map $f : T \to T'$ maps an uninhabited type to an inhabited one, or an underivable equality to a derivable one.
+%
+Let us make precise the sense in which such a map fails to be conservative,
+%
+and at the same time generalise inhabitation of types to general completion of boundaries in the presence of premises.
+
+\begin{definition}
+  Given a raw theory $T$,
+  and an object rule-boundary $\RuleBoundary{P}{B}$ over~$\Sigma_T$ whose syntactic class is~$c_B$, say that $e \in \Expr{c_B}{\mvextend{\Sigma_T}{\arity{P}}}{\emptyscope}$ \defemph{realises} the rule-boundary when $\RuleBoundary{P}{\plug{B}{e}}$ is derivable in~$T$.
+\end{definition}
+
+\begin{example}
+  Inhabitation of a closed type~$A$ corresponds to realisation of the rule-boundary
+  $\RuleBoundary{\emptyfam}{\bdryhead : A}$.
+  %
+  We can also express more general inhabitation tasks, for instance
+  $\RuleBoundary{(\istype{}{\symA})}{\bdryhead \type}$ asks for a construction of a type from a type parameter~$\symA$, and $\RuleBoundary{(\istype{}{\symA}); (\istype{[\synvar{0} \of A]}{\symB(\synvar{0})})}{\bdryhead \type}$ for a $\symPi$-like higher type constructor.
+\end{example}
+
+
+\begin{definition}
+  A raw theory map $f : T \to T'$ is \defemph{conservative} when:
+  %
+  \begin{enumerate}
+  \item $f$ reflects equations: if $T'$ derives the equational rule $\act{f} R$ then $T$ derives the equational rule~$R$, and
+
+  \item $f$ reflects realisers: there is a map $r$ such that if $e$ realises the object rule-boundary $\act{f} (\RuleBoundary{P}{B})$ in~$T'$ then $r(R, e)$ realises $\RuleBoundary{P}{B}$ in~$T$.
+  \end{enumerate}
+\end{definition}
+
+In the definition, we asked for a map $r$ to witness reflection of realisers in order to avoid spurious applications of the axiom of choice.
+
+\begin{lemma}
+  \label{lem:map-factor-conservative}
+  Every raw theory map $f : T \to U$ factors through a
+  conservative map $f^\dagger : T^\dagger \to U$
+  %
+  \begin{equation*}
+    \xymatrix{
+      {T} \ar[rr]^{f} \ar[rd] & & {U} \\
+      & {T^\dagger} \ar[ur]_{f^\dagger} &
+    }
+  \end{equation*}
+  %
+  in a weakly universal fashion.
+\end{lemma}
+
+In the lemma, by weak universality we mean that whenever $f$ factors through a conservative map $g : V \to U$, there is a map $h : T^\dagger \to V$, not necessarily unique, such that the following diagram commutes:
+%
+\begin{equation}
+  \label{eq:weakly-universal-ddagger}
+  \xymatrix{
+    {T} \ar[rr]^f \ar[rd] \ar@/_4ex/[rdd]_j & & {U} \\
+    & {T^\dagger} \ar[ur]_{f^\dagger} \ar[d]^h & \\
+    & {V} \ar@/_4ex/[ruu]_g &
+  }
+\end{equation}
+
+\begin{proof}[Proof of \cref{lem:map-factor-conservative}]
+  %
+  We shall construct $T^\dagger$ by adjoining new symbols to~$T$, so that whenever $e$ realises $\act{f} R$ in~$U$, the corresponding new symbol realises~$R$ in~$T$. However, the new symbols generate new rule-boundaries, so the process needs to be iterated, and we have to adjoin equations as well. The construction of~$f^\dagger : T^\dagger \to U$ thus proceeds in an inductive fashion, as follows.
+
+  Initially the signature $\Sigma_{T^\dagger}$ is just $\Sigma_T$, the specific rules of $T^\dagger$ are those of~$T$, and~$f^\dagger$ acts like~$f$.
+  %
+  We inductively extend $\Sigma_{T^\dagger}$ with new symbols, $T^\dagger$ with new specific rules, and~$f^\dagger$ with new values, as follows:
+  %
+  \begin{enumerate}
+
+  \item
+    %
+    If $\RuleBoundary{P}{B}$ is an object rule-boundary in $T^\dagger$ of arity~$\alpha$ and $e$ realises $\RuleBoundary{\act{f^\dagger} P}{\act{f^\dagger} B}$ in $U$, then we extend $\Sigma_{T^\dagger}$ with a \defemph{new symbol} $\symb{c}_{(\RuleBoundary{P}{B},e)}$ of arity $\alpha$, and $T^\dagger$ with the associated symbol rule
+    $
+     \SequentialRule
+       {P}
+       {\plug{B}{\genapp{\symb{c}}_{(\RuleBoundary{P}{B},e)}}}
+    $.
+    %
+    We extend $f^\dagger$ by letting it map~$\symb{c}_{(\RuleBoundary{P}{B},e)}$ to~$e$.
+
+  \item
+    %
+    If $R$ is an equational rule in $T^\dagger$ such that $\act{f^\dagger} R$ is derivable in~$U$, we extend~$T^\dagger$ with~$R$ as a specific rule.
+  \end{enumerate}
+  %
+  Because we assumed all contexts and premise-families to be sequential, the inductive definition is complete after countably many repetitions of the above process. Alternatively, $T^\dagger$ could be constructed as a suitable colimit.
+
+  The map $f$ obviously factors as $f = f^\dagger \circ i$ where $i : T \to T^\dagger$ is induced by the inclusion $\Sigma_T \to \Sigma_{T^\dagger}$.
+
+  The map $f^\dagger$ is conservative by construction. It obviously reflects equations, while an object rule-boundary~$R$
+  in~$T^\dagger$, such that $e$ realises $\act{f^\dagger} R$ in~$U$, is realised by $\symb{c}_{(R, e)}$.
+
+  It remains to be shown that the factorization is weakly universal. Consider a factorization $f = g \circ j$ through a conservative map $g : V \to U$, as in~\eqref{eq:weakly-universal-ddagger}. There exists a map~$r$, not necessarily unique, that witnesses conservativity of~$g$. The desired factor $h : T^\dagger \to V$ is defined inductively: it acts like~$j$ on symbols of~$\Sigma_T$, and takes $\symb{c}_{(R,e)}$ to $r(\act{h} R, e)$.
+\end{proof}
+
+\begin{corollary}
+  \label{cor:wf-replacement}%
+  A raw theory $T$ has a weakly universal conservative map $t : \wfreplace{T} \to T$
+  where $\wfreplace{T}$ is well-founded.
+\end{corollary}
+
+\begin{proof}
+  We take $\wfreplace{T} = \emptyfam^\dagger$ and $t = o^\dagger$,
+  as in \cref{lem:map-factor-conservative},
+  where $o : \emptyfam \to T$ is the unique map from the empty theory~$\emptyfam$.
+  %
+  Weak universality is immediate, and well-foundedness of $\emptyfam^\dagger$ is witnessed by the inductive nature of its construction.
+\end{proof}
+
+\begin{definition}
+  \label{def:wf-replacement}%
+  The map $t : \wfreplace{T} \to T$ from \cref{cor:wf-replacement} is called the \defemph{well-founded replacement of~$T$}.
+\end{definition}
+
+Here, finally is the main theorem of this section.
+
+\begin{theorem}
+  \label{thm:wf-replacement-equivalence}%
+  If $T$ is acceptable, the map $t : \wfreplace{T} \to T$ has a section.
+\end{theorem}
+
+The theorem establishes a form of equivalence of $\wfreplace{T}$ and $T$, because
+any conservative map $r : U \to V$ with a section $s : V \to U$ is an isomorphism up to judgmental equality. Indeed, $r \circ s = \idmap_V$ because~$s$ is a section of~$r$, while $s \circ r$ is identity up to judgemental equality: given any derivable rule $\SequentialRule{P}{A \type}$ in~$U$, the rule $\SequentialRule{\act{r} P}{\act{r}(\act{s}(\act{r} A)) \judgeq \act{r} A}$ is derivable in~$V$ by reflexivity, and hence $\SequentialRule{P}{\act{s}(\act{r} A) \judgeq A}$ in~$U$ by conservativity of~$r$. An analogous argument works for term judgements.
+
+\begin{proof}[Proof of \cref{thm:wf-replacement-equivalence}]
+
+  The theory~$\wfreplace{T}$ has symbols of the form $\symb{c}_{(\RuleBoundary{P}{B},e)}$, where~$B$ is a closed boundary, but in the proof we will have to deal with boundaries that refer to variables.
+
+  For this purpose, define the \defemph{(variable-to-metavariable) promotion} of an expression $e \in \Expr{c}{\Sigma}{\gamma}$ to be the expression $\mvpromote{e} \in \Expr{c}{\mvextend{\Sigma}{\simplearity \gamma}}{\emptyscope}$, cf.\ \cref{def:simple-arity}, which is~$e$ with the variables replaced by metavariables,
+  %
+  \begin{equation*}
+    \mvpromote{\synvar{i}} \defeq \synmeta{i},
+    \qquad\text{and}\qquad
+    \mvpromote{S(e)} \defeq S(\fammap{\mvpromote{e_i}}{i \in \args{S}}).
+  \end{equation*}
+  %
+  The associated \defemph{demotion} is the instantiation $D_\gamma \in \Inst{\Sigma}{\gamma}{\simplearity \gamma}$ which takes the metavariables back to variables, $D_\gamma(\synmeta{i}) = \synvar{i}$. Thus we have $e = \act{{D_\gamma}}{\mvpromote{e}}$.
+
+  One level up, given a premise-family~$P$ and a context $\Gamma$ over $\mvextend{\Sigma}{\arity{P}}$, the \defemph{promotion} of $\Gamma$ is the extension $P ; \mvpromote{\Gamma}$ of~$P$ in which the variables of~$\Gamma$ are promoted to metavariables of suitable types,
+  %
+  \begin{equation*}
+    (P ; \mvpromote{\emptycxt}) \defeq P
+    \qquad\text{and}\qquad
+    (P ; \mvpromote{\ctxextend{\Gamma}{A}}) \defeq
+    (P ; \mvpromote{\Gamma}) ; (\istype{}{\mvpromote{A}}).
+  \end{equation*}
+
+  We begin the construction of a section of~$t$ by defining a map $d$ which maps sequential rules and rule-boundaries from~$T$ to~$\wfreplace{T}$ by replacing compound expressions $e$ with suitable symbols~$\symb{c}_{(R,e)}$ from~$\wfreplace{T}$.
+  %
+  When acting on contexts and judgements, $d$ takes a sequential rule-family~$P$ from $T$ as an additional parameter, in which case we write~$d_P$.
+
+  The map~$d$ recurses over a premise-family in~$T$ to give a premise-family in~$\wfreplace{T}$:
+  %
+  \begin{align*}
+    d (\emptyfam) \defeq \emptyfam
+    \qquad\text{and}\qquad
+    d (P ; (\Gamma \types J)) \defeq (d(P) ; d_{P}(\Gamma \types J)).
+  \end{align*}
+  %
+  Similarly, it takes a sequential context $\Gamma$ over $T + P$ to one over $\wfreplace{T} + d(P)$:
+  %
+  \begin{align*}
+    d_P(\emptycxt) &\defeq \emptycxt, \\
+    d_P(\ctxextend{\Gamma}{A}) &\defeq
+    \ctxextend
+      {d_P(\Gamma)}
+      {(\act{{D_{\position{\Gamma}}}}
+        \genapp{\symb{c}}_{((\RuleBoundary{d(P) ; \mvpromote{d_P(\Gamma)}}{\bdryhead \type}), \mvpromote{A})}
+      )}.
+  \end{align*}
+  %
+  In the second clause, $d_P$ recurses into~$\Gamma$ and extends it with the rather intimidating
+  %
+  \begin{equation*}
+    \act{{D_{\position{\Gamma}}}}
+        \genapp{\symb{c}}_{((\RuleBoundary{d(P) ; \mvpromote{d_P(\Gamma)}}{\bdryhead \type}), \mvpromote{A})},
+  \end{equation*}
+  %
+  which is just the generic application of the $\symb{c}$-symbol for the promoted~$\mvpromote{A}$, demoted back to~$\Gamma$.
+  Note that $(d(P) ; \mvpromote{d_P(\Gamma)}) = d(P ; \mvpromote{\Gamma})$ and hence $\act{t} (d_P(\ctxextend{\Gamma}{A})) = \ctxextend{\Gamma}{A}$.
+
+  It remains to explain how~$d_P$ maps a judgement $\Gamma \types J$ over $T + P$ to one over $\wfreplace{T} + d(P)$. Here too we use the same method of demoting a generic application of a symbol for a promoted expression:
+  %
+  \begin{align*}
+    %
+    d_P (\istype{\Gamma}{A}) &\defeq (\istype{\Gamma'}{A'}),
+    \\
+    d_P (\isterm{\Gamma}{t}{A}) &\defeq (\isterm{\Gamma'}{t'}{A'}),
+    \\
+    d_P (\eqtype{\Gamma}{A}{B}) &\defeq (\eqtype{\Gamma'}{A'}{B'}),
+    \\
+    d_P (\eqterm{\Gamma}{s}{t}{A}) &\defeq (\eqterm{\Gamma'}{s'}{t'}{A'}),
+    \\
+    \shortintertext{where}
+    %
+    \Gamma' &\defeq d_P(\Gamma), \\
+    A' &\defeq \act{{D_{\position{\Gamma}}}}
+          \genapp{\symb{c}}_{((\RuleBoundary{d(P); \mvpromote{\Gamma'}}{\bdryhead \type}), \mvpromote{A})},
+    \\
+    B' &\defeq \act{{D_{\position{\Gamma}}}}
+          \genapp{\symb{c}}_{((\RuleBoundary{d(P); \mvpromote{\Gamma'}}{\bdryhead \type}), \mvpromote{B})},
+    \\
+    t' &\defeq \act{{D_{\position{\Gamma}}}}
+          \genapp{\symb{c}}_{((\RuleBoundary{d(P); \mvpromote{\Gamma'}}{\bdryhead : \mvpromote{A'}}), \mvpromote{t})},
+    \\
+    s' &\defeq \act{{D_{\position{\Gamma}}}}
+          \genapp{\symb{c}}_{((\RuleBoundary{d(P); \mvpromote{\Gamma'}}{\bdryhead : \mvpromote{A'}}), \mvpromote{s})}.
+  \end{align*}
+  %
+  By having $d$ map $\bdryhead$ to $\bdryhead$ the above clauses also provide the action of~$d$ on boundaries.
+  %
+  Finally, let $d$ map a sequential rule $\SequentialRule{P}{J}$ in~$T$ to the sequential rule $\SequentialRule{d(P)}{J'}$ where
+  $d_P(\types J) = (\types J')$, and similarly for rule-boundaries.
+
+  We have arranged~$d$ in such a way that $\act{t} (d(R)) = R$ for any sequential rule~$R$ over $T$.
+  Moreover, if $R$ is derivable in~$T$, then $d(R)$ is derivable in~$\wfreplace{T}$, by an appeal to suitable symbol rules in~$\wfreplace{T}$. For instance, $d$ maps the rule $\SequentialRule{P}{A \type}$ to the rule $\SequentialRule{d(P)}{\genapp{\symb{c}}_{((\RuleBoundary{d(P)}{\bdryhead \type}), A)} \type}$. If the former is derivable in~$T$ then the latter is a symbol rule of~$\wfreplace{T}$.
+
+  At last, let us define the section~$s$ of~$t$. Consider first a type symbol $S \in \Sigma_T$. Because~$T$ is acceptable, it has a unique symbol rule $\SequentialRule{P}{\genapp{S} \type}$. When we map it with $d$ we get
+  %
+  \begin{equation*}
+    \SequentialRule{d(P)}{\genapp{\symb{c}}_{((\RuleBoundary{d(P)}{\bdryhead \type}), \genapp{S})} \type},
+  \end{equation*}
+  %
+  which is a symbol rule in~$\wfreplace{T}$. We may therefore take $s_S \defeq \genapp{\symb{c}}_{((\RuleBoundary{d(P)}{\bdryhead \type}), \genapp{S})}$.
+
+  A term symbol $S \in \Sigma_T$ is dealt with analogously. Its symbol rule takes the form $\SequentialRule{P}{\genapp{S} : A}$, which is mapped by $d$ to
+  %
+  \begin{equation*}
+    \SequentialRule{d(P)}{\genapp{\symb{c}}_{((\RuleBoundary{d(P)}{\bdryhead : A'}), \genapp{S})} : A'},
+  \end{equation*}
+  %
+  where $A' = \genapp{\symb{c}}_{((\RuleBoundary{d(P)}{\bdryhead \type}), A)}$,
+  Again, this is a symbol rule in~$\wfreplace{T}$, so we may define $s_S \defeq \genapp{\symb{c}}_{((\RuleBoundary{d(P)}{\bdryhead : A'}), \genapp{S})}$.
+\end{proof}
+
+\begin{example}
+  We revisit \cref{ex:type-in-type}, the type theory expressing type-in-type in a cyclic fashion as~$\isterm{}{\symb{u}}{\symb{El}(\symb{u})}$.
+  %
+  Earlier we pointed out that the theory can be made well-founded by using the defined type constant $\eqtype{}{\symb{U}}{\symb{El}(\symb{u})}$.
+  %
+  The well-founded replacement works much the same way, except that it is replete with many more defined symbols. The analogue of $\symb{U}$ appears already at the first stage of the construction. Indeed, the rule-boundary $\RuleBoundary{\emptyfam}{\bdryhead \type}$ is realised by $\symb{El}(\symb{u})$, hence the well-founded replacement contains the type constant $U = \symb{c}_{(\RuleBoundary{\emptyfam}{\bdryhead \type}, \symb{El}(\symb{u}))}$.
+  %
+  We also have the new symbols
+  %
+  \begin{equation*}
+    \mathit{El} = \symb{c}_{(\RuleBoundary{(\isterm{}{\symb{a}}{U})}{\bdryhead \type}, \genapp{\symb{El}})}
+    \qquad\text{and}\qquad
+    \mathit{u} = \symb{c}_{(\RuleBoundary{}{\bdryhead : U}, \genapp{\symb{u}})},
+  \end{equation*}
+  %
+  and these suffice to express the type equation $\eqtype{}{U}{\mathit{El}(\mathit{u})}$, which is a specific rule of the well-founded replacement because it is mapped to a valid equation in the original type theory.
+\end{example}
+
+
+%%% local Variables:
+%%% mode: latex
+%%% End:

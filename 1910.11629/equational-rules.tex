@@ -1,0 +1,107 @@
+% !TEX root = runners-in-action.tex
+
+\subsection{Equational theory}
+\label{sect:eqtheory}
+
+We present $\lambdacoop$ as an \emph{equational calculus}, i.e., the interactions between
+its components are described by equations. Such a presentation makes it easy to reason
+about program equivalence.
+%
+There are three equality judgements
+%
+\begin{equation*}
+\Gamma \types V \equiv W : X, 
+\qquad
+\Gamma \types M \equiv N : \tyuser{X}{\Ueff}, 
+\qquad
+\Gamma \types K \equiv L  : \tyuser{X}{\Keff}.
+\end{equation*}
+%
+It is presupposed that we only compare well-typed expressions with the indicated types.
+For the most part, the context and the type annotation on judgements will play no significant role,
+and so we shall drop them whenever possible.
+
+We comment on the computational equations for constructs characteristic
+of~$\lambdacoop$, and refer the reader to the online appendix for other equations.
+%
+When read left-to-right, these equations explain the operational meaning of programs.
+
+Of the three equations for $\tmkw{run}$, the first two specify that returned values and
+raised exceptions are handled by the corresponding clauses,
+%
+\begin{align*}
+  \tmrun{V}{W}{(\tmreturn{V'})}{F} &\equiv N[V'/x, W/c], 
+  \\
+  \tmrun{V}{W}{(\tmraise[X]{e})}{F} &\equiv N_{e}[W/c],
+\end{align*}
+%
+where
+%
+$F \defeq \{\tmreturn{x} \at c \mapsto N,
+   (\tmraise{e} \at c \mapsto N_e)_{e \in E},
+   (\tmkill{s} \mapsto N_s)_{s \in S}
+\}$.
+%
+The third equation below relates running an operation $\op$ with executing the corresponding co-operation~$K_\op$, 
+where $R$ stands for the runner
+%
+$\tmrunner{(\tm{op}\,x \mapsto K_{\tm{op}})_{\tm{op} \in \sig}}{C}$:
+%
+\begin{multline*}
+  \tmrun{R}{W}{(
+    \tmop{op}{X}{V}{\tmcont x M}{\tmexccont {N'} {e'} {E_\op}}
+    )}{F} \equiv {}
+  \\
+  \begin{aligned}[t]
+     &\tmkernel{K_\op[V/x]}{W}{} \\
+     &\qquad\big\{
+         \begin{aligned}[t]
+           &\tmreturn{x} \at c' \mapsto (\tmrun{R}{c'}{M}{F}), \\
+           &\left(
+               \tmraise{e'} \at c' \mapsto (\tmrun{R}{c'}{N'_{e'}}{F})
+             \right)_{e' \in E_\op},\\
+           &\left(
+               \tmkill{s} \mapsto N_s
+             \right)_{s \in S} \big\}
+         \end{aligned}
+ \end{aligned}
+\end{multline*}
+%
+Because $K_\op$ is kernel code, it is executed in kernel mode, whose
+$\tmkw{finally}$ clauses specify what happens afterwards: if $K_\op$ returns a value, or
+raises an exception, execution continues with a suitable continuation, with~$R$
+wrapped around it; and if $K_\op$ sends a signal, the corresponding finalisation code from $F$ is
+evaluated.
+
+The next bundle describes how kernel code is executed within user code:
+%
+\begin{align*}
+  \tmkernel{(\tmreturn[C]{V})}{W}{F} &\equiv N[V/x, W/c], \\
+  \tmkernel{(\tmraise[X \at C]{e})}{W}{F} &\equiv N_{e}[W/c], \\
+  \tmkernel{(\tmkill[X \at C]{s})}{W}{F} &\equiv N_{s}, \\
+  \tmkernel{(\tmgetenv[C]{\tmcont c K})}{W}{F} &\equiv \tmkernel{K[W/c]}{W}{F}, \\
+  \tmkernel{(\tmsetenv{V}{K})}{W}{F} &\equiv \tmkernel{K}{V}{F}.
+\end{align*}
+%
+We also have an equation stating that an operation called in kernel mode propagates out to
+user mode, with its continuations wrapped in kernel mode:
+%
+\begin{multline*}
+  \tmkernel{\tmop{op}{X}{V}{\tmcont x K}{\tmexccont L {e'} E}}{W}{F}
+  \equiv {} \\
+  \tmop{op}{X}{V}{\tmcont x {\tmkernel{K}{W}{F}}}{
+    \left(
+      \tmkernel{L_{e'}}{W}{F}
+    \right)_{e' \in E}}.
+\end{multline*}
+%
+Similar equations govern execution of user computations in kernel mode.
+
+The remaining equations include standard $\beta\eta$-equations for
+exception handling~\cite{Benton:ExceptionalSyntax}, deconstruction of products and sums,
+algebraicity equations for operations~\cite{Pretnar:Thesis}, and the equations of kernel theory from \cref{sec:user-kernel-monads}, describing how $\tmkw{getenv}$ and $\tmkw{setenv}$ work, and how they interact with signals and other operations.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "runners-in-action"
+%%% End:

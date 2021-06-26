@@ -1,0 +1,252 @@
+% !TEX root = runners-in-action.tex
+
+\section{Programming with runners}
+\label{sec:programming-with-runners}
+
+If ordinary runners are not general enough, the effectful ones are too general: 
+parameterised by arbitrary monads $\T$, they do
+not combine easily and they lack a clear notion of resource management. Thus,
+we now engineer more specific monads whose associated runners can be turned into a
+programming concept.
+%
+While we give up complete generality, the monads presented below are still quite
+versatile, as they are parameterised by arbitrary algebraic signatures $\Sigma$,
+and so are extensible and support various combinations of effects.
+
+\subsection{The user and kernel monads}
+\label{sec:user-kernel-monads}
+
+Effectful source code running inside a runtime environment is just one example of a more
+general phenomenon in which effectful computations are enveloped by a layer that provides
+a supervised access to external resources: a user process is controlled by a kernel, a web
+page by a browser, an operating system by hardware, or a virtual machine, etc. We shall
+adopt the parlance of software systems, and refer to the two layers generically as the
+\emph{user} and \emph{kernel} code.
+%
+Since the two kinds of code need not, and will not, use the same effects, each
+will be described by its own algebraic theory and compute in its own monad.
+
+We first address the kernel theory. 
+Specifically, we look for an algebraic theory such that effectful runners for the induced monad
+satisfy the following desiderata:
+%
+\begin{enumerate}
+\item Runners support management and controlled finalisation of resources.
+\item Runners may use further external resources.
+\item Runners may signal failure caused by unavoidable circumstances.
+\end{enumerate}
+
+The totality of external resources
+available to user code appears as a stateful external environment, even though it
+has no direct access to it. Thus, kernel computations should carry state. We
+achieve this by incorporating into the kernel theory the operations $\siggetenv$
+and $\sigsetenv$, and equations for state from \cref{ex:state}.
+
+Apart from managing state, kernel code should have access to further
+effects, which may be true external effects, or some outer
+layer of runners. In either case, we should allow the kernel code to call
+operations from a given signature~$\sig$.
+
+Because kernel computations ought to be able to signal failure, we should
+include an exception mechanism. In practice, many programming languages and
+systems have two flavours of exceptions, variously called recoverable and fatal,
+checked and unchecked, exceptions and errors, etc. One kind, which we call just
+\emph{exceptions}, is raised by kernel code when a situation requires special
+attention by user code. The other kind, which we call \emph{signals},
+indicates an unrecoverable condition that prevents normal execution of user
+code. These correspond precisely to the two standard ways of combining
+exceptions with state, namely the coproduct and the tensor of algebraic
+theories~\cite{Hyland:CombiningEffects}. The coproduct simply adjoins exceptions
+$\sigraise : E \leadsto \Zero$ from \cref{ex:exceptions} to the theory of
+state, while the tensor extends the theory of state with signals
+$\sigkill : S \leadsto \Zero$, together with equations
+%
+\begin{equation}
+  \label{eq:kill-state}%
+  \siggetenv(\lam{c} \sigkill\,s) = \sigkill\,s,
+  \qquad\qquad
+  \sigsetenv(c, \sigkill\,s) = \sigkill\,s.
+\end{equation}
+%
+These equations say that a signal discards state, which makes it unrecoverable.
+
+To summarise, the \emph{kernel theory} $\ThKK{C}{\sig}{E}{S}$ contains 
+operations from a signature $\sig$, as well as state operations
+$\siggetenv : \One \opto C$, $\sigsetenv : C \opto \One$, exceptions
+$\sigraise : E \opto \Zero$, and signals $\sigkill : S \opto \Zero$, with equations for state
+from \cref{ex:state}, equations~\eqref{eq:kill-state} relating state and
+signals, and for each operation $\op \in \sig$, equations
+%
+\begin{align*}
+  \siggetenv(\lam{c} \op(a, \kappa\,c)) &= \op(a, \lam{b} \siggetenv (\lam{c} \kappa\,c\,b)),\\
+  \sigsetenv(c, \op(a, \kappa)) &= \op(a, \lam{b} \sigsetenv(c, \kappa\,b)),
+\end{align*}
+%
+expressing that external operations do not interact with kernel state. 
+It is not difficult to see that $\ThKK{C}{\sig}{E}{S}$ induces, up to
+isomorphism, the \emph{kernel monad}
+%
+\begin{equation*}
+  \KK{C}{\sig}{E}{S} X \quad\defeq\quad C \expto \Tree{\sig}{((X + E) \times C) + S}.
+\end{equation*}
+
+How about user code? It can of course call operations from a 
+signature~$\sig$ (not necessarily the same as the kernel code), and because we
+intend it to handle exceptions, it might as well have the ability to raise them.
+However, user code knows nothing about signals and kernel state. Thus, we choose the \emph{user theory
+  $\ThUU{\sig}{E}$} to be the algebraic theory with operations $\sig$, exceptions
+$\sigraise : E \opto \Zero$, and no equations. This theory induces the \emph{user
+  monad} $\UU{\sig}{E} X \defeq \Tree{\sig}{X + E}$.
+
+\subsection{Runners as a programming construct}
+\label{sec:runn-as-progr}
+
+In this section, we turn the ideas presented so far into programming constructs.
+We strive for a realistic result,
+but when faced with several design options, we prefer simplicity and semantic
+clarity. We focus here on translating the central concepts, and postpone
+various details to \cref{sect:corecalculus}, where we present a full calculus.
+
+We codify the idea of user and kernel computations by having syntactic
+categories for each of them, as well as one for values. We use letters $M$, 
+$N$ to indicate user computations, $K$, $L$ for kernel computations, 
+and $V$, $W$ for values.
+
+User and kernel code raise exceptions with operation $\tmkw{raise}$, and catch
+them with exception handlers based on Benton and Kennedy's \emph{exceptional
+  syntax}~\cite{Benton:ExceptionalSyntax},
+%
+\begin{equation*}
+  \tmtry{M}{\{
+    \tmreturn{x} \mapsto N,
+    \ldots, \tmraise{e} \mapsto N_e, \ldots
+  \}}, 
+\end{equation*}
+%
+and analogously for kernel code. The familiar binding construct
+%
+$\tmlet{x}{M}{N}$
+%
+is simply shorthand for
+%
+$\tmtry{M}{\{\tmreturn{x} \mapsto N, \ldots, \tmraise{e} \mapsto \tmraise{e}, \ldots\}}$.
+
+As a programming concept, a runner $R$ takes the form
+%
+\begin{equation*}
+  \tmrunner{(\tm{op}\,x \mapsto K_{\tm{op}})_{\tm{op} \in \sig}}{C}, 
+\end{equation*}
+%
+where each $K_\op$ is a kernel computation, with the variable $x$ bound in $K_{\tm{op}}$, so that
+each clause $\tm{op} \, x \mapsto K_{\tm{op}}$ determines a co-operation for the
+kernel monad. The subscript $C$ indicates the type of the state used by  
+the kernel code $K_\op$.
+
+The corresponding elimination form is a handling-like construct
+%
+\begin{equation}
+  \label{eq:using}
+  \tmrun{R}{V}{M}{F}, 
+\end{equation}
+%
+which uses the co-operations of runner $R$ ``at'' initial kernel state~$V$ to
+run user code~$M$, and finalises its return value, exceptions, and signals
+with~$F$, see~\eqref{eq:finally-clause} below.
+%
+When user code $M$ calls an operation $\op$, the enveloping $\tmkw{run}$ construct runs the
+corresponding co-operation $K_\op$ of $R$. While doing so, $K_\op$ might raise 
+exceptions. But not every exception makes sense for every operation, and so
+we assign to each operation $\op$ a set of exceptions $E_\op$ which the
+co-operations implementing it may raise, by augmenting its operation signature with $E_\op$, as 
+%
+\begin{equation*}
+  \op : \tysigop{A_\op}{B_\op}{E_\op}.
+\end{equation*}
+%
+An exception raised by the co-operation $K_\op$ propagates back to the operation call in
+the user code. Therefore, an operation call should have not only a continuation $x\,.\,M$
+receiving a result, but also continuations $N_e$, one for each $e \in E_\op$,
+%
+\begin{equation*}
+  \tmop{op}{}{V}{\tmcont x M}{\tmexccont N e {E_\op}}.
+\end{equation*}
+%
+If $K_\op$ returns a value $b \in B_\op$, the execution proceeds 
+as $M[b/x]$, and as $N_e$ if $K_\op$ raises an exception 
+$e \in E_\op$. In examples, we use the generic versions of 
+operations~\cite{Plotkin:AlgOperations}, written $\tmgeneff{op}{V}$,
+which pass on return values and re-raise exceptions.
+
+One can pass exceptions back to operation calls also in 
+a language with handlers, such as \pl{Eff}, by 
+changing the signatures of operations to
+$A_\op \opto B_\op + E_\op$, and implementing 
+the exception mechanism by hand, so that every
+operation call is followed by a case distinction on $B_\op + E_\op$.
+One is reminded of how operating system calls communicate 
+errors back to user code as exceptional values.
+
+A co-operation $K_\op$ may also send a signal, in which case the rest of the user code $M$
+is skipped and the control proceeds directly to the corresponding case of the finalisation part~$F$ of the
+$\tmkw{run}$ construct~\eqref{eq:using}, whose syntactic form is
+%
+\begin{equation}
+  \label{eq:finally-clause}%
+  \{ \tmreturn{x} \at c \mapsto N,
+     \ldots, \tmraise{e} \at c \mapsto N_e,
+     \ldots, \tmkill{s} \mapsto N_s,
+     \ldots
+  \}.
+\end{equation}
+%
+Specifically, if $M$ returns a value $v$, then $N$ is evaluated with $x$ bound
+to $v$ and $c$ to the final kernel state; if~$M$ raises an
+exception~$e$ (either directly or indirectly via a co-operation of $R$), 
+then $N_e$ is executed, again with $c$ bound to the final kernel state; and 
+if a co-operation of $R$ sends a signal $s$, then $N_s$ is executed.
+
+\begin{example}
+  \label{ex:file-IO}%
+  In anticipation of setting up the complete calculus we show how one can work with files.
+  %
+  The language implementors can provide an operation $\tm{open}$ which opens a
+  file for writing and returns its file handle, an operation $\tm{close}$ which closes a
+  file handle, and a runner $\mathsf{fileIO}$ that implements
+  writing.
+  Let us further suppose that $\mathsf{fileIO}$ may raise
+  an exception $\mathsf{QuotaExceeded}$ if a write exceeds the user disk quota,
+  and send a signal $\mathsf{IOError}$ 
+  if an unrecoverable external error occurs.
+  %
+  The following code illustrates how to guarantee proper closing of the file:
+  %
+\begin{lstlisting}
+using fileIO @ (open "hello.txt") run
+  write "Hello, world."
+finally {
+  return x @ fh -> close fh,
+  raise QuotaExceeded @ fh -> close fh,
+  kill IOError -> return () }
+\end{lstlisting}
+  %
+  Notice that the user code does not have direct access to the file handle.
+  Instead, the runner holds it in its state, where it is available to the
+  co-operation that implements $\tm{write}$. The finalisation block gets access to
+  the file handle upon successful completion and raised exception, so it can close
+  the file, but when a signal happens the finalisation cannot close the file,
+  nor should it attempt to do so.
+
+  We also mention that the code ``cheats'' by placing the call to $\tm{open}$ in a
+  position where a value is expected. We should have $\tmkw{let}$-bound the file handle
+  returned by $\tm{open}$ outside the $\tmkw{run}$ construct, which would make it clear that
+  opening the file happens \emph{before} this construct (and that $\tm{open}$ is
+  \emph{not} handled by the finalisation), but would also expose the file handle. Since
+  there are clear advantages to keeping the file handle inaccessible, a realistic
+  language should accept the above code and hoist computations from value positions
+  automatically.
+\end{example}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "runners-in-action"
+%%% End:

@@ -1,0 +1,276 @@
+%**<title>A Gentle Introduction to Haskell: Arrays</title>
+%**~header
+
+\section{Arrays}
+Ideally, arrays in a functional language would be regarded simply as
+functions from indices to values, but pragmatically, in order to
+assure efficient access to array elements, we need to
+be sure we can take advantage of the special properties of the domains
+of these functions, which are isomorphic to finite contiguous subsets
+of the integers.  Haskell, therefore, does not treat arrays as general
+functions with an application operation, but as abstract data types
+with a subscript operation.
+
+Two main approaches to functional arrays may be discerned: {\em
+incremental} and {\em monolithic} definition.  In the incremental
+case, we have a function that produces an empty array of a given size
+and another that takes an array, an index, and a value, producing a
+new array that differs from the old one only at the given index.
+Obviously, a naive implementation of such an array semantics would be
+intolerably inefficient, either requiring a new copy of an array for each
+incremental redefinition, or taking linear time for array lookup; thus, serious attempts at using this
+approach employ sophisticated static analysis and clever run-time
+devices to avoid excessive copying.  The monolithic approach, on the
+other hand, constructs an array all at once, without reference to
+intermediate array values.  Although Haskell has an incremental array
+update operator, the main thrust of the array facility is monolithic.
+
+Arrays are not part of the Standard Prelude---the standard library
+contains the array operators.  Any module using 
+arrays must import the \mbox{\tt Array} module.
+
+\subsection{Index types}
+The \mbox{\tt Ix} library defines a type class of array indices:
+\bprog
+\mbox{\tt class\ \ (Ord\ a)\ =>\ Ix\ a\ \ where}\\
+\mbox{\tt \ \ \ \ range\ \ \ \ \ \ \ ::\ (a,a)\ ->\ [a]}\\
+\mbox{\tt \ \ \ \ index\ \ \ \ \ \ \ ::\ (a,a)\ a\ ->\ Int}\\
+\mbox{\tt \ \ \ \ inRange\ \ \ \ \ ::\ (a,a)\ ->\ a\ ->\ Bool}
+\eprog
+Instance declarations are provided for \mbox{\tt Int}, \mbox{\tt Integer}, \mbox{\tt Char},
+\mbox{\tt Bool}, and tuples of \mbox{\tt Ix} types up to length 5; in addition, instances may be
+automatically derived for enumerated and tuple types.  We regard the
+primitive types as vector indices, and tuples as indices of
+multidimensional rectangular arrays.  Note that the first argument of
+each of the operations of class \mbox{\tt Ix} is a pair of indices; these are
+typically the {\em bounds} (first and last indices) of an array.  For
+example, the bounds of a 10-element, zero-origin vector with \mbox{\tt Int}
+indices would be \mbox{\tt (0,9)}, while a 100 by 100 1-origin matrix might have
+the bounds \mbox{\tt ((1,1),(100,100))}.  (In many other languages, such bounds
+would be written in a form like \mbox{\tt 1:100,\ 1:100}, but the present
+form fits the type system better, since each bound is of the same
+type as a general index.)
+
+The \mbox{\tt range} operation takes a bounds pair and produces the list of
+indices lying between those bounds, in index order.  For example,
+\[ \mbox{\tt range\ (0,4)}\ \ \ \ \red\ \ \ \  \mbox{\tt [0,1,2,3,4]} \]
+\[ \mbox{\tt range\ ((0,0),(1,2))}\ \ \ \ \red\ \ \ \ %
+\mbox{\tt [(0,0),\ (0,1),\ (0,2),\ (1,0),\ (1,1),\ (1,2)]} \]
+The \mbox{\tt inRange} predicate determines whether an index lies between a given
+pair of bounds.  (For a tuple type, this test is performed
+component-wise.)  Finally, the \mbox{\tt index} operation allows
+a particular element of an array to be addressed: given a bounds pair and an
+in-range index, the operation yields the zero-origin ordinal of the
+index within the range; for example:
+\[ \mbox{\tt index\ (1,9)\ 2}\ \ \ \ \red\ \ \ \ \mbox{\tt 1} \]
+\[ \mbox{\tt index\ ((0,0),(1,2))\ (1,1)}\ \ \ \ \red\ \ \ \ \mbox{\tt 4} \]
+
+\subsection{Array Creation}
+Haskell's monolithic array creation function forms an array from a
+pair of bounds and a list of index-value pairs (an {\em association
+list}):
+\bprog
+\mbox{\tt array\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Ix\ a)\ =>\ (a,a)\ ->\ [(a,b)]\ ->\ Array\ a\ b}
+\eprog
+Here, for example, is a definition of an array of the squares
+of numbers from 1 to 100:
+\bprog
+\mbox{\tt squares\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ array\ (1,100)\ [(i,\ i*i)\ |\ i\ <-\ [1..100]]}
+\eprog
+This array expression is typical in using a list comprehension for
+the association list; in fact, this usage results in array expressions
+much like the {\em array comprehensions} of the language Id~\cite{id-manual}.
+
+Array subscripting is performed with the infix operator \mbox{\tt !}, and the
+bounds of an array can be extracted with the function \mbox{\tt bounds}:
+\[ \mbox{\tt squares!7}\ \ \ \ \red\ \ \ \ \mbox{\tt 49} \]
+\[ \mbox{\tt bounds\ squares}\ \ \ \ \red\ \ \ \ \mbox{\tt (1,100)} \]
+We might  generalize this example by parameterizing the bounds and the
+function to be applied to each index:
+\bprog
+\mbox{\tt mkArray\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Ix\ a)\ =>\ (a\ ->\ b)\ ->\ (a,a)\ ->\ Array\ a\ b}\\
+\mbox{\tt mkArray\ f\ bnds\ \ \ \ \ \ \ \ \ \ =\ \ array\ bnds\ [(i,\ f\ i)\ |\ i\ <-\ range\ bnds]}
+\eprog
+Thus, we could define \mbox{\tt squares} as \mbox{\tt mkArray\ ({\char'134}i\ ->\ i\ *\ i)\ (1,100)}.
+
+Many arrays are defined recursively; that is, with the values of some
+elements depending on the values of others.  Here, for example, we
+have a function returning an array of Fibonacci numbers:
+\bprog
+\mbox{\tt fibs\ \ \ \ ::\ Int\ ->\ Array\ Int\ Int}\\
+\mbox{\tt fibs\ n\ \ =\ \ a\ \ where\ a\ =\ array\ (0,n)\ ([(0,\ 1),\ (1,\ 1)]\ ++\ }\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [(i,\ a!(i-2)\ +\ a!(i-1))\ |\ i\ <-\ [2..n]])}
+\eprog
+Another example of such a recurrence is the \mbox{$\it n$} by \mbox{$\it n$} {\em wavefront}
+matrix, in which elements of the first row and first column all have
+the value \mbox{$\it 1$} and other elements are sums of their neighbors to the
+west, northwest, and north:
+\bprog
+\mbox{\tt wavefront\ \ \ \ \ \ \ ::\ Int\ ->\ Array\ (Int,Int)\ Int}\\
+\mbox{\tt wavefront\ n\ \ \ \ \ =\ \ a\ \ where}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ a\ =\ array\ ((1,1),(n,n))}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ([((1,j),\ 1)\ |\ j\ <-\ [1..n]]\ ++}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [((i,1),\ 1)\ |\ i\ <-\ [2..n]]\ ++}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [((i,j),\ a!(i,j-1)\ +\ a!(i-1,j-1)\ +\ a!(i-1,j))}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ i\ <-\ [2..n],\ j\ <-\ [2..n]])}
+\eprog
+The wavefront matrix is so called because in a parallel
+implementation, the recurrence dictates that the computation can begin
+with the first row and column in parallel and proceed as a
+wedge-shaped wave, traveling from northwest to southeast.  It is
+important to note, however, that no order of computation is specified
+by the association list.
+
+In each of our examples so far, we have given a unique association for
+each index of the array and only for the indices within the bounds
+of the array, and indeed, we must do this in general for an array
+be fully defined.  An association with an out-of-bounds index results
+in an error; if an index is missing or appears more than once, however,
+there is no immediate error, but the value of the array at that index
+is then undefined, so that subscripting the array with such an index
+yields an error.
+
+\subsection{Accumulation}
+We can relax the restriction that an index appear at most once in the
+association list by specifying how to combine multiple values
+associated with a single index; the result is called an {\em accumulated
+array}:
+\bprog
+\mbox{\tt accumArray\ ::\ (Ix\ a)\ ->\ (b\ ->\ c\ ->\ b)\ ->\ b\ ->\ (a,a)\ ->\ [Assoc\ a\ c]\ ->\ Array\ a\ b}
+\eprog
+The first argument of \mbox{\tt accumArray} is the {\em accumulating function},
+the second is an initial value (the same for each element of the array),
+and the remaining arguments are bounds and an association list, as with
+the \mbox{\tt array} function.  Typically, the accumulating function is \mbox{\tt (+)}, and
+the initial value, zero; for example, this function takes a pair of
+bounds and a list of values (of an index type) and yields a histogram;
+that is, a table of the number of occurrences of each value within the
+bounds:
+\bprog
+\mbox{\tt hist\ \ \ \ \ \ \ \ \ \ \ \ ::\ (Ix\ a,\ Integral\ b)\ =>\ (a,a)\ ->\ [a]\ ->\ Array\ a\ b}\\
+\mbox{\tt hist\ bnds\ is\ \ \ \ =\ \ accumArray\ (+)\ 0\ bnds\ [(i,\ 1)\ |\ i\ <-\ is,\ inRange\ bnds\ i]}
+\eprog
+Suppose we have a collection of measurements on the interval \mbox{$\it [a,b)$}, and
+we want to divide the interval into decades and count the number of
+measurements within each:
+\bprog
+\mbox{\tt decades\ \ \ \ \ \ \ \ \ ::\ (RealFrac\ a)\ =>\ a\ ->\ a\ ->\ [a]\ ->\ Array\ Int\ Int}\\
+\mbox{\tt decades\ a\ b\ \ \ \ \ =\ \ hist\ (0,9)\ .\ map\ decade}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ where\ decade\ x\ =\ floor\ ((x\ -\ a)\ *\ s)}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ s\ \ \ \ \ \ \ \ =\ 10\ /\ (b\ -\ a)}
+\eprog
+
+\subsection{Incremental updates}
+In addition to the monolithic array creation functions, Haskell also
+has an incremental array update function, written as the infix
+operator \mbox{\tt //}; the simplest case, an array \mbox{\tt a} with element \mbox{\tt i}
+updated to \mbox{\tt v}, is written \mbox{\tt a\ //\ [(i,\ v)]}.  The reason for the square
+brackets is that the left argument of \mbox{\tt (//)} is an association list,
+usually containing a proper subset of the indices of the array:
+\bprog
+\mbox{\tt (//)\ \ \ \ \ \ \ \ \ \ \ \ ::\ (Ix\ a)\ =>\ Array\ a\ b\ ->\ [(a,b)]\ ->\ Array\ a\ b}
+\eprog
+As with the \mbox{\tt array} function, the indices in the association list
+must be unique for the values to be defined.  For example, here
+is a function to interchange two rows of a matrix:
+\bprog
+\mbox{\tt swapRows\ ::\ (Ix\ a,\ Ix\ b,\ Enum\ b)\ =>\ a\ ->\ a\ ->\ Array\ (a,b)\ c\ ->\ Array\ (a,b)\ c}\\
+\mbox{\tt swapRows\ i\ i'\ a\ =\ \ a\ //\ ([((i\ ,j),\ a!(i',j))\ |\ j\ <-\ [jLo..jHi]]\ ++}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [((i',j),\ a!(i\ ,j))\ |\ j\ <-\ [jLo..jHi]])}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ where\ ((iLo,jLo),(iHi,jHi))\ =\ bounds\ a}
+\eprog
+The concatenation here of two separate list comprehensions over the same
+list of \mbox{\tt j} indices is, however, a slight inefficiency; it's like
+writing two loops where one will do in an imperative language.
+Never fear, we can perform the equivalent of a loop fusion optimization
+in Haskell:
+\bprog
+\mbox{\tt swapRows\ i\ i'\ a\ =\ \ a\ //\ [assoc\ |\ j\ <-\ [jLo..jHi],}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ assoc\ <-\ [((i\ ,j),\ a!(i',j)),}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ((i',j),\ a!(i,\ j))]\ ]}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ where\ ((iLo,jLo),(iHi,jHi))\ =\ bounds\ a}
+\eprog
+
+\subsection{An example: Matrix Multiplication}
+
+We complete our introduction to Haskell arrays with the familiar
+example of matrix multiplication, taking advantage of overloading
+to define a fairly general function.  Since only multiplication and
+addition on the element type of the matrices is involved, we get
+a function that multiplies matrices of any numeric type unless we
+try hard not to.  Additionally, if we are careful to apply only
+\mbox{\tt (!)} and the operations of \mbox{\tt Ix} to indices, we get genericity over
+index types, and in fact, the four row and column index types need
+not all be the same.  For simplicity, however, we require that
+the left column indices and right row indices be of the same type, and
+moreover, that the bounds be equal:
+\bprog
+\mbox{\tt matMult\ \ \ \ \ \ \ \ \ ::\ (Ix\ a,\ Ix\ b,\ Ix\ c,\ Num\ d)\ =>}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Array\ (a,b)\ d\ ->\ Array\ (b,c)\ d\ ->\ Array\ (a,c)\ d}\\
+\mbox{\tt matMult\ x\ y\ \ \ \ \ =\ \ array\ resultBounds}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [((i,j),\ sum\ [x!(i,k)\ *\ y!(k,j)\ |\ k\ <-\ range\ (lj,uj)])}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ i\ <-\ range\ (li,ui),}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ j\ <-\ range\ (lj',uj')\ ]}\\
+\mbox{\tt \ \ \ \ \ \ \ \ where\ ((li,lj),(ui,uj))\ \ \ \ \ \ \ \ \ =\ \ bounds\ x}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ ((li',lj'),(ui',uj'))\ \ \ \ \ =\ \ bounds\ y}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ resultBounds}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ (lj,uj)==(li',ui')\ \ \ \ =\ \ ((li,lj'),(ui,uj'))}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ otherwise\ \ \ \ \ \ \ \ \ \ \ \ \ =\ error\ "matMult:\ incompatible\ bounds"}
+\eprog
+As an aside, we can also define \mbox{\tt matMult} using \mbox{\tt accumArray},
+resulting in a presentation that more closely resembles the
+usual formulation in an imperative language:
+\bprog
+\mbox{\tt matMult\ x\ y\ \ \ \ \ =\ \ accumArray\ (+)\ 0\ resultBounds}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [((i,j),\ x!(i,k)\ *\ y!(k,j))}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ i\ <-\ range\ (li,ui),}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ j\ <-\ range\ (lj',uj')}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ k\ <-\ range\ (lj,uj)\ \ ]}\\
+\mbox{\tt \ \ \ \ \ \ \ \ where\ ((li,lj),(ui,uj))\ \ \ \ \ \ \ \ \ =\ \ bounds\ x}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ ((li',lj'),(ui',uj'))\ \ \ \ \ =\ \ bounds\ y}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ resultBounds}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ (lj,uj)==(li',ui')\ \ \ \ =\ \ ((li,lj'),(ui,uj'))}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ otherwise\ \ \ \ \ \ \ \ \ \ \ \ \ =\ error\ "matMult:\ incompatible\ bounds"}
+\eprog
+
+We can generalize further by making the function higher-order,
+simply replacing \mbox{\tt sum} and \mbox{\tt (*)} by functional parameters:
+\bprog
+\mbox{\tt genMatMult\ \ \ \ \ \ ::\ (Ix\ a,\ Ix\ b,\ Ix\ c)\ =>}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ([f]\ ->\ g)\ ->\ (d\ ->\ e\ ->\ f)\ ->}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ Array\ (a,b)\ d\ ->\ Array\ (b,c)\ e\ ->\ Array\ (a,c)\ g}\\
+\mbox{\tt genMatMult\ sum'\ star\ x\ y\ \ =}\\
+\mbox{\tt \ \ \ \ \ \ array\ resultBounds}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ [((i,j),\ sum'\ [x!(i,k)\ `star`\ y!(k,j)\ |\ k\ <-\ range\ (lj,uj)])}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ i\ <-\ range\ (li,ui),}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ j\ <-\ range\ (lj',uj')\ ]}\\
+\mbox{\tt \ \ \ \ \ \ \ \ where\ ((li,lj),(ui,uj))\ \ \ \ \ \ \ \ \ =\ \ bounds\ x}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ ((li',lj'),(ui',uj'))\ \ \ \ \ =\ \ bounds\ y}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ resultBounds}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ (lj,uj)==(li',ui')\ \ \ \ =\ \ ((li,lj'),(ui,uj'))}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ |\ otherwise\ \ \ \ \ \ \ \ \ \ \ \ \ =\ error\ "matMult:\ incompatible\ bounds"}
+\eprog
+APL fans will recognize the usefulness of functions like the following:
+\bprog
+\mbox{\tt genMatMult\ maximum\ (-)}\\
+\mbox{\tt genMatMult\ and\ (==)}
+\eprog
+With the first of these, the arguments are numeric matrices, and the
+\mbox{$\it (i,j)$}-th element of the result is the maximum difference between
+corresponding elements of the \mbox{$\it i$}-th row and \mbox{$\it j$}-th column of the
+inputs.  In the second case, the arguments are matrices of any equality
+type, and the result is a Boolean matrix in which element \mbox{$\it (i,j)$}
+is \mbox{\tt True} if and only if the \mbox{$\it i$}-th row of the first argument and
+\mbox{$\it j$}-th column of the second are equal as vectors.
+
+Notice that the element types of \mbox{\tt genMatMult} need not be the same,
+but merely appropriate for the function parameter \mbox{\tt star}.  We could
+generalize still further by dropping the requirement that the first
+column index and second row index types be the same; clearly, two
+matrices could be considered conformable as long as the lengths
+of the columns of the first and the rows of the second are equal.
+The reader may wish to derive this still more general version.
+({\bf Hint:}  Use the \mbox{\tt index} operation to determine the lengths.)
+
+%**~footer
+

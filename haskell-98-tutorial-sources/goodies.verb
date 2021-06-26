@@ -1,0 +1,563 @@
+%**<title>A Gentle Introduction to Haskell: Values and Types</title>
+
+%**~header
+
+\section{Values, Types, and Other Goodies}
+\label{tut-values-etc}
+
+Because Haskell is a purely functional language, all computations are
+done via the evaluation of {\em expressions} (syntactic terms) to
+yield {\em values} (abstract entities that we regard as answers).
+Every value has an associated 
+{\em type}.  (Intuitively, we can think of types as sets of values.)
+Examples of expressions include atomic values such as the integer @5@,
+the character @'a'@, and the function @\x -> x+1@, as well as
+structured values such as the list @[1,2,3]@ and the pair @('b',4)@.
+
+Just as expressions denote values, type expressions are
+syntactic terms that denote type values (or just {\em types}).
+Examples of type expressions include the atomic types @Integer@
+(infinite-precision integers), @Char@ (characters), @Integer->Integer@
+(functions mapping @Integer@ to @Integer@), as well as the structured types
+@[Integer]@ (homogeneous lists of integers) and @(Char,Integer)@
+(character, integer pairs).
+
+All Haskell values are ``first-class''---they may be passed as
+arguments to functions, returned as results, placed in data
+structures, etc.  Haskell types, on the other hand, are {\em not}
+first-class.  Types in a sense describe values, and the
+association of a value with its type is called a {\em typing}.  Using
+the examples of values and types above, we write typings as follows:
+\bprog
+@
+                          5  :: Integer
+                         'a' :: Char
+                         inc :: Integer -> Integer
+                     [1,2,3] :: [Integer]
+                     ('b',4) :: (Char,Integer)
+@
+\eprog
+The ``@::@'' can be read ``has type.''
+
+Functions in Haskell are normally defined by a series of {\em
+equations}.  For example, the function @inc@ can be
+defined by the single equation:
+\bprog
+@
+inc n          = n+1
+@
+\eprog 
+An equation is an example of a {\em declaration}.  Another kind of
+declaration is a {\em type signature declaration}
+(\see{type-signatures}), with which we can declare an explicit typing
+for @inc@:
+\bprog
+@
+inc            :: Integer -> Integer
+@
+\eprog 
+We will have much more to say about function definitions in Section
+\ref{tut-functions}.
+
+For pedagogical purposes, when we wish to indicate that an expression
+$e_1$ evaluates, or ``reduces,'' to another expression or value $e_2$,
+we will write:
+\[ e_1\ \ \ \ \red\ \ \ \ e_2 \]
+For example, note that:
+\[ @inc (inc 3)@\ \ \ \ \red\ \ \ \ @5@ \]
+
+Haskell's static type system defines the formal relationship
+between types and values (\see{type-semantics}).  The static type
+system ensures that Haskell programs are {\em type safe}; that is,
+that the programmer has not mismatched types in some way.  For
+example, we cannot generally add together two characters, so the
+expression @'a'+'b'@ is ill-typed.  The main advantage of statically
+typed languages is well-known: All type errors are detected at
+compile-time.  Not all errors are caught by the type system; an
+expression such as @1/0@ is typable but its evaluation will result in
+an error at execution time.  Still, the type system finds many
+program errors at compile time, aids the user in reasoning about
+programs, and also permits a compiler to generate more efficient code
+(for example, no run-time type tags or tests are required).
+
+The type system also ensures that user-supplied type signatures are
+correct.  In fact, Haskell's type system is powerful enough to allow
+us to avoid writing any type signatures at all;\footnote{With a few
+exceptions to be described later.} we say that the type
+system {\em infers} the correct types for us.  Nevertheless, judicious
+placement of type signatures such as that we gave for @inc@ is a good idea,
+since type signatures are a very effective form of documentation and
+help bring programming errors to light.
+
+\syn{The reader will note that we have capitalized identifiers that
+denote specific types, such as @Integer@ and @Char@, but not identifiers
+that denote values, such as @inc@.  This is not just a convention: it
+is enforced by Haskell's lexical syntax.  In fact, the case of the
+other characters matters, too: @foo@, @fOo@, and @fOO@ are all
+distinct identifiers.}
+
+\subsection{Polymorphic Types}
+\label{tut-polymorphism}
+
+Haskell also incorporates {\em polymorphic} types---types that are
+universally quantified in some way over all types.  Polymorphic
+type expressions essentially describe families of types.  For
+example, $(\forall$@a@$)$@[a]@ is the family of types consisting of,
+for every type @a@, the type of lists of @a@.  Lists of integers
+(e.g.~@[1,2,3]@), lists of characters (@['a','b','c']@), even lists of
+lists of integers, etc., are all members of this family.  (Note,
+however, that @[2,'b']@ is {\em not} a valid example, since there is
+no single type that contains both @2@ and @'b'@.)
+
+\syn{Identifiers such as @a@ above are called {\em type variables},
+and are uncapitalized to distinguish them from specific types such as
+@Int@.  Furthermore, since Haskell has only universally quantified
+types, there is no need to explicitly write out the symbol for
+universal quantification, and thus we simply write @[a]@ in the
+example above.  In other words, all type variables are implicitly
+universally quantified.}
+
+Lists are a commonly used data structure in functional languages, and
+are a good vehicle for explaining the principles of polymorphism.  The
+list @[1,2,3]@ in Haskell is actually shorthand for the list
+@1:(2:(3:[]))@, where @[]@ is the empty list and @:@ is the infix
+operator that adds its first argument to the front of its second
+argument (a list).\footnote{@:@ and @[]@ are like Lisp's @cons@ and
+@nil@, respectively.} Since @:@ is right associative, we can also
+write this list as @1:2:3:[]@.
+
+As an example of a user-defined function that operates on lists,
+consider the problem of counting the number of elements in a list:
+\bprog
+@
+length                  :: [a] -> Integer
+length []               =  0
+length (x:xs)           =  1 + length xs
+@
+\eprog 
+This definition is almost self-explanatory.  We can read the equations
+as saying: ``The length of the empty list is 0, and the length of a
+list whose first element is @x@ and remainder is @xs@ is 1 plus the
+length of @xs@.'' (Note the naming convention used here; @xs@ is the
+plural of @x@, and should be read that way.)
+
+Although intuitive, this example highlights an important aspect of
+Haskell that is yet to be explained: {\em pattern matching}.  The
+left-hand sides of the equations contain patterns such as @[]@
+and @x:xs@.  In a function application these patterns are 
+matched against actual parameters in a fairly intuitive way (@[]@
+only matches the empty list, and @x:xs@ will successfully match any
+list with at least one element, binding @x@ to the first element and
+@xs@ to the rest of the list).  If the match succeeds, the right-hand
+side is evaluated and returned as the result of the application.  If
+it fails, the next equation is tried, and if all equations fail, an
+error results.
+
+Defining functions by pattern matching is quite common in Haskell, and
+the user should become familiar with the various kinds of patterns
+that are allowed; we will return to this issue in
+Section~\ref{tut-pattern-matching}. 
+
+The @length@ function is also an example of a polymorphic
+function.  It can 
+be applied to a list containing elements of any type, for example
+@[Integer]@, @[Char]@, or @[[Integer]]@.
+\[\ba{lcl}
+  @length [1,2,3]@      &\ \ \ \ \red\ \ \ \ & 3\\
+  @length ['a','b','c']@&\ \ \ \ \red\ \ \ \ & 3\\
+  @length [[1],[2],[3]]@   &\ \ \ \ \red\ \ \ \ & 3
+\ea\]
+
+Here are two other useful polymorphic functions on lists that will be
+used later.  Function @head@ returns the first element of a list,
+function @tail@ returns all but the first.
+\bprog
+@
+head                    :: [a] -> a
+head (x:xs)             =  x
+
+tail                    :: [a] -> [a]
+tail (x:xs)             =  xs
+@
+\eprog 
+Unlike @length@, these functions are not defined for all possible
+values of their argument.  A runtime error occurs when these functions
+are applied to an empty list.  
+
+With polymorphic types, we find that some types are in a sense
+strictly more general than others in the sense that the set of
+values they define is larger.  For example, the type @[a]@
+is more general than @[Char]@.  In other words, the latter type can be
+derived from the former by a suitable substitution for @a@.  With
+regard to this generalization ordering, Haskell's type system
+possesses two important properties: First, every well-typed expression
+is guaranteed to have a unique principal type (explained below),
+and second, the principal type can be inferred automatically
+(\see{type-semantics}).  In comparison to a monomorphically
+typed language such as C, the reader will find that 
+polymorphism improves expressiveness, and type inference
+lessens the burden of types on the programmer.
+
+An expression's or function's principal type is the least general type
+that, intuitively, ``contains all instances of the expression''.  For
+example, the principal type of @head@ is @[a]->a@; @[b]->a@,
+@a->a@, or even @a@ are correct types, but too general, whereas something
+like @[Integer]->Integer@ is too specific.  The existence of unique principal
+types is the hallmark feature of the {\em Hindley-Milner type system},
+which forms the basis of the type systems of Haskell, ML,
+Miranda,\footnote{``Miranda'' is a trademark of Research Software,
+Ltd.} and several other (mostly functional) languages.
+
+\subsection{User-Defined Types}
+\label{tut-user-types}
+
+We can define our own types in Haskell using a @data@ declaration,
+which we introduce via a series of examples (\see{datatype-decls}).
+
+An important predefined type in Haskell is that of truth values:
+\bprog
+@
+data Bool               = False | True
+@
+\eprog
+The type being defined here is @Bool@, and it has exactly two values:
+@True@ and @False@.  Type @Bool@ is an example of a (nullary) {\em type
+constructor}, and @True@ and @False@ are (also nullary) {\em data
+constructors} (or just {\em constructors}, for short).
+
+Similarly, we might wish to define a color type:
+\bprog
+@
+data Color              = Red | Green | Blue | Indigo | Violet
+@
+\eprog
+Both @Bool@ and @Color@ are examples of enumerated types, since
+they consist of a finite number of nullary data constructors.
+
+Here is an example of a type with just one data constructor:
+\bprog
+@
+data Point a            = Pt a a
+@
+\eprog
+Because of the single constructor, a type like @Point@ is often
+called a {\em tuple type}, since it is essentially just a cartesian
+product (in this case binary) of other types.\footnote{Tuples are
+somewhat like records in other languages.}
+In contrast, multi-constructor types, such as @Bool@ and
+@Color@, are called (disjoint) union or sum types.
+
+More importantly, however, @Point@ is an example of a 
+polymorphic type: for any type $t$, it defines the type of cartesian
+points that use $t$ as the coordinate type.  The @Point@ type can now be seen
+clearly as a unary type constructor, since from the type $t$ it
+constructs a new type @Point @$t$.  (In the same sense, using the list
+example given earlier, @[]@ is also a type constructor.  Given any type $t$
+we can ``apply'' @[]@ to yield a new type @[@$t$@]@.  The Haskell
+syntax allows @[] @$t$ to be written as @[@$t$@]@.  Similarly,
+@->@ is a type constructor: given two types $t$ and $u$,
+$t$@->@$u$ is the type of functions mapping elements of type $t$ to
+elements of type $u$.)
+
+Note that the type of the binary data constructor @Pt@ is @a -> a -> Point a@, 
+and thus the following typings are valid:
+\bprog
+@
+Pt  2.0  3.0            :: Point Float
+Pt  'a'  'b'            :: Point Char
+Pt True False           :: Point Bool
+@
+\eprog
+On the other hand, an expression such as @Pt 'a' 1@ is ill-typed
+because @'a'@ and @1@ are of different types.
+
+It is important to distinguish between applying a {\em data constructor} to
+yield a {\em value}, and applying a {\em type constructor} to yield a
+{\em type}; the former happens at run-time and is how we compute
+things in Haskell, whereas the latter happens at compile-time and is
+part of the type system's process of ensuring type safety.
+
+\syn{Type constructors such as @Point@ and data constructors such as
+@Pt@ are in separate namespaces.  This allows the same name to be used
+for both a type constructor and data constructor, as in the following:
+\bprog
+@
+data Point a = Point a a
+@
+\eprog
+While this may seem a little confusing at first, it serves to make the
+link between a type and its data constructor more obvious.}
+
+\subsubsection{Recursive Types}
+\label{tut-recursive-types}
+
+Types can also be recursive, as in the type of binary trees:
+\bprog
+@
+data Tree a             = Leaf a | Branch (Tree a) (Tree a) 
+@
+\eprog
+Here we have defined a polymorphic binary tree type whose elements
+are either leaf nodes containing a value of type @a@, or internal
+nodes (``branches'') containing (recursively) two sub-trees.
+
+When reading data declarations such as this, remember again that @Tree@ is a
+type constructor, whereas @Branch@ and @Leaf@ are data constructors.
+Aside from establishing a connection between these constructors, the
+above declaration is essentially defining the following types for
+@Branch@ and @Leaf@:
+\bprog
+@
+Branch                  :: Tree a -> Tree a -> Tree a
+Leaf                    :: a -> Tree a
+@
+\eprog 
+
+With this example we have defined a type sufficiently rich to
+allow defining some interesting (recursive) functions that use it.
+For example, suppose we wish to define a function @fringe@ that
+returns a list of all the elements in the leaves of a tree from left
+to right.  It's usually helpful to write down the type of new
+functions first; in this case we see that the type should be 
+@Tree a -> [a]@.  That is, @fringe@ is a polymorphic function that,
+for any type @a@, maps trees of @a@ into lists of @a@.  A suitable
+definition follows:
+\bprog
+@
+fringe                     :: Tree a -> [a]
+fringe (Leaf x)            =  [x]
+fringe (Branch left right) =  fringe left ++ fringe right
+@
+\eprog
+Here @++@ is the infix operator that concatenates two lists (its full
+definition will be given in Section \ref{tut-monadic-classes}).  As
+with the @length@ example given earlier, the @fringe@ function is
+defined using pattern matching, except that here we see patterns involving
+user-defined constructors: @Leaf@ and @Branch@.  \syn{Note that the
+formal parameters are easily identified as the ones beginning with
+lower-case letters.}
+
+
+\subsection{Type Synonyms}
+\label{tut-type-synonyms}
+
+For convenience, Haskell provides a way to define {\em type synonyms};
+i.e.~names for commonly used types.  Type synonyms are created using a
+@type@ declaration (\see{type-synonym-decls}).  Here are several
+examples:
+\bprog
+@
+type String             = [Char]
+type Person             = (Name,Address)
+type Name               = String
+data Address            = None | Addr String
+@
+\eprog
+
+Type synonyms do not define new types, but simply give new names
+for existing types.  For example, the type @Person -> Name@ is
+precisely equivalent to @(String,Address) -> String@.  The new names
+are often shorter than the types they are synonymous with, but this is
+not the only purpose of type synonyms: they can also improve
+readability of programs by being more mnemonic; indeed, the above
+examples highlight this.  We can even give new names to polymorphic
+types:
+\bprog
+@
+type AssocList a b              = [(a,b)]
+@
+\eprog 
+This is the type of ``association lists'' which associate values of
+type @a@ with those of type @b@.
+
+\subsection{Built-in Types Are Not Special}
+\label{tut-built-ins}
+
+Earlier we introduced several ``built-in'' types such as lists,
+tuples, integers, and characters.  We have also shown how new
+user-defined types can be defined.  Aside from special syntax, are
+the built-in types in any way more special than the user-defined ones?
+The answer is {\em no}.  The special syntax is for convenience and for
+consistency with historical convention, but has no semantic
+consequences.
+
+We can emphasize this point by considering what the type
+declarations would look like for these built-in types if in fact we
+were allowed to use the special syntax in defining them.  For example,
+the @Char@ type might be written as:
+\bprog
+@
+data Char       = 'a' | 'b' | 'c' | ...         -- This is not valid
+                | 'A' | 'B' | 'C' | ...         -- Haskell code!
+                | '1' | '2' | '3' | ...
+                ...
+@
+\eprog
+These constructor names are not syntactically valid; to fix them we
+would have to write something like:
+\bprog
+@
+data Char       = Ca | Cb | Cc | ...
+                | CA | CB | CC | ...
+                | C1 | C2 | C3 | ...
+                ...
+@
+\eprog
+Even though these constructors are more concise, they are quite
+unconventional for representing characters.
+
+In any case, writing ``pseudo-Haskell'' code in this way helps us to
+see through the special syntax.  We see now that @Char@ is just an
+enumerated type consisting of a large number of nullary constructors.
+Thinking of @Char@ in this way makes it clear that we can
+pattern-match against characters in function definitions, just as we
+would expect to be able to do so for any of a type's constructors.
+
+\syn{This example also demonstrates the use of {\em comments} in
+Haskell; the characters @--@ and all subsequent characters to the end
+of the line are ignored.  Haskell also permits {\em nested} comments
+which have the form @{-@$\ldots$@-}@ and can appear anywhere
+(\see{lexemes}).}
+
+Similarly, we could define @Int@ (fixed precision integers) and
+@Integer@ by: 
+\bprog
+@
+data Int     = -65532 | ... | -1 | 0 | 1 | ... | 65532  -- more pseudo-code
+data Integer =       ... -2 | -1 | 0 | 1 | 2 ...
+@
+\eprog
+where @-65532@ and @65532@, say, are the maximum and minimum fixed
+precision integers for a given implementation.  @Int@ is a much larger
+enumeration than @Char@, but it's still finite!  In contrast, the
+pseudo-code for @Integer@ 
+is intended to convey an {\em infinite} enumeration.
+
+Tuples are also easy to define playing this game:
+\bprog
+@
+data (a,b)              = (a,b)                         -- more pseudo-code
+data (a,b,c)            = (a,b,c)
+data (a,b,c,d)          = (a,b,c,d)
+ .                         .
+ .                         .
+ .                         .
+@
+\eprog
+Each declaration above defines a tuple type of a particular length,
+with @(...)@ playing a role in both the expression syntax (as data
+constructor) and type-expression syntax (as type constructor).  The
+vertical dots after the last declaration are intended to convey an
+infinite number of such declarations, reflecting the fact that tuples
+of all lengths are allowed in Haskell.
+
+Lists are also easily handled, and more interestingly, they are recursive:
+\bprog
+@
+ data [a]               = [] | a : [a]                  -- more pseudo-code
+@
+\eprog
+We can now see clearly what we described about lists earlier: @[]@ is
+the empty list, and @:@ is the infix list constructor; thus @[1,2,3]@
+must be equivalent to the list @1:2:3:[]@.  (@:@ is right
+associative.)  The type of @[]@ is @[a]@, and the type of @:@ is
+@a->[a]->[a]@.
+
+\syn{The way ``@:@'' is defined here is actually legal syntax---infix
+constructors are permitted in @data@ declarations, and are
+distinguished from infix operators (for pattern-matching purposes) by
+the fact that they must begin with a ``@:@'' (a property trivially
+satisfied by ``@:@'').}
+
+At this point the reader should note carefully the differences between
+tuples and lists, which the above definitions make abundantly clear.
+In particular, note the recursive nature of the list type whose
+elements are homogeneous and of arbitrary length, and the
+non-recursive nature of a (particular) tuple type whose elements are
+heterogeneous and of fixed length.  The typing rules for tuples and
+lists should now also be clear:
+
+For $@(@e_1@,@e_2@,@\ldots@,@e_n@)@,\ n\geq2$, if $t_i$ is the
+type of $e_i$, then the type of the tuple is 
+$@(@t_1@,@t_2@,@\ldots@,@t_n@)@$.
+
+For $@[@e_1@,@e_2@,@\ldots@,@e_n@]@,\ n\geq0$, each $e_i$ must have
+the same type $t$, and the type of the list is @[@$t$@]@.
+
+\subsubsection{List Comprehensions and Arithmetic Sequences}
+\label{tut-list-comps}
+
+As with Lisp dialects, lists are pervasive in Haskell, and as with
+other functional languages, there is yet more syntactic sugar to aid
+in their creation.  Aside from the constructors for lists just
+discussed, Haskell provides an expression known as a {\em list
+comprehension} that is best explained by example:
+\bprog
+@
+[ f x | x <- xs ]
+@
+\eprog 
+This expression can intuitively be read as ``the list of all @f x@ 
+such that @x@ is drawn from @xs@.''  The similarity to set notation is
+not a coincidence.  The phrase @x <- xs@ is called a {\em generator},
+of which more than one is allowed, as in:
+\bprog
+@
+[ (x,y) | x <- xs, y <- ys ]
+@
+\eprog 
+This list comprehension forms the cartesian product of the two lists
+@xs@ and @ys@.  The elements are selected as if the generators were
+``nested'' from left to right (with the rightmost generator varying
+fastest); thus, if @xs@ is @[1,2]@ and @ys@ is @[3,4]@, the result is
+@[(1,3),(1,4),(2,3),(2,4)]@.
+
+Besides generators, boolean expressions called {\em guards} are
+permitted.  Guards place constraints on the elements generated.  For
+example, here is a concise definition of everybody's favorite sorting
+algorithm:
+\bprog
+@
+quicksort  []           =  []
+quicksort (x:xs)        =  quicksort [y | y <- xs, y<x ]
+                        ++ [x]
+                        ++ quicksort [y | y <- xs, y>=x]
+@
+\eprog
+
+To further support the use of lists, Haskell has special syntax for
+{\em arithmetic sequences}, which are best explained by a series of
+examples:
+\[\ba{lcl}
+@[1..10]@  \ \ \ &\red&\ \ \ @[1,2,3,4,5,6,7,8,9,10]@\\
+@[1,3..10]@\ \ \ &\red&\ \ \ @[1,3,5,7,9]@\\
+% @[1..]@    \ \ \ &\red&\ \ \ @[1,2,3,4,5, ...@\ \ \ \ \ 
+%                              \mbox{(infinite sequence)}\\
+@[1,3..]@  \ \ \ &\red&\ \ \ @[1,3,5,7,9, ...@\ \ \ \ \ 
+                             \mbox{(infinite sequence)}\\
+\ea\]
+More will be said about arithmetic sequences in Section
+\ref{tut-enum-classes}, and ``infinite lists'' in Section
+\ref{tut-infinite}.
+
+\subsubsection{Strings}
+\label{tut-strings}
+
+As another example of syntactic sugar for built-in types, we
+note that the literal string @"hello"@ is actually shorthand for the
+list of characters @['h','e','l','l','o']@.  Indeed, the type of
+@"hello"@ is @String@, where @String@ is a predefined type synonym
+(that we gave as an earlier example):
+\bprog
+@
+type String             = [Char]
+@
+\eprog 
+This means we can use predefined polymorphic list functions to operate
+on strings.  For example:
+\[
+@"hello" ++ " world"@\ \ \ \ \red\ \ \ \ @"hello world"@
+\]
+
+%**~footer
+

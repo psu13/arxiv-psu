@@ -1,0 +1,197 @@
+
+\section{Introduction}
+
+\subsection{Overview}
+
+  We give a general definition of dependent type theories,
+  %
+  encompassing for example Martin-Löf’s intuitionistic type theories and many variants and extensions.
+
+  The primary aim is to give a setting for formal general versions of various constructions and results,
+  %
+  which in the literature have been given for specific theories but are heuristically understood to hold for a wide class of theories:
+  %
+  for instance, the conservativity theorem of \citep{hofmann:syntax-and-semantics}, or the coherence theorems of \citep{hofmann:lcccs,lumsdaine-warren:local-universes}.
+  
+  This has been a sorely felt gap in the literature until quite recently;
+  %
+  the present work is one of several recent approaches to filling it
+  %
+  \citep{isaev17:_algeb,uemura19:_gener_framew_seman_type_theor,brunerie:_agda}.
+  
+  A secondary aim is to stick very closely to an elementary understanding of syntax.
+  %
+  Established general approaches --- for instance, logical frameworks and categorical semantics --- give, in examples, not the original syntax of the example theories, but an embedded or abstracted version, typically then connected to the original syntax by adequacy or initiality theorems.
+  %
+  Our approach directly recovers quite conventional presentations of the example theories themselves.
+  
+  As a corollary of this goal, we must confront the bureaucratic design decisions of syntax: the selection of structural rules, and so on.
+  %
+  These are often swept under the rug in specific type theories as “routine”; to initiates they are indeed standard, but newcomers to the field often report finding this lack of detail difficult.
+  %
+  We therefore elide nothing, and set out a precise choice of all such decisions, carefully chosen and proven to work well in reasonable generality, which we hope will be of value to readers.
+
+  In pursuit of the above aims, we offer not one main definition of type theory, but three, at increasing levels of refinement.
+  
+  Firstly, we define \emph{raw type theories}, as a conceptually minimal description of traditional presentations of type theories by symbols and rules,
+  %
+  sufficient to define the derivability relation, but not yet incorporating any well-formedness constraints on the rules.
+  
+  Secondly, we give sufficient conditions on a raw type theory to imply that derivability over it is well-behaved in various standard ways.
+  %
+  Specifically, we isolate simple syntactic checks that suffice to imply core fitness-for-purpose properties, and package these into the notion of an \emph{acceptable type theory}.
+  
+  Thirdly, we analyse the well-founded nature of traditional presentations,
+  %
+  involved in more elaborate constructions such as the categorical semantics,
+  %
+  as well as (arguably) the intuitive assignment of meaning to a theory.  % perhaps this is too much
+  %
+  This leads us to the notion of \emph{well-presented type theories}, which we hope can serve as a full-fledged proposal fulfilling our primary aim.
+  
+\subsection{Specifics}
+
+We aim, as far as possible, not to argue for any novel approach to setting up type theories, but simply to give a careful analysis of how type theories are traditionally presented, in order to lay out a generality in which such presentations can be situated.
+%
+As such, the first few components of our definition are the expected ones.
+
+We begin with an appropriate notion of \emph{signature}, for untyped syntax with variable-binding, and develop the standard notions of ``raw'' \emph{syntactic expressions} over such signatures, including substitution, translation along signature morphisms, and so on.
+
+With the syntax of types and terms properly set up, a type theory is traditionally presented by giving a collection of \emph{rules}.
+% 
+Type theorists are very accustomed to reading these --- but as anyone who has tried to explain type theory to a non-initiate knows, there is a lot to unpack here.
+%
+The core of our definition is a detailed study of the situation: what is really going on when we write and read inference rules, check that they are meaningful, and interpret them as a presentation of type theory?
+
+Take the formation rule for $\symPi$-types:
+\[
+  \inferrule* {
+    { \istype \Gamma A }
+    \and
+    { \istype {\Gamma, x \of A} B }
+  }
+  { \istype \Gamma {\prd {x \of A} B} }
+\]
+%
+When pressed to explain this, most type theorists will say that the rule represents \emph{inductive clauses} for constructing derivations, or \emph{closure conditions} for the derivability predicate:
+%
+given derivations of the judgements above the line, a derivation of the judgement below the line is constructed. In particular, if $\Gamma$, $A$ and~$B$ are syntactically valid representations of a context and types, and the judgements
+%
+\[
+ \istype{\Gamma}{A},
+ \qquad\text{and}\qquad
+ \istype{\Gamma, x \of A}{B}
+\]
+%
+are both derivable, then so is the judgement
+%
+\[
+  \istype{\Gamma}{\prd {x \of A} B}.
+\]
+%
+This understanding of rules is sufficient for explaining the definition of a specific type theory, and defining derivability of judgements.
+
+However, it is in general too permissive: to be well-behaved, type theories should not be given by arbitrary closure conditions, but only by those that can be specified syntactically by rules looking something like the traditional ones.
+%
+In other words, we want to make explicit the idea of a rule as a syntactic entity in its own right, accompanied with a mathematically precise explanation of what makes it type-theoretically acceptable, and how it gives rise to a quantified family of closure conditions.
+
+So to a first approximation, we say a rule consists of a collection of judgements --- its \emph{premises} --- and another judgement, its \emph{conclusion}.
+%
+However, a subtlety lurks: what are $\Gamma$, $A$, and $B$ in the above $\symPi$-formulation rule?
+
+The symbol $\Gamma$ is easy: we can dispense with it entirely.
+%
+We prescribe (as type theorists often do, heuristically) that all rules should be valid over arbitrary contexts, and so since the arbitrary context is always present in the interpretation of a rule as a family of closure conditions, it never needs to be included in the syntactic specification of the rule.
+%
+This precisely justifies a common “abuse of notation” in presenting type theories: the context $\Gamma$ is omitted when writing down the rules, and one mentions apologetically somewhere that all rules should be understood as over an arbitrary ambient context.
+
+Explaining $A$ and $B$ is more interesting.
+%
+They are generally called “metavariables”, and in the family of closure conditions they are indeed that --- quantified variables of the meta-theory, ranging over syntactic entities.
+%
+However, if the rule is to be considered as formal syntactic entity, $A$ and $B$ must themselves be part of that syntax.
+%
+We therefore take the premises and conclusion of rules as formed over the ambient signature of the type theory \emph{extended} with extra symbols $\symA$ and $\symB$ to represent the metavariables of the rule.
+
+These considerations result in the notion of a \emph{raw rule}, whose premises and conclusion are raw judgements over a signature extended with metavariables. A \emph{raw type theory} is then just a family of raw rules. It holds enough information to be used, but still permits arbitrariness that must be dispensed with.
+%
+At the very least, the type and term expressions appearing in the rule ought to represent derivable types and terms, respectively.
+%
+Thus in the next stage of our definition we ask that every rule be accompanied with derivations showing that the \emph{presuppositions} hold, namely, that its type expressions are derivable types and that its terms have derivable types.
+%
+Another condition that we impose on rules is \emph{tightness}, which roughly requires that the metavariables symbols be properly typed by the premises, and for rules that build term or a type judgements, that they do so in the most general form.
+
+Even though every rule of a raw type theory may be presuppositive and tight, the theory as a whole may be deficient, for example, if one of the symbols has no corresponding formation rule, or several of them. Overall we call a type theory \emph{tight} when there is bijective correspondence between its symbols and formation rules, which are tight themselves. And to make sure equality is well behaved, we also require that for each symbol there is a suitable congruence rule ensuring that the symbol commutes with equality. When a raw type theory has all these features, we call it an \emph{acceptable} type theory.
+
+Because the derivations of presuppositions appeal to the very rules they certify, an unsettling possibility of circular reasoning arises.
+%
+We resolve the matter in two ways. 
+%
+First, we add one last stage to the definition of type theories and ask that all the rules, as well as the premises within each rule, be ordered in a well-founded manner.
+%
+Second, we show that for acceptable type theories whose contexts and premises are well-founded as finite sequences, circularities can always be avoided by passing to the \emph{well-founded replacement} of the theory (\cref{sec:well-founded-replacement}).
+%
+Apart from expelling the daemons of circularity, the well-founded order supplies a useful induction principle.
+
+In the end, the definition of a general type theory has roughly five stages:
+%
+\begin{enumerate}
+\item the \emph{signature} (\cref{def:signature}) describes the arities of primitive type and term symbols that form the \emph{raw syntax} (\cref{def:raw-syntax}),
+\item \emph{raw rules} (\cref{def:raw-rule}) constitute a \emph{raw type theory} (\cref{def:raw-type-theory}),
+\item the raw rules are verified to be \emph{tight} and \emph{presuppositive} (\cref{def:tight-rule,def:weakly-presuppositive-rule}, and therefore \emph{acceptable} (\cref{def:acceptable-rule}),
+\item the raw type theory is verified to consist of acceptable symbol rules (\cref{def:symbol-rule}) and equations, that it is \emph{tight} and \emph{congruous}, and therefore \emph{acceptable} (\cref{def:theory-good-properties}).
+\item finally, an acceptable type theory may be \emph{well-presented} (\cref{def:well-presented-type-theory}) and hence \emph{well-founded} (\cref{def:well-founded-theory}), or we may pass to its \emph{well-founded replacement} (\cref{thm:wf-replacement-equivalence}).
+\end{enumerate}
+
+We readily acknowledge that there are many alternative ways of setting up type theories, each serving a useful purpose. It is simply our desire to actually give \emph{one} mathematically complete description of what type theorie\emph{s} are in general.
+
+Once the definition is complete, we should provide evidence of its scope and utility. We do so in \cref{sec:well-behavedness} by proving fundamental meta-theorems, among which are:
+%
+\begin{enumerate}
+\item Derivability of presuppositions, \cref{thm:presuppositions}, stating that the presuppositions of a derivable judgement are themselves derivable.
+\item Elimination of substitution, \cref{thm:elimination-substitution}, stating that anything that can be derived using the substitution rules can also be derived without them.
+\item Uniqueness of typing, \cref{thm:tight-uniqueness-of-typing}, stating that a term has at most one type, up to judgmental equality.
+\item An inversion principle, \cref{thm:inversion-principle}, that reconstructs the proof-relevant part of the derivation of a derivable judgement from the information given in the judgement.
+\end{enumerate}
+
+Our definitions are set up to support a meta-theoretic analysis of type theories, but deviate from how type theories are presented in practice.
+%
+First, one almost always encounters only finitary syntax in which contexts and premises are presented as finite sequences -- we call these \emph{sequential contexts and premises} and treat them in \cref{sec:sequential-contexts,sec:sequential-rules}.
+%
+Second, theories are not constructed in five stages, but presented through rules that are manifestly acceptable and free of circularities, while symbols are introduced simultaneously with their formation rules. In \cref{sec:well-presented-rules,sec:well-presented-theories} we make these notions precise by defining \emph{well-presented rules and theories}, and their realisations as raw type theories.
+
+Having heard tales about minor but insidious mistakes in the literature on the meta-theory of syntax, we decided to protect ourselves from them by formalising parts of our paper in the Coq proof assistant~\citep{coq}. An overview of the formalisation is given in \cref{sec:formalisation-coq}, including comments about the meta-mathematical foundations sufficient for carrying out our work.
+%
+The formalisation allows us to claim a high level of confidence and omission of routine syntactic arguments. Nevertheless, we still strove to make the paper self-contained by following the established standards of informal rigour.
+
+\subsection{Disclaimers}
+
+Having said what this paper is about, it is worth saying a little about what it is \emph{not}.
+
+It is most certainly not intended as a prescriptive definition of what all dependent type theories should be.
+%
+Many important type theories in the literature are not covered by our definition, and we do not mean to reject them.
+%
+The aim of this work is simply pragmatic: to encompass \emph{some large class} of theories of interest, in order to better organise and unify their study.
+%
+We very much hope our approach may be extended to wider generalities.
+
+We do not claim or aim to supersede other general approaches to studying type theories, such as those based on logical frameworks.
+%
+Such approaches are well-developed, powerful for many applications, and sidestep some complications of the present approach.
+%
+However, all such approaches (that we are aware of) work by using a somewhat modified syntax (e.g.~embedded in a larger system) --- the syntax they yield is not obviously the same as the syntax given by a “direct” or “naïve” reading of presentations of theories.
+%
+They are typically accompanied by adequacy theorems, or similar, showing equivalence between the modified syntax and the naïve, for the specific type theory under consideration.
+
+By contrast, we aim to directly study and generalise the naïve approach itself, which (to our knowledge) has not been done previously in such generality.
+%
+Our motivations are therefore largely complementary to such approaches.
+%
+A more detailed comparison is given in \cref{sec:discussion-and-related-work}.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "general-type-theories"
+%%% End:

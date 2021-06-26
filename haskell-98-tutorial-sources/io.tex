@@ -1,0 +1,403 @@
+%**<title>A Gentle Introduction to Haskell: IO</title>
+
+%**~header
+
+\section{Input/Output}
+\label{tut-io}
+
+The I/O system in Haskell is purely functional, yet has all of the
+expressive power found in conventional programming languages.  In
+imperative languages, programs proceed via \mbox{$\it actions$} which examine and
+modify the current state of the world.  Typical actions include
+reading and setting global variables, writing files, reading input,
+and opening windows.  Such actions are also a part of Haskell but are
+cleanly separated from the purely functional core of the language.
+
+Haskell's I/O system is built around a somewhat daunting mathematical
+foundation: the \mbox{$\it monad$}.  However, understanding of the underlying
+monad theory is not necessary to program using the I/O system.
+Rather, monads are a conceptual structure into which I/O happens to fit.
+It is no more necessary to understand monad theory to perform Haskell
+I/O than it is to understand group theory to do simple arithmetic.  A
+detailed explanation of monads is found in Section \ref{tut-monads}.
+
+The monadic operators that the I/O system 
+is built upon are also used for other purposes; we will look
+more deeply into monads later.  For now, we will avoid the term monad
+and concentrate on the use of the I/O system.  It's best to think of
+the I/O monad as simply an abstract data type.   
+
+Actions are defined rather than invoked within the expression
+language of Haskell.
+Evaluating the definition of an action doesn't actually
+cause the action to happen.  Rather, the invocation of actions takes
+place outside of the expression evaluation we have considered up to
+this point.
+
+Actions are either atomic, as defined in system primitives, or
+are a sequential composition of other actions.  
+The I/O monad contains primitives which
+build composite actions, a process similar to joining
+statements in sequential order using `\mbox{\tt ;}' in other languages.  Thus
+the monad serves as the glue which binds together the actions in a
+program. 
+
+\subsection{Basic I/O Operations}
+
+Every I/O action returns a value.  In the type system, the return value is
+`tagged' with \mbox{\tt IO} type, distinguishing actions from other
+values.  For example, the type 
+of the function \mbox{\tt getChar} is:
+\bprog
+\mbox{\tt getChar\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ \ \ IO\ Char}
+\eprog
+The \mbox{\tt IO\ Char} indicates that \mbox{\tt getChar}, when invoked, performs
+some action which returns a character.  Actions which return no
+interesting values use the unit type, \mbox{\tt ()}.  For example, the
+\mbox{\tt putChar} function: 
+\bprog
+\mbox{\tt putChar\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ \ \ \ Char\ ->\ IO\ ()}
+\eprog
+takes a character as an argument but returns nothing useful. 
+The unit type is similar to \mbox{\tt void} in other languages.
+
+Actions are sequenced using an operator that has a
+rather cryptic name: \mbox{\tt >>=} (or `bind').   Instead of using this
+operator directly, we choose some syntactic sugar, the \mbox{\tt do}
+notation,  to hide these sequencing operators under a syntax resembling
+more conventional languages.
+The \mbox{\tt do} notation can be trivially expanded to \mbox{\tt >>=}, 
+as described in \see{do-expressions}.
+
+The keyword \mbox{\tt do} introduces a sequence of statements
+which are executed in order.  A statement is either an action,
+a pattern bound to the result of an action using \mbox{\tt <-}, or
+a set of local definitions introduced using \mbox{\tt let}.  The \mbox{\tt do} notation
+uses layout in the same manner as \mbox{\tt let} or \mbox{\tt where} so we
+can omit braces and semicolons with proper indentation.  Here is a
+simple program to read and then print a character:
+\bprog
+\mbox{\tt main\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ IO\ ()}\\
+\mbox{\tt main\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ do\ c\ <-\ getChar}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ putChar\ c}
+\eprog
+The use of the name \mbox{\tt main} is important: \mbox{\tt main} 
+is defined to be the entry point of a Haskell program (similar
+to the \mbox{\tt main} function in C), and
+must have an \mbox{\tt IO} type, usually \mbox{\tt IO\ ()}.  (The name \mbox{\tt main} is special
+only in the module \mbox{\tt Main}; we will have more to say about modules
+later.)  This 
+program performs two actions in 
+sequence: first it reads in a character, binding the result to the
+variable c, and then prints the character.  Unlike a \mbox{\tt let} expression
+where variables are scoped over all definitions, the
+variables defined by \mbox{\tt <-} are only in scope in the following statements.
+
+There is still one missing piece.  We can invoke actions and examine
+their results using \mbox{\tt do}, but how do we return a value from a sequence
+of actions?  For example, consider the \mbox{\tt ready} function that reads a
+character and returns \mbox{\tt True} if the character was a `y':
+\bprog
+\mbox{\tt ready\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ IO\ Bool}\\
+\mbox{\tt ready\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ do\ c\ <-\ getChar}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ c\ ==\ 'y'\ \ --\ Bad!!!}
+\eprog
+This doesn't work because the second statement in the `do' is just a
+boolean value, not an action.  We need to take this boolean and create
+an action that does nothing but return the boolean as its result.
+The \mbox{\tt return} function does just that:
+\bprog
+\mbox{\tt return\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ \ \ a\ ->\ IO\ a}
+\eprog
+The \mbox{\tt return} function completes the set of sequencing primitives.  The
+last line of \mbox{\tt ready} should read \mbox{\tt return\ (c\ ==\ 'y')}.
+
+We are now ready to look at more complicated I/O functions.  First,
+the function \mbox{\tt getLine}:
+\bprog
+\mbox{\tt getLine\ \ \ \ \ ::\ IO\ String}\\
+\mbox{\tt getLine\ \ \ \ \ =\ \ do\ c\ <-\ getChar}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ if\ c\ ==\ '{\char'134}n'}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ then\ return\ ""}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ else\ do\ l\ <-\ getLine}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ return\ (c:l)}
+\eprog
+Note the second \mbox{\tt do} in the else clause.  Each \mbox{\tt do} introduces a single
+chain of statements.   Any intervening
+construct, such as the \mbox{\tt if}, must use a new \mbox{\tt do} to initiate further
+sequences of actions.
+
+The \mbox{\tt return} function admits an ordinary value such as a boolean to
+the realm of I/O actions. 
+What about the other direction?  Can we invoke some I/O actions within an
+ordinary expression?  For example, how can we say \mbox{\tt x\ +\ print\ y} 
+in an expression so that \mbox{\tt y} is printed out as the
+expression evaluates?  The answer is that we can't!  It is \mbox{$\it not$} possible to
+sneak into the imperative universe while in the midst of purely
+functional code.  Any value `infected' by the imperative world must be
+tagged as such.  A function such as 
+\bprog
+\mbox{\tt f\ \ \ \ ::\ \ Int\ ->\ Int\ ->\ Int}
+\eprog
+absolutely cannot do any I/O since \mbox{\tt IO} does not
+appear in the returned type.
+This fact is often quite distressing to
+programmers used to placing print statements liberally throughout
+their code during debugging.  There are, in fact, some unsafe
+functions available to get around this problem but these are
+better left to advanced programmers.  Debugging packages (like \mbox{\tt Trace})
+often make liberal use of these `forbidden functions' in an entirely safe
+manner.  
+
+\subsection{Programming With Actions}
+I/O actions are ordinary Haskell
+values: they may be passed to functions, placed in structures, and
+used as any other Haskell value.  Consider this list of actions:
+\bprog
+\mbox{\tt todoList\ ::\ [IO\ ()]}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt todoList\ =\ [putChar\ 'a',}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ do\ putChar\ 'b'}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ putChar\ 'c',}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ do\ c\ <-\ getChar}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ putChar\ c]}
+\eprog
+This list doesn't actually invoke any actions---it simply holds them.
+To join these actions into a single action, a function such as
+\mbox{\tt sequence{\char'137}} is needed:
+\bprog
+\mbox{\tt sequence{\char'137}\ \ \ \ \ \ \ \ ::\ [IO\ ()]\ ->\ IO\ ()}\\
+\mbox{\tt sequence{\char'137}\ []\ \ \ \ \ =\ \ return\ ()}\\
+\mbox{\tt sequence{\char'137}\ (a:as)\ =\ \ do\ a}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ sequence\ as}
+\eprog
+This can be simplified by noting that \mbox{\tt do\ x;y} is expanded to
+\mbox{\tt x\ >>\ y} (see Section \ref{tut-monadic-classes}).  This pattern of
+recursion is captured by the \mbox{\tt foldr} function (see the Prelude for a
+definition of \mbox{\tt foldr}); a better definition of \mbox{\tt sequence{\char'137}} is:
+\bprog
+\mbox{\tt sequence{\char'137}\ \ \ \ \ \ \ \ ::\ [IO\ ()]\ ->\ IO\ ()}\\
+\mbox{\tt sequence{\char'137}\ \ \ \ \ \ \ \ =\ \ foldr\ (>>)\ (return\ ())}
+\eprog
+The \mbox{\tt do} notation is a useful tool but in this case the underlying
+monadic operator, \mbox{\tt >>}, is more appropriate.  An understanding of the
+operators upon which \mbox{\tt do} is built is quite useful to the Haskell
+programmer. 
+
+The \mbox{\tt sequence{\char'137}} function can be used to construct \mbox{\tt putStr} from
+\mbox{\tt putChar}: 
+\bprog
+\mbox{\tt putStr\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ String\ ->\ IO\ ()}\\
+\mbox{\tt putStr\ s\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ sequence{\char'137}\ (map\ putChar\ s)}
+\eprog
+One of the differences between Haskell and conventional
+imperative programming can be seen in \mbox{\tt putStr}.  In an imperative
+language, mapping an imperative version of \mbox{\tt putChar} over the string
+would be sufficient to print it.  In Haskell, however, the \mbox{\tt map}
+function does not perform any action.  Instead it creates a list of
+actions, one for each character in the string.  The folding operation
+in \mbox{\tt sequence{\char'137}}
+uses the \mbox{\tt >>} function to combine all of the individual actions into a
+single action.  The \mbox{\tt return\ ()} used here is  
+quite necessary -- \mbox{\tt foldr} needs a null action at the end of the chain
+of actions it creates (especially if there are no characters in the
+string!). 
+
+The Prelude and the libraries  contains many functions which are
+useful for sequencing I/O actions.  These are usually generalized to
+arbitrary monads; any function with a context including \mbox{\tt Monad\ m\ =>}
+works with the \mbox{\tt IO} type. 
+
+\subsection{Exception Handling}
+
+So far, we have avoided the issue of exceptions during I/O operations.
+What would happen if \mbox{\tt getChar} encounters an end of
+file?\footnote{We use the term \mbox{$\it error$} for \mbox{$\it \bot$}: a condition which
+cannot be recovered from such as non-termination or pattern match
+failure.  Exceptions, on the other hand, can be caught and handled
+within the I/O monad.}
+To deal with exceptional conditions such as `file not found' within
+the I/O monad, a handling mechanism is used, similar in functionality
+to the one in standard ML. 
+No special syntax or semantics are used; exception handling is part of
+the definition of the I/O sequencing operations.
+
+Errors are encoded using a special data type, \mbox{\tt IOError}.  This type
+represents all possible exceptions that may occur within the I/O monad.
+This is an abstract type: no constructors for \mbox{\tt IOError} are available
+to the user.  Predicates allow \mbox{\tt IOError} values to be
+queried.  For example, the function
+\bprog
+\mbox{\tt isEOFError\ \ \ \ \ \ \ ::\ IOError\ ->\ Bool}
+\eprog
+determines whether an error was caused by an end-of-file condition.
+By making \mbox{\tt IOError} abstract, new sorts of errors may be added to the
+system without a noticeable change to the data type.  The function
+\mbox{\tt isEOFError} is defined in a separate library, \mbox{\tt IO}, and must be
+explicitly imported into a program.
+
+An {\em exception handler} has type \mbox{\tt IOError\ ->\ IO\ a}.
+The \mbox{\tt catch} function associates an exception handler with an action or
+set of actions:
+\bprog
+\mbox{\tt catch\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ IO\ a\ ->\ (IOError\ ->\ IO\ a)\ ->\ IO\ a}
+\eprog
+The arguments to \mbox{\tt catch} are an action and a handler.  If the action
+succeeds, its result is returned without invoking the handler.  If an
+error occurs, it is passed to the handler as a value of type
+\mbox{\tt IOError} and the action associated with the handler is then invoked.
+For example, this version of \mbox{\tt getChar} returns a newline when an error
+is encountered:
+\bprog
+\mbox{\tt getChar'\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ IO\ Char}\\
+\mbox{\tt getChar'\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ getChar\ `catch`\ ({\char'134}e\ ->\ return\ '{\char'134}n')}
+\eprog
+This is rather crude since it treats all errors in the same manner.  If
+only end-of-file is to be recognized, the error value must be queried:
+\bprog
+\mbox{\tt getChar'\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ IO\ Char}\\
+\mbox{\tt getChar'\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ getChar\ `catch`\ eofHandler\ where}\\
+\mbox{\tt \ \ \ \ eofHandler\ e\ =\ if\ isEofError\ e\ then\ return\ '{\char'134}n'\ else\ ioError\ e}
+\eprog
+The \mbox{\tt ioError} function used here throws an exception on to the next
+exception handler.  The type of \mbox{\tt ioError} is
+\bprog
+\mbox{\tt ioError\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ IOError\ ->\ IO\ a}
+\eprog
+It is similar to
+\mbox{\tt return} except that it transfers control to the exception handler
+instead of proceeding to the next 
+I/O action.  Nested calls to \mbox{\tt catch} are
+permitted, and produce nested exception handlers.
+
+Using \mbox{\tt getChar'}, we can redefine \mbox{\tt getLine} to demonstrate the use of
+nested handlers:
+\bprog
+\mbox{\tt getLine'\ \ \ \ \ \ \ \ ::\ IO\ String}\\
+\mbox{\tt getLine'\ \ \ \ \ \ \ \ =\ catch\ getLine''\ ({\char'134}err\ ->\ return\ ("Error:\ "\ ++\ show\ err))}\\
+\mbox{\tt \ \ \ \ \ \ \ \ where}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ getLine''\ =\ do\ c\ <-\ getChar'}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ if\ c\ ==\ '{\char'134}n'\ then\ return\ ""}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ else\ do\ l\ <-\ getLine'}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ return\ (c:l)}
+\eprog
+
+The nested error handlers allow \mbox{\tt getChar'} to catch end of file
+while any other error results in a string starting with \mbox{\tt "Error:\ "}
+from \mbox{\tt getLine'}.
+
+For convenience, Haskell provides a default exception handler at the
+topmost level of a program that prints out the
+exception and terminates the program.
+
+\subsection{Files, Channels, and Handles}
+
+Aside from the I/O monad and the exception handling mechanism it
+provides, I/O facilities in Haskell are for the most part quite
+similar to those in other languages.  Many of these functions are in
+the \mbox{\tt IO} library instead of the Prelude and thus must be explicitly
+imported to be in scope (modules and importing are discussed in
+Section~\ref{tut-modules}).  Also, many of these functions are
+discussed in the Library Report instead of the main report.
+
+Opening a file creates a \mbox{$\it handle$} (of type \mbox{\tt Handle}) for use in I/O
+transactions.  Closing the handle closes the associated file:
+\bprog
+\mbox{\tt type\ FilePath\ \ \ \ \ \ \ \ \ =\ \ String\ \ --\ path\ names\ in\ the\ file\ system}\\
+\mbox{\tt openFile\ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ FilePath\ ->\ IOMode\ ->\ IO\ Handle}\\
+\mbox{\tt hClose\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ Handle\ ->\ IO\ ()\ }\\
+\mbox{\tt data\ IOMode\ \ \ \ \ \ \ \ \ \ \ =\ \ ReadMode\ |\ WriteMode\ |\ AppendMode\ |\ ReadWriteMode}
+\eprog
+Handles can also be associated with \mbox{$\it channels$}: communication ports
+not directly attached to files.  A few channel handles are predefined,
+including \mbox{\tt stdin} (standard input), \mbox{\tt stdout} (standard output), and
+\mbox{\tt stderr} (standard error).  Character level I/O operations include
+\mbox{\tt hGetChar} and \mbox{\tt hPutChar}, which take a handle as an argument.  The
+\mbox{\tt getChar} function used previously can be defined as:
+\bprog
+\mbox{\tt getChar\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ hGetChar\ stdin}
+\eprog
+Haskell also allows the entire contents of a file or channel to be
+returned as a single string:
+\bprog
+\mbox{\tt getContents\ \ \ \ \ \ \ \ \ \ \ \ ::\ Handle\ ->\ IO\ String}
+\eprog
+Pragmatically, it may seem that \mbox{\tt getContents} must immediately read an
+entire file or channel, resulting in poor space and time performance
+under certain conditions.  However, this is not the case.  The key
+point is that \mbox{\tt getContents} returns a ``lazy'' (i.e. non-strict) list
+of characters (recall that strings are just lists of characters in
+Haskell), whose elements are read ``by demand'' just like any other
+list.  An implementation can be expected to implement this
+demand-driven behavior by reading one character at a time from the
+file as they are required by the computation.
+
+In this example, a Haskell program copies one file to another:
+\bprog
+\mbox{\tt main\ =\ do\ fromHandle\ <-\ getAndOpenFile\ "Copy\ from:\ "\ ReadMode}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ toHandle\ \ \ <-\ getAndOpenFile\ "Copy\ to:\ "\ WriteMode\ }\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ contents\ \ \ <-\ hGetContents\ fromHandle}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ hPutStr\ toHandle\ contents}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ hClose\ toHandle}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ putStr\ "Done."}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt getAndOpenFile\ \ \ \ \ \ \ \ \ \ ::\ String\ ->\ IOMode\ ->\ IO\ Handle}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt getAndOpenFile\ prompt\ mode\ =}\\
+\mbox{\tt \ \ \ \ do\ putStr\ prompt}\\
+\mbox{\tt \ \ \ \ \ \ \ name\ <-\ getLine}\\
+\mbox{\tt \ \ \ \ \ \ \ catch\ (openFile\ name\ mode)}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ ({\char'134}{\char'137}\ ->\ do\ putStrLn\ ("Cannot\ open\ "++\ name\ ++\ "{\char'134}n")}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ getAndOpenFile\ prompt\ mode)}\\
+\mbox{\tt }\\[-8pt]
+\mbox{\tt }
+\eprog
+By using the lazy \mbox{\tt getContents} function, the entire contents of the
+file need not be read into memory all at once.  If \mbox{\tt hPutStr} chooses
+to buffer the output by writing the string in fixed sized blocks of
+characters, only one block of the input file needs to be in memory at
+once.  The input file is closed implicitly when the last character has
+been read.
+
+\subsection{Haskell and Imperative Programming}
+
+As a final note, I/O programming raises an important issue: this
+style looks suspiciously like ordinary imperative programming.  For
+example, the \mbox{\tt getLine} function:
+\bprog
+\mbox{\tt getLine\ \ \ \ \ \ \ \ \ =\ do\ c\ <-\ getChar}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ if\ c\ ==\ '{\char'134}n'}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ then\ return\ ""}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ else\ do\ l\ <-\ getLine}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ return\ (c:l)}
+\eprog
+bears a striking similarity to imperative code (not in any real language) :
+\bprog
+\mbox{\tt }\\[-8pt]
+\mbox{\tt function\ getLine()\ {\char'173}}\\
+\mbox{\tt \ \ c\ :=\ getChar();}\\
+\mbox{\tt \ \ if\ c\ ==\ `{\char'134}n`\ then\ return\ ""}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ else\ {\char'173}l\ :=\ getLine();}\\
+\mbox{\tt \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ return\ c:l{\char'175}{\char'175}}
+\eprog
+So, in the end, has Haskell simply re-invented the imperative wheel?
+
+In some sense, yes.  The I/O monad constitutes a small imperative
+sub-language inside Haskell, and thus the I/O component of a program
+may appear similar to ordinary imperative code.  But there is one
+important difference: There is no special semantics that the user
+needs to deal with.  In particular, equational reasoning in Haskell is
+not compromised.  The imperative feel of the monadic code in a program
+does not detract from the functional aspect of Haskell.  An
+experienced functional programmer should be able to minimize the
+imperative component of the program, only using the I/O monad for a
+minimal amount of top-level sequencing.  The
+monad cleanly separates the functional and imperative
+program components.  In contrast, imperative languages with functional
+subsets do not generally have any well-defined barrier between the
+purely functional and imperative worlds.
+
+
+%**~footer
+
+

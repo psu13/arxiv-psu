@@ -1,0 +1,420 @@
+%**<title>A Gentle Introduction to Haskell: Standard Classes</title>
+
+%**~header
+
+\section{Standard Haskell Classes}
+
+In this section we introduce the predefined standard type
+classes in Haskell.  We have simplified these classes somewhat by
+omitting some of the less interesting methods in these classes; the
+Haskell report contains a more complete description.  Also, some of
+the standard classes are part of the standard Haskell libraries; these
+are described in the Haskell Library Report.
+
+\subsection{Equality and Ordered Classes}
+
+The classes @Eq@ and @Ord@ have already been discussed.  The
+definition of @Ord@ in the Prelude is somewhat more complex than the
+simplified version of @Ord@ presented earlier.  In particular, note the
+@compare@ method:
+\bprog
+@
+data Ordering           =  EQ | LT | GT 
+compare                 :: Ord a => a -> a -> Ordering
+@
+\eprog
+The @compare@ method is sufficient to define all other
+methods (via defaults) in this class and is the best way to create
+@Ord@ instances. 
+
+\subsection{The Enumeration Class}
+\label{tut-enum-classes}
+
+Class @Enum@ has a set of operations that underlie the syntactic sugar of
+arithmetic sequences; for example, the arithmetic sequence expression
+@[1,3..]@ stands for @enumFromThen 1 3@ (see
+\see{arithmetic-sequences} for the formal translation).  
+We can now see that arithmetic sequence expressions can be used to
+generate lists of any type that is an instance of @Enum@.  This
+includes not only most numeric types, but also @Char@, so that, for
+instance, @['a'..'z']@ denotes the list of lower-case letters in
+alphabetical order.  Furthermore, user-defined enumerated types like
+@Color@ can easily be given @Enum@ instance declarations.  If so:
+\[ @[Red .. Violet]@\ \ \ \ \red\ \ \ \ @[Red, Green, Blue, Indigo, Violet]@
+\]
+Note that such a sequence is {\em arithmetic} in the sense that the
+increment between values is constant, even though the values are not
+numbers.  Most types in @Enum@ can be mapped onto fixed precision
+integers; for these, 
+the @fromEnum@ and @toEnum@ convert between @Int@ and a type in @Enum@.
+
+\subsection{The Read and Show Classes}
+\label{tut-text-class}
+
+The instances of class @Show@ are those types that can be converted
+to character strings (typically for I/O).  The class @Read@ 
+provides operations for parsing character strings to obtain the values
+they may represent.  The simplest function in the class @Show@ is
+@show@: 
+\bprog
+@
+show                    :: (Show a) => a -> String
+@
+\eprog
+Naturally enough, @show@ takes any value of an appropriate type and
+returns its representation as a character string (list of characters),
+as in @show (2+2)@, which results in @"4"@.  This is fine as far as
+it goes, but we typically need to produce more complex strings
+that may have the representations of many values in them, as in
+\bprog
+@
+"The sum of " ++ show x ++ " and " ++ show y ++ " is " ++ show (x+y) ++ "."
+@
+\eprog
+and after a while, all that concatenation gets to be a bit
+inefficient.  Specifically, let's consider a function to represent
+the binary trees of Section \ref{tut-recursive-types} as a string,
+with suitable markings to show the nesting of subtrees and the
+separation of left and right branches (provided the element type is
+representable as a string):
+\bprog
+@
+showTree                :: (Show a) => Tree a -> String
+showTree (Leaf x)       =  show x
+showTree (Branch l r)   =  "<" ++ showTree l ++ "|" ++ showTree r ++ ">"
+@
+\eprog
+Because @(++)@ has time complexity linear in the length of its
+left argument, @showTree@ is potentially quadratic in the size of the
+tree. 
+
+To restore linear complexity, the function @shows@ is provided:
+\bprog
+@
+shows                   :: (Show a) => a -> String -> String
+@
+\eprog
+@shows@ takes a printable value and a string and returns
+that string with the value's representation concatenated
+at the front.  The second argument serves as a sort of string
+accumulator, and @show@ can now be defined as @shows@ with
+the null accumulator.  This is the default definition of
+@show@ in the @Show@ class definition:
+\bprog
+@
+show x                  =  shows x ""
+@
+\eprog
+We can use @shows@ to define a more efficient version of @showTree@,
+which also has a string accumulator argument:
+\bprog
+@
+showsTree               :: (Show a) => Tree a -> String -> String
+showsTree (Leaf x) s    =  shows x s
+showsTree (Branch l r) s=  '<' : showsTree l ('|' : showsTree r ('>' : s))
+@
+\eprog
+This solves our efficiency problem (@showsTree@ has linear complexity),
+but the presentation of this function (and others like it) can be
+improved.  First, let's create a type synonym:
+\bprog
+@
+type ShowS              =  String -> String
+@
+\eprog
+This is the type of a function that returns a string representation of
+something followed by an accumulator string.
+Second, we can avoid carrying accumulators around, and also avoid
+amassing parentheses at the right end of long constructions, by using
+functional composition:
+\bprog
+@
+showsTree               :: (Show a) => Tree a -> ShowS
+showsTree (Leaf x)      =  shows x
+showsTree (Branch l r)  =  ('<':) . showsTree l . ('|':) . showsTree r . ('>':)
+@
+\eprog
+Something more important than just tidying up the code has come about
+by this transformation:  we have raised the presentation from an
+{\em object level} (in this case, strings) to a {\em function level.}
+We can think of the typing as saying that @showsTree@ maps a tree
+into a {\em showing function}.  Functions like @('<' :)@ or
+@("a string" ++)@ are primitive showing functions, and we build up
+more complex functions by function composition.
+
+Now that we can turn trees into strings, let's turn to the inverse
+problem.  The basic idea is a parser for a type @a@, which
+is a function that takes a string and returns a list of @(a, String)@
+pairs~\cite{wadler:list-of-successes}.  The Prelude provides
+a type synonym for such functions:
+\bprog
+@
+type ReadS a            =  String -> [(a,String)]
+@
+\eprog
+Normally, a parser returns a singleton list, containing a value
+of type @a@ that was read from the input string and the remaining
+string that follows what was parsed.  If no parse was possible, however,
+the result is the empty list, and if there is more than one possible
+parse (an ambiguity), the resulting list contains more than one pair.
+The standard function @reads@ is a parser for any instance of @Read@:
+\bprog
+@
+reads                   :: (Read a) => ReadS a
+@
+\eprog
+We can use this function to define a parsing function for the string
+representation of binary trees produced by @showsTree@.  List comprehensions
+give us a convenient idiom for constructing such parsers:\footnote{An
+even more elegant approach to parsing uses monads and parser
+combinators.  These are part of a standard parsing library distributed
+with most Haskell systems.}
+\bprog
+@
+readsTree               :: (Read a) => ReadS (Tree a)
+readsTree ('<':s)       =  [(Branch l r, u) | (l, '|':t) <- readsTree s,
+                                              (r, '>':u) <- readsTree t ]
+readsTree s             =  [(Leaf x, t)     | (x,t)      <- reads s]
+@
+\eprog
+Let's take a moment to examine this function definition in detail.
+There are two main cases to consider:  If the first character of the
+string to be parsed is @'<'@, we should have the representation of
+a branch; otherwise, we have a leaf.  In the first case, calling the
+rest of the input string following the opening angle bracket @s@,
+any possible parse must be a tree @Branch l r@ with remaining string @u@,
+subject to the following conditions:
+\begin{enumerate}
+\item
+The tree @l@ can be parsed from the beginning of the string @s@.
+\item
+The string remaining (following the representation of @l@) begins
+with @'|'@.  Call the tail of this string @t@.
+\item
+The tree @r@ can be parsed from the beginning of @t@.
+\item
+The string remaining from that parse begins with @'>'@, and
+@u@ is the tail.
+\end{enumerate}
+Notice the expressive power we get from the combination of pattern
+matching with list comprehension: the form of a resulting parse is
+given by the main expression of the list comprehension, the first
+two conditions above are expressed by the first generator
+(``@(l, '|':t)@ is drawn from the list of parses of @s@''), and the
+remaining conditions are expressed by the second generator.
+
+The second defining equation above just says that to parse the
+representation of a leaf, we parse a representation of the element
+type of the tree and apply the constructor @Leaf@ to the value thus
+obtained.
+
+We'll accept on faith for the moment that there is a @Read@ (and
+@Show@) instance
+of @Integer@ (among many other types), providing a @reads@ that behaves
+as one would expect, e.g.:
+\[ @(reads "5 golden rings") :: [(Integer,String)]@\ \ \ \ \red\ \ \ \ %
+@[(5, " golden rings")]@ \]
+With this understanding, the reader should verify the following evaluations:
+\[\ba{lcl}
+  @readsTree "<1|<2|3>>"@&\ \ \ \ \red\ \ \ \ &
+    @[(Branch (Leaf 1) (Branch (Leaf 2) (Leaf 3)), "")]@\\
+  @readsTree "<1|2"@     &\ \ \ \ \red\ \ \ \ & @[]@
+\ea\]
+
+There are a couple of shortcomings in our definition of @readsTree@.
+One is that the parser is quite rigid, allowing no white space before
+or between the elements of the tree representation; the other is that
+the way we parse our punctuation symbols is quite different from the
+way we parse leaf values and subtrees, this lack of uniformity making
+the function definition harder to read.  We can address both of these
+problems by using the lexical analyzer provided by the Prelude:
+\bprog
+@
+lex                     :: ReadS String
+@
+\eprog
+@lex@ normally returns a singleton list containing a
+pair of strings: the first lexeme in the input string and the remainder
+of the input.  The lexical rules are those of Haskell programs,
+including comments, which @lex@ skips, along with whitespace.
+If the input string is empty or contains only whitespace and comments,
+@lex@ returns @[("","")]@; if the input is not empty in this sense,
+but also does not begin with a valid lexeme after any leading whitespace
+and comments, @lex@ returns @[]@.
+
+Using the lexical analyzer, our tree parser now looks like this:
+\bprog
+@
+readsTree               :: (Read a) => ReadS (Tree a)
+readsTree s             =  [(Branch l r, x) | ("<", t) <- lex s,
+                                              (l,   u) <- readsTree t,
+                                              ("|", v) <- lex u,
+                                              (r,   w) <- readsTree v,
+                                              (">", x) <- lex w         ]
+                           ++
+                           [(Leaf x, t)     | (x,   t) <- reads s       ]
+@
+\eprog
+
+We may now wish to use @readsTree@ and @showsTree@ to declare 
+@(Read a) => Tree a@ an instance of @Read@ and @(Show a) => Tree a@ an
+instance of @Show@.  This would allow us to
+use the generic overloaded functions from the Prelude to parse and
+display trees.  Moreover, we would automatically then be able to parse
+and display many other types containing trees as components, for
+example, @[Tree Integer]@.  As it turns out, @readsTree@ and @showsTree@
+are of almost the right types to be @Show@ and @Read@ methods
+% , needing
+% only the addition of an extra parameter each that has do do with
+% parenthesization of forms with infix constructors.
+The @showsPrec@
+and @readsPrec@ methods are parameterized versions of @shows@ and
+@reads@.  The extra parameter is a precedence level, used to properly
+parenthesize expressions containing infix constructors.  For types
+such as @Tree@, the precedence can be ignored.  The @Show@ and @Read@
+instances for @Tree@ are:
+\bprog
+@
+instance Show a => Show (Tree a) where
+    showsPrec _ x = showsTree x
+
+instance Read a => Read (Tree a) where
+    readsPrec _ s = readsTree s
+@
+\eprog
+Alternatively, the @Show@ instance could be defined in terms of
+@showTree@: 
+\bprog
+@
+instance Show a => Show (Tree a) where
+   show t = showTree t
+@
+\eprog
+This, however, will be less efficient than the @ShowS@ version.  Note
+that the @Show@ class defines default methods for both @showsPrec@ and
+@show@, allowing the user to define either one of these in an instance
+declaration.  Since these defaults are mutually recursive, an instance
+declaration that defines neither of these functions will loop when
+called.  Other classes such as @Num@ also have these ``interlocking
+defaults''. 
+
+We refer the interested reader to \see{derived-appendix} for details
+of the @Read@ and @Show@ classes.
+
+We can test the @Read@ and @Show@ instances by applying @(read . show)@
+(which should be the identity) to some trees, where @read@ is a
+specialization of @reads@:
+\bprog
+@
+read                    :: (Read a) => String -> a
+@
+\eprog
+This function fails if there is not a unique parse or if the input
+contains anything more than a representation of one value of type @a@
+(and possibly, comments and whitespace).
+
+\subsection{Derived Instances}
+\label{tut-derived-instances}
+
+Recall the @Eq@ instance for trees we presented in Section
+\ref{tut-type-classes}; such a declaration is
+simple---and boring---to produce: we require that the
+element type in the leaves be an equality type; then, two leaves are
+equal iff they contain equal elements, and two branches are equal iff
+their left and right subtrees are equal, respectively.  Any other two
+trees are unequal:
+\bprog
+@
+instance  (Eq a) => Eq (Tree a)  where
+    (Leaf x)     == (Leaf y)        =  x == y
+    (Branch l r) == (Branch l' r')  =  l == l' && r == r'
+    _            == _               =  False
+@
+\eprog
+
+Fortunately, we don't need to go through this tedium every time we
+need equality operators for a new type; the @Eq@ instance can be {\em
+derived automatically} from the @data@ declaration if we so specify:
+\bprog
+@
+data  Tree a            =  Leaf a | Branch (Tree a) (Tree a)  deriving Eq
+@
+\eprog
+The @deriving@ clause implicitly produces an @Eq@ instance declaration
+just like the one in Section \ref{tut-type-classes}.  Instances of @Ord@,
+@Enum@, @Ix@, @Read@, and @Show@ can also be generated by the
+@deriving@ clause. 
+\syn{More than one class name can be specified, in which case the list
+of names must be parenthesized and the names separated by commas.}
+
+The derived @Ord@ instance for @Tree@ is slightly more complicated than
+the @Eq@ instance:
+\bprog
+@
+instance  (Ord a) => Ord (Tree a)  where
+    (Leaf _)     <= (Branch _)      =  True
+    (Leaf x)     <= (Leaf y)        =  x <= y
+    (Branch _)   <= (Leaf _)        =  False
+    (Branch l r) <= (Branch l' r')  =  l == l' && r <= r' || l <= l'
+@
+\eprog
+This specifies a {\em lexicographic} order:  Constructors are ordered
+by the order of their appearance in the @data@ declaration, and the
+arguments of a constructor are compared from left to right.  Recall
+that the built-in list type is semantically equivalent to an ordinary
+two-constructor type.  In fact, this is the full declaration:
+\bprog
+@
+data [a]        = [] | a : [a] deriving (Eq, Ord)     -- pseudo-code
+@
+\eprog
+(Lists also have @Show@ and @Read@ instances, which are not derived.)
+The derived @Eq@ and @Ord@ instances for lists are the usual ones; in
+particular, character strings, as lists of characters, are ordered as
+determined by the underlying @Char@ type, with an initial substring
+comparing less than a longer string; for example, @"cat" < "catalog"@.
+
+In practice, @Eq@ and @Ord@ instances are almost always derived,
+rather than user-defined.  In fact, we should provide our own
+definitions of equality and ordering predicates only with some
+trepidation, being careful to maintain the expected algebraic
+properties of equivalence relations and total orders.
+An intransitive @(==)@ predicate, for example, could be disastrous,
+confusing readers of the program and confounding manual or
+automatic program transformations that rely on the @(==)@ predicate's
+being an approximation to definitional equality.  Nevertheless,
+it is sometimes necessary to provide @Eq@ or @Ord@ instances 
+different from those that would be derived; probably the most
+important example is that of an abstract data type in which different
+concrete values may represent the same abstract value.
+
+An enumerated type can have a derived @Enum@ instance, and here again,
+the ordering is that of the constructors in the @data@ declaration.
+For example:
+\bprog
+@
+data Day = Sunday | Monday | Tuesday | Wednesday
+         | Thursday | Friday | Saturday         deriving (Enum)
+@
+\eprog 
+Here are some simple examples using the derived instances for this type:
+\[\ba{lcl}
+@[Wednesday .. Friday]@   \ \ &\red&\ \ @[Wednesday, Thursday, Friday]@\\
+@[Monday, Wednesday ..]@\ \ &\red&\ \ @[Monday, Wednesday, Friday]@
+\ea\]
+
+Derived @Read@ (@Show@) instances are possible for all types
+whose component types also have @Read@ (@Show@) instances.
+(@Read@ and @Show@ instances for most of the standard types
+are provided by the Prelude.  Some types, such as the function type @(->)@,
+have a @Show@ instance but not a corresponding @Read@.)  The textual
+representation 
+defined by a derived @Show@ instance is consistent with the
+appearance of constant Haskell expressions of the type in question.
+For example, if we add @Show@ and @Read@ to the @deriving@ clause for type
+@Day@, above, we obtain
+\[ @show [Monday .. Wednesday]@\ \ \ \ \red\ \ \ \ 
+   @"[Monday,Tuesday,Wednesday]"@
+\]
+
+%**~footer

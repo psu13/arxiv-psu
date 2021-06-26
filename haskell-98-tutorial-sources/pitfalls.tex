@@ -1,0 +1,83 @@
+%**<title>A Gentle Introduction to Haskell: Typing Pitfalls</title>
+%**~header
+
+\section{Typing Pitfalls}
+
+This short section give an intuitive description of a few common
+problems that novices run into using Haskell's type system.
+
+\subsection{Let-Bound Polymorphism}
+
+Any language using the Hindley-Milner type system has what is called
+{\em let-bound polymorphism}, because identifiers not bound using a
+\mbox{\tt let} or \mbox{\tt where} clause (or at the top level of a module) are limited
+with respect to their polymorphism.  In particular, a {\em
+lambda-bound} function (i.e., one passed as argument to another
+function) cannot be instantiated in two different ways.  For example,
+this program is illegal:
+\bprog
+\mbox{\tt let\ f\ g\ \ =\ \ (g\ [],\ g\ 'a')\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ --\ ill-typed\ expression}\\
+\mbox{\tt in\ f\ ({\char'134}x->x)}
+\eprog 
+because \mbox{\tt g}, bound to a lambda abstraction whose principal type is
+\mbox{\tt a->a}, is used within \mbox{\tt f} in two different ways: once with type
+\mbox{\tt [a]->[a]}, and once with type \mbox{\tt Char->Char}.
+
+\subsection{Numeric Overloading}
+
+It is easy to forget at times that numerals are {\em overloaded,} and
+{\em not implicitly coerced} to the various numeric types, as in many
+other languages.  More general numeric expressions sometimes cannot be
+quite so generic.  A common numeric typing error is something like the
+following:
+\bprog
+\mbox{\tt average\ xs\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ sum\ xs\ /\ length\ xs\ \ \ \ \ \ \ \ \ \ \ --\ Wrong!}
+\eprog
+\mbox{\tt (/)} requires fractional arguments, but \mbox{\tt length}'s result is
+an \mbox{\tt Int}.  The type mismatch must be corrected with an explicit coercion:
+\bprog
+\mbox{\tt average\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Fractional\ a)\ =>\ [a]\ ->\ a}\\
+\mbox{\tt average\ xs\ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ sum\ xs\ /\ fromIntegral\ (length\ xs)}
+\eprog
+
+\subsection{The Monomorphism Restriction}
+
+The Haskell type system contains a restriction related to type classes
+that is not found in ordinary Hindley-Milner type systems: the {\em
+monomorphism restriction}.  The reason for this restriction is related
+to a subtle type ambiguity and is explained in full detail in the
+Report (\see{sect:monomorphism-restriction}).  A simpler explanation
+follows:
+
+The monomorphism restriction says that any identifier bound by a
+pattern binding (which includes bindings to a single identifier), and
+having no explicit type signature, must be {\em monomorphic}.  An
+identifier is monomorphic if is either not overloaded, or is
+overloaded but is used in at most one specific overloading and is not
+exported.
+
+Violations of this restriction result in a static type error.  The
+simplest way to avoid the problem is to provide an explicit type
+signature.  Note that {\em any} type signature will do (as long it is
+type correct).
+
+A common violation of the restriction happens with functions defined
+in a higher-order manner, as in this definition of \mbox{\tt sum} from the
+Standard Prelude:
+\bprog
+\mbox{\tt sum\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ foldl\ (+)\ 0}
+\eprog 
+As is, this would cause a static type error.  We can fix the problem
+by adding the type signature:
+\bprog
+\mbox{\tt sum\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ ::\ (Num\ a)\ =>\ [a]\ ->\ a}
+\eprog 
+Also note that this problem would not have arisen if we had written:
+\bprog
+\mbox{\tt sum\ xs\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ =\ \ foldl\ (+)\ 0\ xs}
+\eprog 
+because the restriction only applies to pattern bindings.
+
+
+%**~footer
+

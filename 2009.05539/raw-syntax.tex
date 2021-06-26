@@ -1,0 +1,554 @@
+\section{Raw syntax}
+\label{sec:raw-syntax}
+
+In this section, we set out our treatment of raw syntax with binding, sometimes called ``pre-syntax'' to indicate that no typing information is present at this stage.
+%
+There is nothing essentially novel --- briefly, we use a standard modern treatment, closely inspired by that of \citep{fiore-plotkin-turi}, but focus on concrete constructions rather than categorical characterisations.
+%
+So we take raw expressions as inductively generated trees, and scope systems, developed below, for keeping track of variable scopes and binding.
+%
+We spell out the details in order to have a self-contained presentation tailored to our requirements, and to set up terminology and notation we will use later.
+
+\subsection{Scope systems}
+
+We first address the question of how to treat variables and binding.
+%
+Should we use terms with named variables up to $\alpha$-equivalence, or de Bruijn indices, or reuse the binding structure of a framework language?
+%
+The last option is appealing, as it dispenses with many cumbersome details,
+but we shall avoid it precisely because we want to confront the cumbersome details of type theory.
+%
+% No, the paragraph should stay, it is not apologetic. It sets up the correct expectations while placating the LF lovers. And we don't need forward references to everything, the reader will be able to find the discussion on LF, if we write it.
+
+Rather than choosing a particular answer, we formulate and use a general structure for binding, abstracting away the implementation-specific details of several approaches, but retaining the common structure required for defining syntax.
+
+\begin{definition}
+  \label{def:scope-system}
+  A \defemph{scope system} consists of:
+  %
+  \begin{enumerate}
+  \item a collection of \defemph{scopes}~$\cat{S}$;
+  \item for each scope $\gamma$, a set of \defemph{positions}~$\position{\gamma}$;
+  \item an \defemph{empty scope~$\emptyscope$} with no positions, $\position{\emptyscope} = \emptyset$;
+  \item a \defemph{singleton scope} $\singletonscope$ with a unique position, $\position{\singletonscope} = 1$;
+  \item operations giving for all scopes $\gamma$ and $\delta$ a \defemph{sum scope} $\sumscope{\gamma}{\delta}$, and functions
+    %
+    \begin{equation*}
+      \xymatrix{
+        {\position{\gamma}} \ar[r]^{\inlscope} &
+        {\position{\sumscope{\gamma}{\delta}}} &
+        {\position{\delta}} \arrow[l]_{\inrscope}
+      }
+    \end{equation*}
+    %
+    exhibiting $\position{\sumscope{\gamma}{\delta}}$ as a coproduct of
+    $\position{\gamma}$ and $\position{\delta}$.
+  \end{enumerate}
+\end{definition}
+
+\noindent
+%
+A scope may be seen as “a context, without the type expressions”: in raw syntax, one cares about what variables are in scope, without yet caring about their types.
+
+The singleton scope $\singletonscope$ is not needed for most of the development of general type theories --- in the present paper, it is used only for sequential contexts (\cref{sec:sequential-contexts}) and notions building on these.
+%
+However, it is present in all examples of interest, so we include it in the general definition.
+
+We will also use scopes to describe \emph{binders}:
+%
+if some primitive symbol $S$ binds $\gamma$ variables in its $i$-th argument, then for an instance of $S$ in scope~$\delta$, the $i$-th argument will be an expression in scope $\sumscope{\delta}{\gamma}$.
+%
+Most traditional constructors bind finitely many variables; to facilitate this, we let $\numscope{n}$ denote the sum of $n \in \N$ copies of $\singletonscope$, which also provides alternative notations $\numscope{0}$ and $\numscope{1}$ for the empty and singleton scopes, respectively.
+
+\begin{example} \label{ex:de-bruijn-scope-systems}
+  \defemph{De Bruijn indices} and \defemph{de Bruijn levels} can be seen as scope systems, with $\N$ as the set of scopes, $\position{n} \defeq \{0, 1, \ldots, n-1\}$, $\emptyscope \defeq 0$, and $\sumscope{m}{n} \defeq m + n$.
+
+  The difference lies just in the choice of coproduct inclusions $\inlscope{} : \position{m} \to \position{m + n} \leftarrow \position{n} : \inrscope{}$.
+  %
+  Setting $\inlscope(i) \defeq i + n$, $\inrscope(j) = j$ gives de Bruijn \emph{indices}, as going under a binder increments the variables outside it.
+  %
+  Setting $\inlscope(i) \defeq i$, $\inrscope(j) = j + n$ gives de Bruijn \emph{levels}, as higher positions go to the innermost-bound variables.
+  %
+  Over these scope systems, our syntax precisely recovers standard de Bruijn-style syntax, as in \citep{deBruijn:Lambda:1972} and subsequent work.
+\end{example}
+
+Both the de Bruijn scope systems are \emph{strict} in the sense that we have equalities $\sumscope{\gamma}{\emptyscope} = \gamma = \sumscope{\emptyscope}{\gamma}$ and $\sumscope{(\sumscope{\gamma}{\delta})}{\eta} = \sumscope{\gamma}{(\sumscope{\delta}{\eta})}$, whereas general scope systems provide only canonical isomorphisms.
+%
+The equalities help reduce bureaucracy in several proofs, so we shall occasionally indulge in assuming that we work with a strict scope system.
+%
+The doubtful reader may consult the formalisation, which makes no such assumptions.
+%
+% We definitely use the strictness in lemmas about substitution.
+
+\begin{example}
+  The \defemph{finite sets} system takes scopes to be finite sets, along with any choice of coproducts.
+  %
+  It may be prudent to restrict to a small collection, say the hereditarily finite sets.
+  %
+  Syntax over these scope systems gives a concrete implementation of categorical approaches such as \citep{fiore-plotkin-turi}.
+\end{example}
+
+\begin{example}
+  Scope systems are not intrinsically linked to dependent type theories, but provide a useful discipline for syntax of other systems.
+  %
+  For instance, in geometric logic, the infinitary disjunction is usually given with a side condition that the free variables of the disjunction must remain finite \cite[D1.1.3(xi)]{johnstone:elephant-ii}.
+  %
+  By using finite scopes, we can make the finiteness condition explicit from the start, and dispense with the side condition.
+  %
+  This is similar in spirit to~\citep{fiore-plotkin-turi} and more closely mirrors the categorical semantics.
+  %
+  By contrast, the classical Hilbert-type logics $\mathcal{L}_{\alpha,\beta}$ of \citep{karp:1964-book} allow genuinely infinite contexts and binders, which can be obtained by taking scopes to be ordinals $\delta \in \alpha$, with $\position{\delta} \defeq \delta$.
+\end{example}
+
+\begin{example}
+  The traditional syntax using named variables, for both free and bound variables, is \emph{not} an example of a scope system.
+  %
+  In that approach, a fresh variable is not introduced by summing with a scope, but rather by a multivalued map allowing extension by \emph{any} unused name.
+\end{example}
+
+Some implementations of syntax treat free and bound variables separately, for instance \emph{locally nameless syntax}~\citep{mckinna93:_pure_type_system_formal} uses concrete names for free variables but de Bruijn indices for bound variables.
+%
+Scope systems as defined here do not subsume such syntax, but could be generalised to do so.
+
+Categorically, a scope system can be viewed precisely as a category~$\Scope$ with initial and terminal objects, binary coproducts, and a full and faithful functor into $(\Set, 0, +, 1)$ preserving this structure.
+%
+The categorical structure is induced from $\Set$: morphisms $\gamma \to \delta$ are taken as functions $\position{\gamma} \to \position{\delta}$ --- we call these \defemph{renamings}.
+%
+Two of these, $r : \gamma \to \delta$ and $r' : \gamma' \to \delta'$, give a sum map $\sumscope{r}{r'} : \sumscope{\gamma}{\gamma'} \to \sumscope{\delta}{\delta'}$ arising from the universal property of coproducts.
+
+For the remainder of the paper, we fix a scope system. To make concrete examples readable, we shall write them using the de Bruijn scopes from \cref{ex:de-bruijn-scope-systems}. They can be easily adapted to any other scope system.
+
+\subsection{Arities and signatures}
+\label{sec:arities-signatures}
+
+
+While the arity of a simple algebraic operation is just the number of its arguments, the situation is complicated in type theory by the presence of \emph{binders}. Each argument of a type-theoretic constructor may be a term or a type, and some of its variables may be bound by the constructor. We thus need a suitable notion of arity.
+
+\begin{definition}
+  \label{def:syntactic-class}\label{def:arity}%
+  By \defemph{syntactic classes}, we mean the two formal symbols $\Ty$ and $\Tm$, representing \defemph{types} and \defemph{terms} respectively.
+  %
+  An \defemph{arity}~$\alpha$ is a family of pairs $(c, \gamma)$ where $c$~is a syntactic class and $\gamma$ is a scope.
+  %
+  We call the indices of~$\alpha$ \defemph{arguments} and write $\args \alpha$ for the index set of~$\alpha$.
+  %
+  Thus, each argument $i \in \args \alpha$ has an associated syntactic class $\argclass{\alpha}{i}$ and a scope $\argbinder{\alpha}{i}$, which we call the \defemph{binder} associated with the argument~$i$, and we can write~$\alpha$ as $\alpha = \famtuple{(\argclass \alpha i, \argbinder \alpha i)}{i \in \args \alpha}$.
+\end{definition}
+
+\begin{example}
+  In Martin-Löf type theory with the de Bruijn scope system, the constructor $\symPi$ has arity $[(\Ty,0),(\Ty,1)]$.
+  %
+  That is, the arity has two type arguments, and binds one variable in the second argument.
+  %
+  A simpler example is the successor symbol in arithmetic whose arity is $[(\Tm,0)]$, because it takes one term argument and binds nothing.
+  %
+  Still simpler, the arity of a constant symbol is the empty family.
+\end{example}
+
+Note that arities express only the basic syntactic information and do not specify the types of term arguments and bound variables, which will be encoded later by typing rules.
+
+\begin{definition}
+  \label{def:signature}%
+  A \defemph{signature} $\Sigma$ is a family of pairs of a syntactic class and an arity.
+  %
+  We call the elements of its index set \defemph{symbols}. Thus each symbol $S \in \Sigma$ has an associated syntactic class $\class{S}$ and an arity $\arity{S}$.
+  %
+  A \defemph{type symbol} is one whose associated syntactic class is~$\Ty$, and a \defemph{term symbol} is one whose associated syntactic class is~$\Tm$.
+  %
+  The \defemph{arguments} $\args S$ of~$S$ are the arguments of its arity $\arity{S}$. Each argument $i \in \args S$ has an associated syntactic class $\argclass{S}{i}$ and binder $\argbinder{S}{i}$, as prescribed by the arity~$\arity{S}$.
+\end{definition}
+
+\begin{example} \label{ex:pi-types-arities}
+  The following signature describes the usual constructors for dependent products:
+ \begin{align*}
+   \symPi & \mapsto (\Ty, [(\Ty,0),(\Ty,1)]), \\
+   \symlambda & \mapsto (\Tm, [(\Ty,0), (\Ty,1), (\Tm,1)]), \\
+   \symapp & \mapsto (\Tm, [(\Ty,0), (\Ty,1), (\Tm,0),(\Tm,0)]).
+ \end{align*}
+ %
+ Let us spell out the last line. The symbol $\symapp$ builds a term, because its syntactic class is~$\Tm$, from four arguments. The first and the second arguments are types, with one variable bound in the second argument, while the third and the fourth arguments are terms. We thus expect an application term to be written as $\symapp(A, B, s, t)$, with one variable getting bound in~$B$.
+\end{example}
+
+\begin{definition}
+  \label{def:signature-map}%
+  A \defemph{signature map} $F : \Sigma \to \Sigma'$ is a map of families between them, that is, a function from symbols of $\Sigma$ to symbols of $\Sigma'$, preserving the arities and syntactic classes.
+  %
+  Signatures and maps between them form a category~$\Sig$.
+\end{definition}
+
+\subsection{Raw syntax}
+
+Once a signature $\Sigma$ is given, we know how to build type and term expressions over it. We call this part of the setup ``raw'' syntax to emphasise its purely syntactic nature.
+
+\begin{definition}
+  \label{def:raw-syntax}%
+  The \defemph{raw syntax} over $\Sigma$ consists of the collections of \defemph{raw type expressions} $\ExprTy{\Sigma}{\gamma}$ and \defemph{raw term expressions} $\ExprTm{\Sigma}{\gamma}$, which are generated inductively for any scope~$\gamma$ as follows:
+  %
+  \begin{enumerate}
+  \item for every position $i \in \position{\gamma}$, there is a \defemph{variable} expression $\synvar{i} \in \ExprTm{\Sigma}{\gamma}$;
+  \item for every symbol $S \in \Sigma$ of syntactic class $\class{S}$, and a map
+    %
+    \begin{equation*}
+      \textstyle
+      e \in \prod_{i \in \args S} \Expr{\argclass{S}{i}}{\Sigma}{\sumscope{\gamma}{\argbinder{S}{i}}},
+    \end{equation*}
+    %
+    there is an expression $S(e) \in \Expr{\class{S}}{\Sigma}{\gamma}$, the \defemph{application} of~$S$ to arguments~$e$.
+  \end{enumerate}
+\end{definition}
+
+Let us walk through the definition.
+%
+The first clause states that the positions of~$\gamma$ play the role of available variable names, still without any typing information.
+%
+The second clause explains how to build an expression with a symbol~$S$: for each argument $i \in \args S$, an expression $e_i$ of a suitable syntactic class must be provided, where $e_i$ may refer to variable names given by~$\gamma$ as well as the variables that are bound by~$S$ in the $i$-th argument.
+%
+The expressions $e_i$ are conveniently collected into a function~$e$.
+%
+When writing down concrete examples we write the arguments as tuples.
+
+\begin{example}%
+  \label{ex:symbol-pi-arity}
+  The symbol $\symPi$ has arity $[(\Ty,0),(\Ty,1)]$.
+  %
+  So if $A$ is a type expression with free variables amongst $\sumscope{\gamma}{\emptyscope}$ (which is isomorphic to $\gamma$), and $B$ is a type expression with free variables in $\sumscope{\gamma}{1}$ (which has an extra free variable available), then $\synPi[A,B]$ is a type expression with free variables in $\gamma$.
+\end{example}
+
+\begin{definition}
+  \label{renaming-action}%
+  The \defemph{action of a renaming} $r : \gamma \to \delta$ on expressions is the map $\rename{r} : \Expr{c}{\Sigma}{\gamma} \to \Expr{c}{\Sigma}{\delta}$, defined by structural recursion:
+  %
+  \begin{align*}
+    \rename{r} (\synvar{i}) &\defeq \synvar{r(i)}, \\
+    \rename{r} (S(e)) &\defeq
+      S(\tuple{\rename{(\sumscope{r}{\idmap[\argbinder{S}{i}]})}(e_i)}{i \in \args{S}}).
+  \end{align*}
+  %
+\end{definition}
+
+\noindent
+Note how the definition uses the functorial action of~$\sumscope{}{}$ to extend the renaming~$r$ when it descends under the binders of a symbol.
+
+\begin{definition}
+  \label{def:signature-map-action}%
+  The \defemph{action of a signature map} $F : \Sigma \to \Sigma'$ on expressions is the map $\act{F} : \Expr{c}{\Sigma}{\gamma} \to \Expr{c}{\Sigma'}{\gamma}$, defined by structural recursion:
+  %
+  \begin{align*}
+    \act{F} (\synvar{i}) & \defeq \synvar{i}, \\
+    \act{F} (S(e)) &\defeq F(S)(\act{F} \circ e).
+  \end{align*}
+\end{definition}
+
+\begin{propositionwithqed}
+  \label{prop:commutation-renaming-signature-map}%
+  The actions by renamings and signature maps commute with each other, and respect identities and composition.
+  %
+  That is, they make expressions into a functor 
+  $\Expr{}{}{} : \Sig \times \Scope \to \Set^{\set{\Ty, \Tm}}$. \qedhere
+\end{propositionwithqed}
+
+
+\subsection{Substitution}
+\label{sec:raw-substitutions}
+
+We next spell out substitution as an operation on raw expressions, and note its basic properties.
+
+\begin{definition}
+  \label{def:raw-substitution}%
+  A \defemph{raw substitution} $f : \gamma \to \delta$ over a signature $\Sigma$ is a map $f : \position{\delta} \to \ExprTm{\Sigma}{\gamma}$.
+%
+The \defemph{extension $\sumscope{f}{\eta} : \sumscope{\gamma}{\eta} \to \sumscope{\delta}{\eta}$ by a scope~$\eta$} is the substitution
+%
+\begin{align*}
+  (\sumscope{f}{\eta})(\inlscope(i)) &\defeq \act{{\inlscope}}(f(i)) & &\text{if $i \in \position{\delta}$}, \\
+  (\sumscope{f}{\eta})(\inrscope(j)) &\defeq \synvar{\inrscope{(j)}} & &\text{if $j \in \position{\eta}$}.
+\end{align*}
+%
+The (contravariant) \defemph{action of $f$ on an expression $e \in \Expr{c}{\Sigma}{\delta}$} gives the expression $\tca{f} e \in \Expr{c}{\Sigma}{\gamma}$, as follows:
+%
+\label{def:raw-substitution-action}
+\begin{align*}
+  \tca{f} (\synvar{i}) &\defeq f(i), \\
+  \tca{f} (S (e)) &\defeq S(\fammap{\tca{(\sumscope{f}{\argbinder{S}{i}})} e_i}{i \in \arg S}).
+\end{align*}
+\end{definition}
+
+\begin{example}
+  \label{ex:de-bruijn-substitution}%
+  The above definition, specialized to the de Bruijn scope systems of \cref{ex:de-bruijn-scope-systems}, precisely recovers the usual definition of substitution with de Bruijn indices or levels.
+  %
+  Their explicit shift operators are abstracted away, in our setup, as renaming under coproduct inclusions.
+\end{example}
+
+\begin{definition}
+  \label{def:variable-renaming}
+  Any renaming $r : \gamma \to \delta$ induces a substitution $\bar{r} : \delta \to \gamma$, with $\bar{r}(i) \defeq \synvar{r(i)}$.
+  %
+  In particular, each scope $\delta$ has an \defemph{identity substitution} $\idmap[\delta] : i \mapsto \synvar{i}$.
+  %
+  Substitutions $f : \gamma \to \delta$ and $g : \delta \to \theta$ may be \defemph{composed} to give a substitution $g \circ f : \gamma \to \theta$, defined by $(g \circ f)(k) \defeq \tca{f}(g(k))$.
+\end{definition}
+
+We often write $r$ instead of $\bar{r}$, a slight notational abuse grounded in the next proposition.
+
+\begin{proposition}
+  For all suitable renamings $r$, substitutions $f$, $g$, and expressions $e$:
+  \begin{enumerate}
+  \item Substitution generalises renaming: $\tca{\bar{r}}e = \act{r}e$.
+  \item Identity substitution is trivial: $\tca{\idmap[\delta]}e = e$.
+  \item Substitution commutes with renaming:
+    %
+    \begin{equation*}
+      \act{r}(\tca{f}e) = \tca{(i \mapsto \act{r}f(i))} e
+      \qquad\text{and}\qquad
+      \tca{f}(\act{r}e) = \tca{(i \mapsto f(r(i)))} e.
+    \end{equation*}
+
+  \item Substitution respects composition: $\tca{f} (\tca{g} e) = \tca{(g \circ f)}$.
+  \item Composition of substitutions is unital and associative:
+    %
+    \begin{equation*}
+      f = \idmap \circ f = f \circ \idmap
+      \qquad\text{and}\qquad
+      f \circ (g \circ h) = (f \circ g) \circ h.
+    \end{equation*}
+  \end{enumerate}
+\end{proposition}
+
+\begin{proof}
+  All direct by structural induction on expressions, as in the standard proofs for de Bruijn syntax. 
+\end{proof}
+
+The interaction of substitutions with signature maps is similarly straightforward: signature maps act functorially on raw substitutions, and the constructions of this section are natural with respect to the action. More precisely:
+
+\begin{propositionwithqed}
+  Given a signature map $F : \Sigma \to \Sigma'$, and a raw substitution $f : \delta \to \gamma$ over $\Sigma$, there is a raw substitution $\act{F} f : \delta \to \gamma$ over $\Sigma'$ given by $(\act{F} f)(i) = \act{F}(f(i))$, and the action respects composition and identities in $F$.
+  %
+  Moreover, given such $F$, for all suitable $f$ and $e$, we have $\act{F}(\tca{f} e) = \tca{(\act{F}f)} (\act{F}e)$; similarly, for all suitable $f$, $g$, we have $\act{F}(f \circ g) = \act{F}f \circ \act{F}g$. 
+\end{propositionwithqed}
+
+\subsection{Metavariable extensions and instantiations}
+\label{sec:metas-and-instantiations}
+
+As mentioned in the introduction, when we write down the \emph{rules} of type theories, we will need to extend the ambient signature~$\Sigma$ by new symbols to represent the metavariables of the rule.
+
+For instance, consider the constructor $\symPi$, with arity $[(\Ty,0),(\Ty,1)]$.
+%
+In the rule for~$\symPi$ formation (\cref{ex:symbol-pi-arity}), we shall use two new symbols $\symA$, $\symB$, corresponding to the arguments of~$\symPi$ in the premises of the rule.
+%
+The classes and arities of these new symbols are given by their classes and binders as arguments of~$\symPi$: they are both type symbols; the first one takes no arguments, and the second one takes one term argument.
+
+\begin{definition}
+  \label{def:simple-arity}%
+  The \defemph{simple arity~$\simplearity \gamma$} of a scope~$\gamma$ is the arity indexed by the positions~$\position{\gamma}$, and whose arguments all have syntactic class $\Tm$ with no binding, i.e., $\simplearity \gamma \defeq \famtuple{(\Tm, \emptyscope)}{i \in \position{\gamma}}$.
+\end{definition}
+
+\begin{definition}
+  \label{def:metavariable-extensions}%
+  The \defemph{metavariable extension $\mvextend{\Sigma}{\alpha}$ of~$\Sigma$ by arity $\alpha$} is the signature indexed by $\famindex{\Sigma} + \args{\alpha}$, defined by
+  %
+  \begin{equation*}
+    (\mvextend{\Sigma}{\alpha})_{\inl(S)} \defeq \Sigma_S
+    \qquad\text{and}\qquad
+    (\mvextend{\Sigma}{\alpha})_{\inr(i)} \defeq (\argclass{\alpha}{i}, \simplearity (\argbinder{\alpha}{i})).
+  \end{equation*}
+  %
+  We usually treat the injection of symbols $\Sigma \to \mvextend{\Sigma}{\alpha}$ as an inclusion, writing $S$ instead of $\inl(S)$;
+  %
+  and for each $i \in \args{\alpha}$, we write $\synmeta{i}$ for the corresponding new symbol $\inr(i)$ of $\mvextend{\Sigma}{\alpha}$, the \defemph{metavariable symbol} for $i$.
+\end{definition}
+
+\begin{example}
+  The symbol $\symlambda$ has arity
+  %
+  $
+    [(\Ty,0), (\Ty,1), (\Tm,1)]
+  $.
+  %
+  It thus gives rise to the metavariable extension $\Sigma + [(\Ty,0), (\Ty,1), (\Tm,1)]$, which adjoins to~$\Sigma$ three metavariable symbols $\synmeta{0}$, $\synmeta{1}$, $\synmeta{2}$, which for readability we may rename to $\symA$, $\symB$, $\symb{t}$, with classes and arities $(\Ty, [])$, $(\Ty, [(\Tm, 0)])$, and $(\Tm, [(\Tm,0)])$ respectively.
+  %
+  That is, $\symA$ and $\symB$ are type symbols and $\symb{t}$ a term symbol, with the latter two each taking a term argument.
+  %
+  These will then appear in the rule for $\symlambda$, to denote the arguments of a generic instance of $\symlambda$.
+  %
+  We will often use more readable names for metavariable symbols, as here, without further comment.
+\end{example}
+
+Let $\gamma$ be a scope and $\synmeta{i}(e)$ a raw expression over signature $\mvextend{\Sigma}{\alpha}$ and~$\gamma$.
+Then~$e$ is a map which assigns to each $j \in \position{\argbinder{\alpha}{i}}$ an expression in $\ExprTm{\mvextend{\Sigma}{\alpha}}{\gamma}$ because $\sumscope{\gamma}{\emptyscope} = \gamma$.
+Thus we may construe $e$ as a raw substitution $e : \argbinder{\alpha}{i} \to \gamma$.
+With this in mind, the following definition explains how metavariables are replaced with expressions.
+
+\begin{definition}
+  \label{def:instantiation}%
+  Given a signature~$\Sigma$, an arity $\alpha$, and a scope~$\gamma$, an \defemph{instantiation~$I \in \Inst \Sigma \gamma \alpha$} of $\alpha$ in scope $\gamma$ is a family of expressions $I_i \in \Expr{\argclass{i}{\alpha}}{\Sigma}{\sumscope{\gamma}{\argbinder{i}{\alpha}}}$, for each $i \in \args{\alpha}$.
+  %
+  Such an instantiation acts on expressions $e \in \Expr{c}{\mvextend{\Sigma}{\alpha}}{\delta}$ to give expressions $\act{I} e \in \Expr{c}{\Sigma}{\sumscope{\gamma}{\delta}}$, by
+replacing each occurrence of $\synmeta{i}$ in $e$ with a copy of~$I_i$, with the arguments of $\synmeta{i}$ recursively substituted for the corresponding variables in $I_i$:
+%
+\begin{align*}
+  \act{I} (\synmeta{i}(e)) &\defeq \tca{(\sumscope{\gamma}{e})} I_i, \\
+  \act{I} (\synvar{j})     &\defeq \synvar{\inr(j)}, \\
+  \act{I} (S(e))           &\defeq S \, (\fammap{\act{I} e_j}{j \in \args{S}}).
+\end{align*}
+  We call $\act{I}e$ the \defemph{instantiation of $e$ with $I$}.
+\end{definition}
+
+\begin{example} \label{ex:app-instantiation}
+  Anticipating \cref{ex:raw-rule-app}, the rule for function application will be written as follows, where for readability $x$ stands for $\synvar{0}$:
+  \begin{equation*}
+  \inferrule
+    { \istype{ }{\symA} \\
+      \istype{x \of \symA}{\symB(x)} \\
+      \isterm{}{\symb{s}}{\symPi(\symA, \symB(x)}) \\
+      \isterm{}{\symb{t}}{\symA}
+    }{
+      \isterm{}{\symapp(\symA, \symB(x), \symb{s}, \symb{t})}{\symB(\symb{t})}
+    }
+  \end{equation*}
+  %
+  All expressions are in the metavariable extension $\mvextend{\Sigma}{\arity{\symapp}}$, where $\Sigma$ is some ambient signature including $\symPi$ and $\symapp$, and $\arity{\symapp} = [(\Ty,0), (\Ty,1), (\Tm,0),(\Tm,0)]$ as in \cref{ex:pi-types-arities}.
+  %
+  The symbols $\symA$, $\symB$, $\symb{s}$, $\symb{t}$ are the metavariable symbols of this extension.
+  %
+  An instantiation of $\arity{\symapp}$ in scope $\gamma$ consists of expressions $A \in \Expr{\Ty}{\Sigma}{\gamma}$, $B \in \Expr{\Ty}{\Sigma}{\sumscope{\gamma}{\singletonscope}}$, and $s, t \in \Expr{\Tm}{\Sigma}{\gamma}$.
+  %
+  Instantiating the conclusion with these expressions, over some context $\Gamma$, gives the judgement $\isterm{\Gamma}{\symapp(A, B, s, t)}{B[t/x]}$.
+\end{example}
+
+Building on the above, instantiations also act on other objects built out of expressions, including substitutions and other instantiations;
+%
+at the same time, being themselves syntactic objects, instantiations are acted upon by substitutions and signature maps;
+%
+and all of these are suitably natural and functorial, as follows.
+
+\begin{definition}
+  \label{def:instantiation-actions}%
+  %
+  Given an instantiation $I \in \Inst{\Sigma}{\gamma}{\alpha}$:
+  \begin{enumerate}
+
+  \item The \defemph{instantiation $I$ acts on a substitution} $f : \delta' \to \delta$ over $\mvextend{\Sigma}{\alpha}$ to give a substitution $\act{I} f : \sumscope{\gamma}{\delta'} \to \sumscope{\gamma}{\delta}$, defined by
+    \begin{align*}
+      (\act{I}f)(\inlscope i) & \defeq \inlscope i & (i \in \gamma), \\
+      (\act{I}f)(\inrscope j) & \defeq \act{I}(f j) & (j \in \delta).
+    \end{align*}
+
+  \item The \defemph{instantiation $I$ acts on an instantiation} $J \in \Inst{\mvextend{\Sigma}{\alpha}}{\delta}{\beta}$ to give an instantiation $\act{I}J \in \Inst{\Sigma}{\sumscope{\gamma}{\delta}}{\beta}$, defined by $(\act{I}J)_j \defeq \act{I}(J_j)$.  
+
+  \item A \defemph{substitution} $f : \delta \to \gamma$ over $\Sigma$ \defemph{acts on the instantiation~$I$} to give an instantiation $\tca{f} I \in \Inst{\Sigma}{\delta}{\alpha}$, defined by $(\tca{f}I)_i \defeq \tca{(\sumscope{f}{\argbinder{\alpha}{i}})}I_i$.
+
+  \item The \defemph{instantiation $I$ is translated along a signature map $F : \Sigma \to \Sigma'$} to give an instantiation $\act{F} I \in \Inst{\Sigma'}{\gamma}{\alpha}$, defined by $(\act{F}I)_i \defeq \act{F}(I_i)$.
+  \end{enumerate}
+\end{definition}
+
+\begin{propositionwithqed}
+  \label{prop:instantiation-boilerplate}%
+  %
+  For all suitable instantiations $I$, $J$, signatures maps $F$, $G$, substitutions $f$, $g$, arities $\alpha$, expressions $e$, and scopes $\gamma$, $\delta$, $\theta$:
+  %
+  \begin{enumerate}
+
+  \item
+    %
+    Translation along signature maps is functorial:
+    %
+    % F : Σ → Σ'
+    % G : Σ' → Σ''
+    % I ∈ Inst Σ γ α
+    % F_* I ∈ Inst Σ' γ α
+    % G_* (F_* I) ∈ Inst Σ'' γ α
+    \begin{equation*}
+       \act{(G \circ F)} I = \act{G} (\act{F} I)
+      \qquad\text{and}\qquad
+      \act{{\idmap[\Sigma]}} I = I.
+    \end{equation*}
+
+  \item
+    %
+    The actions of substitutions and instantiations on expressions and on each other are natural with respect to translation along signature maps:
+    %
+    % e ∈ Exprᶜ (Σ + α) δ
+    % I ∈ Inst Σ γ α
+    % I_* e ∈ Exprᶜ Σ (γ ⊕ δ)
+    % F : Σ → Σ'
+    % F_* (I_* e) ∈ Exprᶜ Σ' (γ ⊕ δ) -- LHS 1
+    % F + α : Σ + α → Σ' + α'
+    % (F + α)_* e ∈ Exprᶜ (Σ' + α) δ
+    % F_* I ∈ Inst Σ' γ α
+    % (F_* I)_* ((F + α)_* e) ∈ Exprᶜ (Σ' + α) (γ + δ) -- RHS 1
+    \begin{align*}
+      \act{F}(\act{I} e) & = \act{(\act{F} I)} (\act{(\mvextend{F}{\alpha})} e), \\
+      \act{F}(\act{I} f) & = \act{(\act{F} I)} (\act{(\mvextend{F}{\alpha})} f), \\
+      \act{F}(\act{I} J) & = \act{(\act{F} I)} (\act{(\mvextend{F}{\alpha})} J), \\
+      \act{F}(\tca{f} I) & = \tca{(\act{F} f)} (\act{F} I).
+    \end{align*}
+
+  \item
+    %
+    The action of substitutions on instantiations is functorial:
+    %
+    \begin{equation*}
+      \tca{(f \circ g)} I = \tca{g} (\tca{f} I)
+      \qquad\text{and}\qquad
+      \tca{{\idmap[\gamma]}} I = I.
+    \end{equation*}
+
+  \item
+    %
+    The action of instantiations is natural with respect to substitutions:
+    \begin{align*}
+      % instantiate_substitute_instantiation:
+      % I ∈ Inst Σ γ α
+      % f : ξ → γ over Σ
+      % f^* I ∈ Inst Σ ξ α
+      % e ∈ Exprᶜ (Σ + α) δ
+      % (f^* I)_* e ∈ Exprᶜ Σ (ξ ⊕ δ) -- RHS
+      % I_* e ∈ Exprᶜ Σ (γ ⊕ δ)
+      % f ⊕ δ : ξ ⊕ δ → γ ⊕ δ
+      % (f ⊕ δ)^* (I_* e) ∈ Exprᶜ Σ (ξ ⊕ δ) -- LHS
+      \act{(\tca{f} I)} e & = \tca{(\sumscope{f}{\delta})} (\act{I} e), \\
+      % instantiate_substitute:
+      % e ∈ Epxrᶜ (Σ + α) γ
+      % g : δ → γ over (Σ + α)
+      % g^* e ∈ Exprᶜ (Σ + α) δ
+      % I ∈ Inst Σ ξ α
+      % I_* (g^* e) ∈ Epxrᶜ Σ (ξ ⊕ δ) -- LHS
+      % I_* e ∈ Exprᶜ Σ (ξ ⊕ γ)
+      % I_* g : ξ ⊕ δ → ξ ⊕ γ over Σ
+      % (I_* g)^* (I_* e) ∈ Epxrᶜ Σ (ξ ⊕ δ) -- RHS
+      \act{I} (\tca{g} e) &= \tca{(\act{I} g)} (\act{I} e).
+    \end{align*}
+
+  \item
+    %
+    The action of instantiations is “associative” in the sense that
+    % J ∈ Inst (Σ + α) δ β
+    % J_* e ∈ Exprᶜ (Σ + α) (δ ⊕ ε) -- elided inclusion of e into (Σ + α) + β
+    % I ∈ Inst Σ α γ
+    % J ∈ Inst (Σ + α) β δ
+    % e ∈ Exprᶜ (Σ + β) ε
+    % (ι₀ + β) : (Σ + β) → ((Σ + α) + β)
+    % (ι₀ + β)_* e ∈ Exprᶜ ((Σ + α) + β) ε
+    % J_* ((ι₀ + β)_* e) ∈ Exprᶜ (Σ + α) (δ ⊕ ε)
+    % I_* (J_* e) ∈ Exprᶜ Σ (γ ⊕ (δ + ε)) -- LHS
+    % I_* J ∈ Inst Σ (γ ⊕ δ) β
+    % (I_* J)_* e ∈ Exprᶜ Σ ((γ ⊕ δ) ⊕ ε) -- RHS
+    \begin{equation*}
+      % instantiate_instantiate_expression:
+      \act{(\act{I} J)} e = \act{I}(\act{J} (\act{(\mvextend{\inl}{\beta})} e))
+    \end{equation*}
+    %
+    holds modulo the canonical associativity isomorphism between the scopes $\sumscope{(\sumscope{\gamma}{\delta})}{\theta}$ and $\sumscope{\gamma}{(\sumscope{\delta}{\theta})}$ of the left- and right-hand sides. \qedhere
+  \end{enumerate}
+\end{propositionwithqed}
+
+The above properties, while routine to prove, are a lot of boilerplate.
+%
+They can be incorporated, if desired, into the statement that syntax forms a \emph{scope-graded monad} on signatures in the sense of~\citep{orchard-wadler-eades}, and that instantiations are certain Kleisli maps for this monad.
+%
+As ever, however, we emphasise in this paper the elementary viewpoint, rather than categorical abstraction.
+
+%%% Local Variables:
+%%% mode: latex
+%%% End:
