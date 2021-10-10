@@ -447,14 +447,14 @@
 \newcommand{\@xviiipt}{18}%                   18pt size
 \DeclareMathSizes{\@xviiipt}{\@xviiipt}{\@xiipt}{\@xpt}
 
-\newcommand\tiny{\@setfontsize\tiny\@vpt{6}\AJW@setskips\AJW@setlists}
-\newcommand\footnotesize{\AJW@baseskip 9pt%
-  \@setfontsize\footnotesize\@viiipt{9}\AJW@setskips\AJW@setlists}
-\newcommand\indexsize{\AJW@baseskip 10pt%
-  \@setfontsize\indexsize\@viiipt{10}\AJW@setskips\AJW@setlists}
-\newcommand\large{\@setfontsize\large\@xipt{14}\AJW@setskips\AJW@setlists}
-\newcommand\Aheadsize{\@setfontsize\Aheadsize\@xiipt{14}\AJW@setskips\AJW@setlists}
-\newcommand\Large{\@setfontsize\Large\@xiipt{17}\AJW@setskips\AJW@setlists}
+\newcommand\tiny{\@setfontsize\tiny\@vipt{7}\AJW@setskips\AJW@setlists}
+\newcommand\footnotesize{\AJW@baseskip 11pt%
+  \@setfontsize\footnotesize\@ixpt{11}\AJW@setskips\AJW@setlists}
+\newcommand\indexsize{\AJW@baseskip 12pt%
+  \@setfontsize\indexsize\@xpt{12}\AJW@setskips\AJW@setlists}
+\newcommand\large{\@setfontsize\large\@xiipt{15}\AJW@setskips\AJW@setlists}
+\newcommand\Aheadsize{\@setfontsize\Aheadsize\@xiipt{15}\AJW@setskips\AJW@setlists}
+\newcommand\Large{\@setfontsize\Large\@xivpt{18}\AJW@setskips\AJW@setlists}
 \newcommand\LARGE{\@setfontsize\LARGE\@xvipt{19}\AJW@setskips\AJW@setlists}
 \newcommand\huge{\@setfontsize\huge\@xviiipt{24}\AJW@setskips\AJW@setlists}
 \let\Huge\huge
