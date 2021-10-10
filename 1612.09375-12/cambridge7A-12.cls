@@ -477,19 +477,19 @@
 %    \let\@listi\@listI}
 %\else
   \newcommand\scriptsize{%
-    \@setfontsize\scriptsize\@viipt{8}\AJW@setskips\AJW@setlists}
-  \newcommand\figcaptionsize{\AJW@baseskip 10.5pt%
-    \@setfontsize\figcaptionsize\@viiiptv{10.5}\AJW@setskips\AJW@setlists}
-  \newcommand\small{\AJW@baseskip 10pt%
-    \@setfontsize\small\@ixpt{10}\AJW@setskips\AJW@setlists}
+    \@setfontsize\scriptsize\@viiipt{9}\AJW@setskips\AJW@setlists}
+  \newcommand\figcaptionsize{\AJW@baseskip 11.5pt%
+    \@setfontsize\figcaptionsize\@ixpt{11.5}\AJW@setskips\AJW@setlists}
+  \newcommand\small{\AJW@baseskip 12pt%
+    \@setfontsize\small\@xpt{12}\AJW@setskips\AJW@setlists}
   \let\tablesize\small
   \let\enotesize\small
-  \newcommand\smallish{\AJW@baseskip 11pt%
-    \@setfontsize\smallish\@ixpt{11}\AJW@setskips\AJW@setlists}
-  \newcommand\normalsmall{\AJW@baseskip 12pt%
-    \@setfontsize\normalsmall\@xpt{12}\AJW@setskips\AJW@setlists}
-  \renewcommand\normalsize{\AJW@baseskip 13pt%
-    \@setfontsize\normalsize\@xpt{13}\AJW@setskips{\AJW@baseskip}%
+  \newcommand\smallish{\AJW@baseskip 13pt%
+    \@setfontsize\smallish\@xipt{13}\AJW@setskips\AJW@setlists}
+  \newcommand\normalsmall{\AJW@baseskip 13pt%
+    \@setfontsize\normalsmall\@xipt{13}\AJW@setskips\AJW@setlists}
+  \renewcommand\normalsize{\AJW@baseskip 14.5pt%
+    \@setfontsize\normalsize\@xiipt{14.5}\AJW@setskips{\AJW@baseskip}%
     \let\@listi\@listI}
   \let\listsize\normalsize
 %\fi
