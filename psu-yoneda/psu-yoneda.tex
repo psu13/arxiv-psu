@@ -1,0 +1,233 @@
+\documentclass[12pt]{article}
+\usepackage{amsthm,thmtools}
+
+%\usepackage{amsmath,amsthm,amscd,amssymb}
+\usepackage[colorlinks=true
+,breaklinks=true
+,urlcolor=blue
+,anchorcolor=blue
+,citecolor=blue
+,filecolor=blue
+,linkcolor=blue
+,menucolor=blue
+,linktocpage=true]{hyperref}
+\hypersetup{
+bookmarksopen=true,
+bookmarksnumbered=true,
+bookmarksopenlevel=10
+}
+\usepackage[noBBpl,sc]{mathpazo}
+\linespread{1.05}
+\usepackage[papersize={6.7in, 10.0in}, left=.5in, right=.5in, top=1in, bottom=.9in]{geometry}
+\sloppy
+\raggedbottom
+\pagestyle{plain}
+
+\input macros
+
+% these include amsmath and that can cause trouble in older docs.
+\input{../helpers/cmrsum}
+\input{../helpers/fix-underbrace.tex}
+
+\usepackage[small]{titlesec}
+\usepackage{cite}
+
+% make sure there is enough TOC for reasonable pdf bookmarks.
+\setcounter{tocdepth}{3}
+
+\newtheorem{thm}{Theorem}[]
+\newtheorem{lemma}[thm]{Lemma}
+
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[]
+\newtheorem{example}{Example}[]
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[]
+\newtheorem{note}{Note}[]
+
+\numberwithin{equation}{section}
+
+
+%    Blank box placeholder for figures (to avoid requiring any
+%    particular graphics capabilities for printing this document).
+\newcommand{\blankbox}[2]{%
+  \parbox{\columnwidth}{\centering
+%    Set fboxsep to 0 so that the actual size of the box will match the
+%    given measurements more closely.
+    \setlength{\fboxsep}{0pt}%
+    \fbox{\raisebox{0pt}[#2]{\hspace{#1}}}%
+  }%
+}
+
+\titleformat{\section}[block]
+  {\fillast}
+  {\bfseries{\thesection }.}
+  {1ex minus .1ex}
+  {\bfseries}
+  
+\titleformat{\subsection}[block]
+  {\fillast}
+  {{\it \thesection }.}
+  {1ex minus .1ex}
+  {\it}
+
+\titleformat*{\subsubsection}{\scshape}
+\begin{document}
+
+\title{The Yoneda Lemma, Top Down}
+\author{Pete Su}
+
+\maketitle
+\newpage
+
+\section{The Big Picture}
+
+The Yoneda Lemma is a basic and beloved result in category theory. In most treatments it
+shows up fairly early in the books and lecture notes on the subject. Its
+statement is also deceivingly compact because all of its content is buried inside layers
+of abstraction and notation that would have been built up while working through the
+conceptual basis of category theory.
+
+In particular the result ties together the following sets of ideas:
+
+\begin{itemize}
+
+\item Categories (objects and arrows).
+\item Sets of mappings in categories
+\item Functors
+\item Natural transformations
+\item Functor categories
+
+\end{itemize}
+
+\noindent
+What most textbooks and notes do is to spend several chapters and sections defining and
+giving examples and intuition about what all these things are, and then telling you what
+the lemma says. Then you have to flip back and forth through a hundred pages of exposition
+to remember what all the symbols mean.
+
+I am going to do the following dumb thing: I am going to state the result in several
+different kinds of notation and then explain the pieces from the bottom up (or top down).
+Also hopefully I'll provide handy cross references and call backs so you don't have to do
+all that page flipping.
+
+Note that I am not a mathematician or a category theory expert. I'm just a guy trying to
+figure out the notation. So up to half of everything in this document is probably wrong.
+
+\section{Statement of the Lemma}
+
+The hardest thing about stating the result is deciding what notation to use to state it.
+There are a ton of choices, all of which use one of three or four different notational
+templates.
+
+\begin{lemma}[Yoneda]   
+\label{yoneda1}
+Let $\cat{C}$ be a locally small category.  Then
+% 
+\begin{equation}        
+\label{eq:yoneda}
+\pshf{\cat{C}}(\h_X, F)
+\iso
+F(C)
+\end{equation}
+% 
+naturally in $X \in \cat{C}$ and $F \in \pshf{\cat{C}}$.  
+\end{lemma}
+
+\begin{lemma}[Yoneda]\label{yoneda2}
+ Let $\cat{C}$ be a category, let $X$ be an object of $\cat{C}$, and let $F:\cat{C}^\op\to\Set$ be a presheaf on $\cat{C}$. 
+ Consider the map 
+ $$
+ \Hom_{[\cat{C}^\op,\Set]} \big( \Hom_\cat{C} (-,X) , F \big) \longrightarrow FX
+ $$
+ assigning to a natural transformation $\alpha:\Hom_\cat{C} (-,X)\Rightarrow F$ the element $\alpha_X(\id_X)\in FX$, which is the value of the component $\alpha_X$ of $\alpha$ on the identity at $X$. 
+\end{lemma}
+
+
+\begin{lemma}[Yoneda]\label{yoneda3} Let $\cat{C}$ be a locally small category and $X \in
+\cat{C}$. Then for any functor $F : \cat{C} \to \Set$ there is a bijection
+$$
+\Hom(\cat{C}(X,-), F) \iso Fc
+$$
+that associates a natural transformation $\alpha:\cat{C}(X,-) \implies F$ to the element
+$\alpha_X(1_X) \in FX$. Moreover, this correspondence is natural in both $X$ and $F$.
+\end{lemma}
+
+\noindent This verison introduces the $\Nat$ notation for the set of natural transforms.
+
+\begin{lemma}[Yoneda]\label{yoneda4} For any locally small category $\cat{C}$, object $X
+\in \cat{C}$, and functor $F:\cat{C} \to \Set$ we have  $\Nat(\cat{C}(X,-),F) \iso FX$
+both naturally in $X \in \cat{C}$ and $F \in [\cat{C}, \Set]$
+\end{lemma}
+
+\noindent You can also write that one the dual way:
+\begin{lemma}[Yoneda]\label{yoneda4-dual} For any locally small category $\cat{C}$, object
+$X \in \cat{C}$, and functor $F:\cat{C}^{\op} \to \Set$ we have  $\Nat(\cat{C}(-,X),F)
+\iso FX$ both naturally in $X \in \cat{C}$ and $F \in [\cat{C}^{\op}, \Set]$
+\end{lemma}
+\noindent
+This version peels away some of the layers:
+
+\begin{lemma}[Yoneda]\label{yoneda5}
+Let $\cat{C}$ be a locally small category, let $X$ be an object of $\cat{C}$, and let $F: \cat{C} \to \Set$ be a functor. Then
+
+(i) There is a bijection between natural transformations $\cat{C}(X, -) \to F$ and the elements of $FX$
+
+(ii) The bijection in (i) is natural in both $F$ and $X$.
+\end{lemma}
+
+\noindent
+I've made these look a bit more uniform than they do in real life just by using the same style of typesetting for all of them. But, there is still a lot of notation flying around, so let's get into it.
+
+\section{Categories}
+
+\begin{defn}
+A {\it category}%
+%
+\index{category}
+%
+$\cat{C}$ consists of:
+% 
+\begin{itemize}
+\item 
+A collection of objects denoted $\objc$. In general we won't bother to write out $\objc$
+and instead just say $\cat{C}$ when the context makes clear what is going on.
+\item 
+For each $A, B \in \objc$, a collection $\Arrows_{\cat{C}}(A, B)$%
+of {\it arrows} or {\it mappings} or {\it functions} or {\it morphims} from $A$ to $B$. We will usually write $\Arrows(A,B)$ when it's clear what category $A$ and $B$ come from. Or we won't bother at all and just write $f: A \to B$ to mean $f \in \Arrows_{\cat{C}}(A,B)$.
+\item
+For each $A, B, C \in \objc$ a function called {\it composition} that takes $f:A \to B$ and $g : B \to C$ and maps it to $g \circ f$.
+\item
+For each $A \in \objc$ a function $1_A: A \to A$, called the {\it identity} at $A$ that
+maps $A$ to itself. \end{itemize}%
+Generally we denote objects in categories using upper case letters ($A, B,C$, etc) and
+arrows using lower case letters ($f, g, h$, etc).
+
+Finally, The objects and arrows of a category satisfy the following rules:
+\begin{itemize}
+\item For any $f: A \to B$ we have that  $1_B \circ f$ and $f \circ 1_A$ are both equal to $f$.
+\item Given $f: A \to B$, $g: B \to C$, $h: C\to D$ we have that $(h \circ g) \circ f = h \circ (g \circ f)$.%
+\end{itemize}%
+\end{defn}%
+\noindent
+Often people write $\Hom(A, B)$ or $\Hom_{\cat{C}}(A,B)$ to mean $\Arrows(A,B)$. ``Hom'' stands for homomorphism, which is a word that is used a lot in mathematics to mean mappings of functions that preserve some kind of structure. Presumably this is also where the term {\it morphism} comes from. I like {\it arrow} because it just sounds more friendly and less abstract.
+
+At this point the category theory book will list a few dozen examples of categories that maybe help you work out what's going on and maybe don't. One thing is for sure: they will all have short names that have been truncated in a bizzarre way ($\cat{Meas}$, $\cat{Toph}$, $\cat{Grp}$, $\cat{FinOrd}$, etc), and they will all be typeset in a different font. Often you will see {\sc small caps} or {\sf sans serif}. I picked {\bf bold} for convenience.
+
+
+\section{Sets of Mappings in Categories}
+
+\section{Functors}
+
+\section{Natural Transformations}
+
+\section{Functor Categories}
+
+\section{The Full Stack}
+
+\section{Who I Stole From}
+
+
+
+\end{document}
