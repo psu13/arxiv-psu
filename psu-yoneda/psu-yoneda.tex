@@ -23,6 +23,8 @@ bookmarksopenlevel=10
 \sloppy
 \raggedbottom
 \pagestyle{plain}
+\usepackage{tikz}
+\usepackage{tikz-cd}
 
 \input macros
 
@@ -160,13 +162,28 @@ both naturally in $X \in \CC$ and $F \in [\CC, \Set]$
 $X \in \CC$, and functor $F:\CC^{\op} \to \Set$ we have  $\Nat(\CC(-,X),F)
 \iso FX$ both naturally in $X \in \CC$ and $F \in [\CC^{\op}, \Set]$
 \end{lemma}
+
+\noindent
+This version has some different notation and terminology:
+
+\begin{lemma}[Yoneda]\label{yoneda5}
+ Let $\cat{C}$ be a category, let $X$ be an object of $\cat{C}$, and let $F:\cat{C}^\op\to\Set$ be a presheaf on $\cat{C}$. 
+ Consider the map 
+ $$
+ \Hom_{[\cat{C}^\op,\Set]} \big( \Hom_\cat{C} (-,X) , F \big) \longrightarrow FX
+ $$
+ assigning to a natural transformation $\alpha:\Hom_\cat{C} (-,X)\Rightarrow F$ the element $\alpha_X(\id_X)\in FX$, which is the value of the component $\alpha_X$ of $\alpha$ on the identity at $X$. 
+
+ This assignment is a bijection, and it is natural both in $X$ and in $F$.
+\end{lemma}
+
 \noindent
 This version peels away some of the layers:
 
-\begin{lemma}[Yoneda]\label{yoneda5}
+\begin{lemma}[Yoneda]\label{yoneda6}
 Let $\CC$ be a locally small category, let $X$ be an object of $\CC$, and let $F: \CC \to \Set$ be a functor. Then
 
-(i) There is a bijection between natural transformations $\CC(X, -) \to F$ and the elements of $FX$
+(i) There is a bijection between the set of natural transformations from $\CC(X, -)$ to $F$ and the elements of $FX$
 
 (ii) The bijection in (i) is natural in both $F$ and $X$.
 \end{lemma}
@@ -200,7 +217,7 @@ Each arrow $f$ maps one object $A \in \objc$ to another object $B \in \objc$ and
 For each pair of arrows $f:A \to B$ and $g : B \to C$ we can form a new arrow $g \circ f: A \to C$ called the {\it composition} of $f$ and $g$. This is also sometimes written $gf$.
 \item
 For each $A \in \objc$ there is a function $1_A: A \to A$, called the {\it identity} at $A$ that
-maps $A$ to itself.
+maps $A$ to itself. Sometimes this object is also written as $\id_A$.
 \end{itemize}
 Finally, we have the last two rules:
 
@@ -210,7 +227,7 @@ Finally, we have the last two rules:
 \end{itemize}%
 \end{defn}%
 \noindent
-We call the collection of all arrows from $A$ to $B$ $\Arrows_{\CC}(A, B)$. 
+We will call the collection of all arrows from $A$ to $B$ $\Arrows_{\CC}(A, B)$. 
 We will usually write $\Arrows(A,B)$ when it's clear what category $A$ and $B$ come from. 
 Traditionally people write $\Hom(A, B)$ or $\Hom_{\CC}(A,B)$, or just $\CC(A,B)$ to mean $\Arrows(A,B)$. Here ``$\Hom$'' stands for homomorphism, which is a word that often means mappings that preserve some kind of structure.
 
@@ -236,10 +253,10 @@ As we navigate our way from basic categories up to the statement of the lemma we
 Given two categories $\CC$ and $\DD$ a {\it functor} $F : \CC \to \DD$ is defined by two sets of parallel rules. First:
 \begin{itemize}
 \item For each object $X \in \CC$ we assign an object $F(X) \in \DD$.
-\item For each arrow $f: X \to Y$ in $\CC$ we assign an arrow $F(f): F(X) \to F(Y)$.
+\item For each arrow $f: X \to Y$ in $\CC$ we assign an arrow $F(f): F(X) \to F(Y)$ in $\DD$.
 \end{itemize}
 \noindent
-So $F$ maps objects in $\CC$ to objects in $\DD$ and maps the domains and codomains of arrows in $\CC$ to the appropriate objects in $\DD$. In addition the following must be true:
+So $F$ maps objects in $\CC$ to objects in $\DD$ and maps arrows in $\CC$ to arrows in $\DD$ that have the appropriate domains and codomains. That is, the domain of $F(f)$ is $F$ applied to the domain of $f$, and the codomain of $F(f)$ is $F$ applied to the codomain of $f$. In addition the following must be true:
 \begin{itemize}
 \item If $f:X \to Y$ and $g: Y \to Z$ are arrows in $\CC$ then $F(g \circ f) = F(g) \circ F(f)$ (or $F(gf) = F(g)F(f)$).
 \item For every $X \in \CC$ it is the case that $F(1_X) = 1_{F(X)}$.
@@ -249,6 +266,8 @@ So $F$ maps objects in $\CC$ to objects in $\DD$ and maps the domains and codoma
 \noindent
 So, a functor consists of two mappings, one on objects and one on arrows. And, these mappings preserve all of the structure of a category, 
 namely domains and codomains, composition, and identities.
+
+We'll define one more notation for convenience here
 
 \begin{defn}
 Given any functor $F: \CC \to \DD$ from a category $\CC$ to another category $\DD$ and an object $X \in \CC$ we may write $F X$ to mean $F(X)$. This is analogous to the more compact notation for composition of arrows above.
@@ -262,11 +281,44 @@ Functors appear in the Lemma in a couple of places. The core content of the resu
 
 \section{Natural Transformations}
 
+Natural transformations map functors to functors in the same way that arrows in a category map objects to objects. The definition is a bit more complicated and abstract, but that's what it ultimately means.
+
+\begin{defn}
+ Let $\CC$ and $\DD$ be categories, and let $F$ and $G$ be functors $\CC\to\DD$. To define a \emph{natural transformation} $\alpha$ from $F$ to $G$, 
+we assign to each object $X$ of $\CC$, an arrow $\alpha_X:FX\to GX$ in $\DD$, called the \emph{component} of $\alpha$ at $X$. In addition, for each arrow $f:X\to Y$ of $\CC$, the following diagram has to commute:
+  $$
+  \begin{tikzcd}
+   FX \ar{r}{Ff} \ar{d}{\alpha_X} & FY \ar{d}{\alpha_{Y}} \\
+   GX \ar{r}{Gf} & GY
+  \end{tikzcd}
+  $$
+\end{defn}
+\noindent
+This is the first commutative diagram that I've tossed up. There is no magic here. The idea is that you get the same result no matter which way you travel through the diagram. So here $\alpha_Y \circ F$ and $G \circ \alpha_X$ must be equal.
+
+We denote natural transformations as double arrows, $\alpha: F \Rightarrow G$, to distinguish them in diagrams from functors (which are denoted by single arrows):
+ $$
+ \begin{tikzcd}[column sep=large]
+  \CC \ar[bend left,""{below,name=F}]{r}{F} \ar[bend right,""{above,name=G}]{r}[swap]{G} & \DD
+  \ar[Rightarrow,from=F,to=G,"\alpha"]
+ \end{tikzcd}
+ $$
+
+You might wonder to yourself: what makes natural transformations ``natural''? The answer appears to be related to the fact that you can construct them from {\it only} what is given to you in the category at hand, they apply in some sense universally over all the objects of the category, and you don't need to make any other specific assumptions about the objects or functors in order for construction to work. In this sense they define a relationship between functors that is just sitting there for you to grab in a ``natural'' way.
+
 \section{Functor Categories}
 
 \section{Duals}
 
 \section{The Full Stack}
+
+\section{Notes}
+
+Category theory texts love to overload notation, so I've done it too. Here is a list of some examples.
+
+No two writers seem to agree on what basic notations to use for basic concepts. So I've made up my own shit too.
+
+In the modern world of \LaTeX\ there is no reason to limit names to being only four or five letters in length, so where appropriate I have done the unthinkable and written some names out in full.
 
 \section{Who I Stole From}
 
