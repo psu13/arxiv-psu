@@ -1,0 +1,664 @@
+% edrx.15 - this is like "edrx08.sty", but without the catcodes.
+% (find-angg "LATEX/edrx15.sty")
+% (find-dn4ex "edrx08.sty")
+%   http://angg.twu.net/LATEX/edrx15.sty
+%   http://angg.twu.net/LATEX/edrx15.sty.html
+%   http://angg.twu.net/dednat4/examples/edrx08.sty
+%   http://angg.twu.net/dednat4/examples/edrx08.sty.html
+% Author: Eduardo Ochs <eduardoochs@gmail.com>
+% Version: 2015apr03
+
+% I use this as my main include(d) file.
+% This is not self-contained! It has some "\input"s - namely:
+%   \input edrxdnt.tex    % (find-dn4ex "edrxdnt.tex")
+%   \input edrxdefs.tex   % (find-dn4ex "edrxdefs.tex")
+% Also, this file is loaded by:
+%   (find-dn4ex "edrxmain41.tex")
+%   (find-dn4ex "edrxmain41a.tex")
+% See also:
+%   (find-dn4 "Makefile" "demo1")
+
+% Here's a minimal example of use:
+% create a file "foo.tex" containing this:
+% (strip out the initial "%"s, of course...)
+%
+%     --snip--snip--
+%     \documentclass[oneside]{book}
+%     \usepackage[latin1]{inputenc}
+%     \usepackage{edrx08}
+%     %L process "edrx08.sty"  -- (find-dn4ex "edrx08.sty")
+%     % For the footer with the filename and a timestamp:
+%     \input edrxheadfoot.tex
+%     \begin{document}
+%   
+%     % Run this to produce foo.dnt:
+%     %  (find-sh "~/dednat4/dednat41 foo.tex")
+%     % Make LaTeX load the TeXed versions of the trees and diagrams:
+%     \input foo.dnt
+%   
+%     %D diagram adjunction-DNC
+%     %D 2Dx    100       +20
+%     %D 2D 100 a,b <==== a
+%     %D 2D      -        -
+%     %D 2D      |  <-->  |
+%     %D 2D      v        v
+%     %D 2D +20  c ===> b|->c
+%     %D 2D
+%     %D (( a,b   a
+%     %D     c  b|->c
+%     %D    @ 0 @ 1 <= @ 0 @ 2 |-> @ 1 @ 3 |-> @ 2 @ 3 =>
+%     %D    @ 0 @ 3 harrownodes nil 20 nil <->
+%     %D ))
+%     %D enddiagram
+%   
+%     $$\diag{adjunction-DNC}$$
+%   
+%     \end{document}
+%     --snip--snip--
+%
+% Then run:
+%   ~/dednat4/dednat41 foo.tex
+%   latex foo.tex
+%   xdvi  foo.dvi
+
+
+
+% «.bbold»		(to "bbold")
+% «.glyphs»		(to "glyphs")
+% «.ttchars»		(to "ttchars")
+% «.arrows»		(to "arrows")
+% «.limp»		(to "limp")
+% «.pbsymbol»		(to "pbsymbol")
+% «.standardabbrevs»	(to "standardabbrevs")
+% «.fcded»		(to "fcded")
+% «.experimental.lua»	(to "experimental.lua")
+% «.slides»		(to "slides")
+% «.colors»		(to "colors")
+% «.colors-2019»	(to "colors-2019")
+% «.bhbox»		(to "bhbox")
+% «.dags»		(to "dags")
+% «.savebox»		(to "savebox")
+% «.crossover»		(to "crossover")
+% «.picture-cells»	(to "picture-cells")
+% «.diagprep»		(to "diagprep")
+% «.psm-and-pmat»	(to "psm-and-pmat")
+% «.dednat6»		(to "dednat6")
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+%\usepackage{mathrsfs}
+%\usepackage{stmaryrd}
+\usepackage{array}
+\usepackage{url}
+\usepackage{color}
+\usepackage{graphicx}    % <- temporary?
+% \usepackage{pxfonts}   % <- temporary?
+% \usepackage{fitch}     % <- temporary?
+% \usepackage{hyperref}
+%\usepackage{verbatimbox} % <- temporary?
+                         % (find-es "tex" "verbatimbox")
+\usepackage{shortvrb}
+
+
+
+
+%  _     _           _     _ 
+% | |__ | |__   ___ | | __| |
+% | '_ \| '_ \ / _ \| |/ _` |
+% | |_) | |_) | (_) | | (_| |
+% |_.__/|_.__/ \___/|_|\__,_|
+%                            
+% «bbold»  (to ".bbold")
+% Amsfonts.sty's "\mathbb" uses the "bbm10" font, that has nice
+% blackboard bold letters, but only a few other characters...
+% Bbold.sty redefines "\mathbb" to use the "bbold10" font, that has
+% more characters, but then the letters become much uglier...
+% This hack is a possible solution - it makes both fonts available at
+% once, the one from amsfonts as \mathbb, the other one as \mathbbold.
+%
+% (find-fline "/usr/share/texmf-tetex/tex/latex/amsfonts/amsfonts.sty" "\\mathbb")
+% (find-fline "/usr/share/texmf-tetex/tex/latex/bbold/bbold.sty" "\\mathbb")
+%
+\newcommand{\bbfamily}{\fontencoding{U}\fontfamily{bbold}\selectfont}
+\newcommand{\textbbold}[1]{{\bbfamily#1}}
+\DeclareMathAlphabet{\mathbbold}{U}{bbold}{m}{n}
+
+\def\mathbblow{\mathbbold}    % lowercase letters are usually better on bbold
+\def\mathbbnum{\mathbbold}    % only bbold has all digits
+
+% To compare bbm and bbold:
+% (find-angg ".emacs" "find-testfont")
+% (find-testfont "\\T{bbm10}\\T{bbold10}")
+% (eedn4a "$\\mathbb{ABCDEINRZ}\\mathbblow{abcdeinrz}\\mathbbnum{0123456789}$")
+
+
+%        _             _         
+%   __ _| |_   _ _ __ | |__  ___ 
+%  / _` | | | | | '_ \| '_ \/ __|
+% | (_| | | |_| | |_) | | | \__ \
+%  \__, |_|\__, | .__/|_| |_|___/
+%  |___/   |___/|_|              
+%
+% «glyphs»  (to ".glyphs")
+% (find-eev "eev-compose.el")
+
+
+
+
+%  _   _       _                    
+% | |_| |_ ___| |__   __ _ _ __ ___ 
+% | __| __/ __| '_ \ / _` | '__/ __|
+% | |_| || (__| | | | (_| | |  \__ \
+%  \__|\__\___|_| |_|\__,_|_|  |___/
+%                                   
+% Use this macro to produce the \def_{\ttchar...} lines (below) from
+% catcode/def lines (above):
+% (setq last-kbd-macro (kbd "13*<delete> SPC 7*<right> \\ ttchar { $ C-e <left> $ } C-a <down>"))
+%
+% «ttchars»  (to ".ttchars")
+% (find-es "tex" "leavevmode")
+% (find-dn4ex "edrx08.sty" "ttchars")
+% (find-ist "defs.tex" "chars")
+
+
+
+%                                   
+%   __ _ _ __ _ __ _____      _____ 
+%  / _` | '__| '__/ _ \ \ /\ / / __|
+% | (_| | |  | | | (_) \ V  V /\__ \
+%  \__,_|_|  |_|  \___/ \_/\_/ |___/
+%                                   
+% «arrows»  (to ".arrows")
+% (find-symbolspage 41)
+
+\def\ito{\hookrightarrow}
+\def\isoto{\underset{iso}{\to}}
+\def\epito{{\twoheadrightarrow}}
+\def\bij{\leftrightarrow}
+\def\toto{\rightrightarrows}
+\def\functo{\Rightarrow}
+\def\ton#1{\overset{#1}{\to}}
+\def\xton#1{\xrightarrow{#1}}
+\def\iton#1{\overset{#1}{\ito}}
+\def\otn#1{\overset{#1}{\ot}}
+\def\TNto{\overset{.}{\to}}
+\def\idto{\overset{id}{\to}}
+\def\vaipra{\quad\Longrightarrow\quad}
+\def\funto{\Rightarrow}
+\def\funton#1{\overset{#1}\Rightarrow}
+\def\tnto{\ton{\bullet}}
+%\def\iff{\Leftrightarrow}
+\def\Bij{\Leftrightarrow}
+\def\funot{\Leftarrow}
+\def\dnto{\downarrow}
+\def\upto{\uparrow}
+\def\dnfunto{\Downarrow}
+\def\upfunto{\Uparrow}
+\def\monicto{\rightarrowtail}
+\def\monicot{\leftarrowtail}
+\def\ot{\leftarrow}
+\def\squigto{\rightsquigarrow}
+\def\squigbij{\leftrightsquigarrow}
+\def\sqto{\rightsquigarrow}
+\def\sqbij{\leftrightsquigarrow}
+\def\vbij{\updownarrow}
+\def\lrto{\leftrightarrows}
+
+\def\mto{{\mapsto}}
+\def\mton#1{\overset{#1}{\mto}}
+\def\widemtos{\def\mto{\mapsto}}
+\def\thinmtos{\def\mto{{\mapsto}}}
+
+\def\lmto{\mapsto}
+\def\tnton#1{\underset{#1}{\overset{\bullet}{\to}}}
+
+\def\mapsot{\leftarrow\mapsfromchar}
+\def\mot{{\mapsot}}
+\def\iot{\hookleftarrow}
+\def\dashto{\dashrightarrow}
+\def\dashot{\dashleftarrow}
+\def\mdashto{\mapstochar\dashrightarrow}
+\def\mdashot{\dashleftarrow\mapsfromchar}
+
+
+
+
+%  _ _                 
+% | (_)_ __ ___  _ __  
+% | | | '_ ` _ \| '_ \ 
+% | | | | | | | | |_) |
+% |_|_|_| |_| |_| .__/ 
+%               |_|    
+%
+% «limp»  (to ".limp")
+% Logical implication (a thin, long, vaguely arrow-like, \supset char)
+% Note that this "symbol" does not change size in \scriptstyle...
+% (find-es "tex" "thin_supset")
+% (find-lsrcfile "amslatex/math/amsopn.dtx" "DeclareMathOperator")
+% (find-lsrcfile "amslatex/math/amsopn.dtx" "DeclareRobustCommand{\\qopname}")
+\def\limpchar{{%
+  \setlength{\unitlength}{1pt}%
+  \begin{picture}(6,4)
+    \put(0,2){\oval(12,4)[r]}
+  \end{picture}%
+  }}
+% \def\limp{\qopname\relax o{\limpchar}}
+\def\limp{\mathrel{\limpchar}}
+%\def\limp{\mathbin{\limpchar}}
+
+
+%        _                         _           _ 
+%  _ __ | |__  ___ _   _ _ __ ___ | |__   ___ | |
+% | '_ \| '_ \/ __| | | | '_ ` _ \| '_ \ / _ \| |
+% | |_) | |_) \__ \ |_| | | | | | | |_) | (_) | |
+% | .__/|_.__/|___/\__, |_| |_| |_|_.__/ \___/|_|
+% |_|              |___/                         
+%
+% «pbsymbol»  (to ".pbsymbol")
+\def\pbsymbol#1{%
+  \begin{picture}(#1,#1)
+    \put(0,0){\line(1,0){#1}}
+    \put(#1,#1){\line(0,-1){#1}}
+  \end{picture}}
+
+
+%           _              _       _   
+%   ___  __| |_ ____  ____| |_ __ | |_ 
+%  / _ \/ _` | '__\ \/ / _` | '_ \| __|
+% |  __/ (_| | |   >  < (_| | | | | |_ 
+%  \___|\__,_|_|  /_/\_\__,_|_| |_|\__|
+%                                      
+%\ifx\NOEDRXDNT\UNDEFINED
+%\input edrxdnt.tex              % (find-dn4ex "edrxdnt.tex")
+%\fi
+% \input edrxdednat.tex         % (find-dn4ex "edrxdednat.tex")
+                                % (find-dn4 "experimental.lua")
+
+% «standardabbrevs»  (to ".standardabbrevs")
+% «experimental.lua»  (to ".experimental.lua")
+%L standardabbrevs()            -- (find-dn4 "dednat41.lua")
+%L require "experimental"       -- (find-dn4 "experimental.lua")
+
+% «fcded» (to ".fcded")
+\def\ee{\varepsilon}
+\def\cded #1{\begin{matrix}\ded {#1}\end{matrix}}
+\def\cdiag#1{\begin{matrix}\diag{#1}\end{matrix}}
+
+\def\fcded#1{\fbox{$\cded{#1}$}}
+\def\fbded#1{\fbox{$\ded{#1}$}}
+
+% Todo: compare using "matrix" and "vcenter" for cded and cdiag... See:
+% http://www.phil.cam.ac.uk/teaching_staff/Smith/LaTeX/ndexamples/proofsty3.html
+% I have not tested the \vcenter method much - but here are the definitions,
+% if they work they will be renamed \cded and \cdiag and will replace the
+% current ones.
+\def\vcded #1{\vcenter{\leavevmode$\ded {#1}$}}
+\def\vcdiag#1{\vcenter{\leavevmode$\diag{#1}$}}
+
+% (find-dn4file "diagxy.tex" "\\newdir")
+% \newdir^{ (}{{ }*!/-.5em/@^{(}}%
+% \newdir^{) }{{ }*!/.5em/@^{)}}%
+
+
+
+
+%           _              _       __     
+%   ___  __| |_ ____  ____| | ___ / _|___ 
+%  / _ \/ _` | '__\ \/ / _` |/ _ \ |_/ __|
+% |  __/ (_| | |   >  < (_| |  __/  _\__ \
+%  \___|\__,_|_|  /_/\_\__,_|\___|_| |___/
+%                                         
+\input edrx15defs.tex         % (find-LATEX "edrx15defs.tex")
+\def\co{\mathrm{co}}
+\def\bsk{\bigskip}
+\def\msk{\medskip}
+\def\ssk{\smallskip}
+
+% "set of ...", and
+% "set of ... such that ..."
+\def\sof#1{\{\,#1\,\}}
+\def\sst#1#2{\{\,#1\;|\;#2\,\}}
+\def\ssst#1#2{\{\,#1\;||\;#2\,\}}
+
+\def\Opens{\mathcal{O}}
+\def\compl{{\text{\,compl}}}
+\def\interior{{\text{int}}}
+\def\sh{\sharp}
+\def\fl{\flat}
+
+% (find-angg ".emacs.papers" "stmaryrd")
+\def\Dbr#1{\left\llbracket#1\right\rrbracket}
+\def\dbr#1{\llbracket#1\rrbracket}
+\def\Dbrnat#1{\Dbr{#1}^\natural}
+\def\dbrnat#1{\dbr{#1}^\natural}
+
+
+% Extra:
+% (find-dn4ex "edrxslides.tex")
+\def\myslide#1#2{{\bf #1}}
+\def\tocline#1#2{\par #1 \dotfill #2}
+% This is useful for slides:
+% \setlength{\parindent}{0em}
+
+
+%      _ _     _           
+%  ___| (_) __| | ___  ___ 
+% / __| | |/ _` |/ _ \/ __|
+% \__ \ | | (_| |  __/\__ \
+% |___/_|_|\__,_|\___||___/
+%                          
+% «slides»  (to ".slides")
+% (find-es "tex" "mytoc")
+% (find-LATEX "2005oct20-seminar.tex")
+% (find-dn4ex "edrxslides.tex")
+\makeatletter
+\def\mylosopen#1{\newwrite\tf@mylos\openout\tf@mylos=#1}
+\makeatother
+\def\addtolos#1{\addtocontents{mylos}{\protect\tocline{#1} {\thepage}}}
+\def\myslidelos#1#2{
+    {\bf #1}\label{#2}%
+    \addtolos{#1}%
+    % \addtocontents{mylos}{\protect\tocline {#1} {\thepage}}%
+  }
+\def\makelos#1{\mylosopen{#1}\def\myslide{\myslidelos}}
+%\def\ignore#1{}
+%\def\nolos{\let\addtolos=\ignore}
+%
+% Usage:
+% % \mylosopen{\jobname.los}
+% \mylosopen{tmp.los}
+% \def\myslide#1#2{\myslidelos{#1}{#2}}
+% %
+% {\bf Index of the slides}
+% \medskip
+% We insert the list of slides here by hand...
+% (find-fline "tmp.los")
+% (insert-file "tmp.los")
+% ...
+
+
+
+%            _                
+%   ___ ___ | | ___  _ __ ___ 
+%  / __/ _ \| |/ _ \| '__/ __|
+% | (_| (_) | | (_) | |  \__ \
+%  \___\___/|_|\___/|_|  |___/
+%                             
+% «colors»  (to ".colors")
+% «bhbox» (to ".bhbox")
+% (find-es "tex" "bicolorhbox")
+% (find-es "tex" "color-packages")
+% Usage:
+%
+% \edrxcolors    % (find-LATEX "edrx15.sty" "colors")
+% \def\bhbox{\bicolorhbox}
+% Foobar\bhbox{plic}ploc
+%
+\def\blue  #1{{\color{blue}#1}}
+\def\red   #1{{\color{red}#1}}
+\def\orange#1{{\color{orange}#1}}
+\def\yellow#1{{\color{yellow}#1}}
+\def\smashedvrule#1#2#3{\vrule width#1 height#2 depth#3 \kern-#1}
+\def\bicolorhbox#1{{%
+  \setbox0\hbox{#1}%
+  \yellow{\smashedvrule{\wd0}{\ht0}{0pt}}%
+  \orange{\smashedvrule{\wd0}{0pt}{\dp0}}%
+  \box0%
+  }}
+\def\bhbox{\bicolorhbox}
+
+% (find-es "tex" "color")
+% (find-lsrcfile "graphics/color.dtx" "\\definecolor{red}")
+% (find-es "tex" "color-packages")
+\def\edrxcolors{
+  \definecolor{orange}{rgb}{1,.64,0}
+  }
+
+
+% «colors-2019»  (to ".colors-2019")
+% (find-es "tex" "testcolor")
+% My favorite colors for slides.
+% From 2017 to 2019 I defined them in each .tex by hand:
+% (find-LATEXgrep "grep --color -nH -e '\\\\long\\\\def\\\\Color' *.tex")
+% (find-LATEXgrep "grep --color -nH -e '\\\\long\\\\def\\\\ColorGreen' *.tex")
+% (find-LATEXsh "cat *.tex *.sty | grep -e '\\\\long\\\\def\\\\Color'")
+% (find-LATEXsh "cat *.tex *.sty | grep -e '\\\\long\\\\def\\\\Color' | sort | uniq")
+
+% (find-LATEXgrep "grep --color -nH -e 'ColorGreen' *.tex")
+
+
+
+
+%      _                 
+%   __| | __ _  __ _ ___ 
+%  / _` |/ _` |/ _` / __|
+% | (_| | (_| | (_| \__ \
+%  \__,_|\__,_|\__, |___/
+%              |___/     
+%
+% «dags»  (to ".dags")
+% (find-es "tex" "dags")
+% Some definitions (probably temporary) for
+% typesetting the DAGs for (pre)sheaves.
+%
+% 2011feb13:
+\newdimen\mypictureunit
+\setbox0=\hbox{\rm0}
+\mypictureunit=.085\wd0
+\mypictureunit=.084\wd0
+%
+\def\dagput(#1,#2)#3{\put(#1,#2){\hbox to 0pt{\hss\scriptsize#3\hss}}}
+\def\dagpicture(#1,#2)(#3,#4)[#5]#6{{%
+  %\unitlength=.1ex%
+  %\setbox0\hbox{x}\unitlength=.1\wd0%
+  %\setbox0\hbox{x}\unitlength=.095\wd0%
+  %\setbox0\hbox{x}\unitlength=.090\wd0%
+  \unitlength=\mypictureunit
+  \lower #5\unitlength\hbox{%
+    \begin{picture}(#1,#2)(#3,#4)
+      #6
+    \end{picture}%
+  }}}
+\def\dagHouse#1#2#3#4#5{%
+  \dagpicture(20,36)(-10,-24)[12]{
+    \dagput( 0,  0){$#1$}    % top
+    \dagput(-6,-12){$#2$}    % second line, left
+    \dagput( 6,-12){$#3$}    % second line, right
+    \dagput(-6,-24){$#4$}    % third line, left
+    \dagput( 6,-24){$#5$}    % third line, right
+  }}
+\def\dagVee#1#2#3{%
+  \dagpicture(20,24)(-10,-12)[0]{
+    \dagput(-6,  0){$#1$}    % top left
+    \dagput( 6,  0){$#2$}    % top right
+    \dagput( 0,-12){$#3$}    % bottom
+  }}
+\def\dagPyr#1#2#3{%
+  \dagpicture(20,24)(-10,-12)[0]{
+    \dagput( 0,  0){$#1$}    % top
+    \dagput(-6,-12){$#2$}    % bottom left
+    \dagput( 6,-12){$#3$}    % bottom right
+  }}
+\def\dagKite#1#2#3#4#5{%
+  \dagpicture(20,48)(-10,-36)[16]{
+    \dagput( 0,  0){$#1$}    % top
+    \dagput(-6,-12){$#2$}    % second line, left
+    \dagput( 6,-12){$#3$}    % second line, right
+    \dagput( 0,-24){$#4$}    % third line
+    \dagput( 0,-36){$#5$}    % bottom
+  }}
+\def\dagSqr#1#2#3#4{%
+  \dagpicture(20,24)(-10,-12)[0]{
+    \dagput(-6,  0){$#1$}    % top left
+    \dagput( 6,  0){$#2$}    % top right
+    \dagput(-6,-12){$#3$}    % bottom left
+    \dagput( 6,-12){$#4$}    % bottom right
+  }}
+\def\dagTwo#1#2{%
+  \dagpicture(8,24)(-4,-12)[0]{
+    \dagput( 0,  0){$#1$}    % top
+    \dagput( 0,-12){$#2$}    % bottom
+  }}
+\def\dagThree#1#2#3{%
+  \dagpicture(8,36)(-4,-24)[6]{
+    \dagput( 0,  0){$#1$}    % top
+    \dagput( 0,-12){$#2$}    % middle
+    \dagput( 0,-24){$#3$}    % bottom
+  }}
+\def\dagTee#1#2#3#4{%
+  \dagpicture(32,24)(-16,-12)[0]{
+    \dagput(-12,  0){$#1$}    % top left
+    \dagput(  0,  0){$#2$}    % top middle
+    \dagput( 12,  0){$#3$}    % top right
+    \dagput(  0,-12){$#4$}    % bottom
+  }}
+\def\dagSeven#1#2#3#4#5#6#7{%
+  \dagpicture(44,36)(-22,-24)[6]{
+    \dagput(  0,  0){$#1$}    % top
+    \dagput( -9,-12){$#2$}    % middle left
+    \dagput(  9,-12){$#3$}    % middle right
+    \dagput(-18,-24){$#4$}    % bottom left
+    \dagput( -6,-24){$#5$}    % bottom middle left
+    \dagput(  6,-24){$#6$}    % bottom middle right
+    \dagput( 18,-24){$#7$}    % bottom right
+  }}
+% Reason for the name "Reh":
+% (find-einsert '(638 1360))
+%  638 is an "r with fishhook" (IPA),
+% 1360 is the "(capital) Armenian Reh".
+\def\dagReh#1#2#3#4{\dagHouse{#1}{#2}{#3}{#4}{}}
+
+
+% For my notes on sheaves and presheaves
+\def\dbul{{\bullet\bullet}}      % supersaturated cover
+\def\bulm{{\bullet-}}            % minimal saturated cover
+\def\bul{\bullet}                % saturated cover
+\def\bol{\circ}                  % cover
+\def\dtri{{\blacktriangle\blacktriangle}}  % supersaturated subcover
+\def\tri{\blacktriangle}                   % saturated subcover
+\def\tro{\vartriangle}                     % subcover
+
+\def\calU{{\mathcal{U}}}
+\def\calV{{\mathcal{V}}}
+
+% «savebox»  (to ".savebox")
+% These are mainly for nested diagrams
+% (find-LATEX "2008graphs.tex" "ess-and-star")
+% (find-LATEX "2008graphs.tex" "minimal-dag")
+% (find-LATEX "2008graphs.tex" "minimal-dag" "A .tex= \\usebox{\\myboxa}")
+% (find-kopkadaly4page (+ 12  87) "\\newsavebox{\\boxname}")
+% (find-kopkadaly4text            "\\newsavebox{\\boxname}")
+\newsavebox{\myboxa}
+\newsavebox{\myboxb}
+\newsavebox{\myboxc}
+\newsavebox{\myboxd}
+\newsavebox{\myboxe}
+\newsavebox{\myboxf}
+\newsavebox{\myboxg}
+\newsavebox{\myboxh}
+
+% «picture-cells» (to ".picture-cells")
+% (find-dn5 "newrect.lua" "makepicture")
+% Dednat6 uses "cells" in picture mode.
+%
+%\newlength{\celllower}
+%\newlength{\lcelllower}
+%\def\cellfont{}
+%\def\lcellfont{}
+%\def\cell #1{\lower\celllower\hbox to 0pt{\hss\cellfont${#1}$\hss}}
+%\def\lcell#1{\lower\celllower\hbox to 0pt   {\lcellfont${#1}$\hss}}
+
+% «diagprep»  (to ".diagprep")
+% (find-dn4ex "edrxdnt.tex" "defdiag")
+% Experimental, 2010mar25
+%\def\defdiagprep#1#2{\expandafter\def\csname diagprep-#1\endcsname{#2}}
+%\def\ifdiagprepundefined#1{\expandafter\ifx\csname diagprep-#1\endcsname\relax}
+%\def\diagprep#1{\ifdiagprepundefined{#1}
+%    \errmessage{UNDEFINED DIAGPREP: #1}
+%  \else
+%    \csname diagprep-#1\endcsname
+%  \fi
+%}
+%\def\diagwithboxes#1{\diagprep{#1}\diag{#1}}
+
+% These are mainly for putting multi-line text in nodes in diagrams
+\def\textc#1{\begin{tabular}{c}#1\end{tabular}}
+\def\textl#1{\begin{tabular}{l}#1\end{tabular}}
+
+%:\s[\dncdisplay[
+\def\dncdisplay[#1|#2]{\begin{pmatrix} #2 \\ #1 \end{pmatrix}}
+
+\def\ov {\overline}
+\def\ovl{\overline}
+
+% «crossover»  (to ".crossover")
+% (find-es "tex" "crossover")
+\def\crossover#1#2#3{%
+  \setbox0\hbox{#1}%
+  \copy0%
+  \hskip -\wd0%
+  \setbox1\hbox{\vrule height#2 width\wd0 depth0pt}%
+  \raise#3\copy1\relax}
+\def\mycrossover#1{\crossover{#1}{0.25pt}{1.75pt}}
+
+
+\def\emp{\emptyset}
+\def\ang#1{\langle#1\rangle}
+
+
+% «psm-and-pmat» (to ".psm-and-pmat")
+%
+\def\sm #1{\begin{smallmatrix}#1\end{smallmatrix}}
+\def\psm#1{\left (\begin{smallmatrix}#1\end{smallmatrix}\right )}
+\def\bsm#1{\left [\begin{smallmatrix}#1\end{smallmatrix}\right ]}
+\def\csm#1{\left\{\begin{smallmatrix}#1\end{smallmatrix}\right\}}
+%
+\def\mat #1{\begin{matrix}#1\end{matrix}}
+\def\pmat#1{\left (\begin{matrix}#1\end{matrix}\right )}
+\def\bmat#1{\left [\begin{matrix}#1\end{matrix}\right ]}
+\def\cmat#1{\left\{\begin{matrix}#1\end{matrix}\right\}}
+
+
+\def\uu{\vec u}
+\def\vv{\vec v}
+\def\ww{\vec w}
+\def\Vec#1{{\overrightarrow{#1}}}
+\def\VEC#1{{\overrightarrow{(#1)}}}
+
+
+
+% «dednat6» (to ".dednat6")
+% (find-dn6 "output.lua")
+\def\expr#1{\directlua{output(tostring(#1))}}
+\def\eval#1{\directlua{#1}}
+%
+% (find-dn6 "texfile.lua" "TexFile")
+% (find-dn6 "texfile.lua" "TexFile" "pu =")
+\def\pu{\directlua{pu()}}
+%
+% These should be deleted
+\def\Diag#1{\directlua{tf:processuntil()}\diag{#1}}
+\def\Ded #1{\directlua{tf:processuntil()}\ded{#1}}
+\def\Exec#1{\directlua{tf:processuntil() #1}}
+\def\Expr#1{\directlua{tf:processuntil() output(#1)}}
+\def\Expr#1{\directlua{tf:processuntil() output(tostring(#1))}}
+
+
+
+
+\def\frown{=(}
+\def\smile{=)}
+\def\myvcenter#1{\begin{matrix}#1\end{matrix}}
+
+
+
+
+
+
+
+% Local Variables:
+% coding:               raw-text-unix
+% ee-delimiter-percent: "\n%\n"
+% ee-anchor-format:     "«%s»"
+% End:
