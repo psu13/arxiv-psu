@@ -187,34 +187,6 @@
 
 \input{size1\@ptsize.clo}
 
-%enable the blacklisting of packages by patching the \usepackage command
-\csdef{@packageblacklist}{}
-\newcommand{\@blacklistpackage}[2][]{
-  \listxadd{\@packageblacklist}{#2}%
-  \ifstrempty{#1}{}{\csdef{@packageblacklisterrormessage#2}{#1 \string\usepackage{#2}}}
-}
-\let\oldusepackage\usepackage
-\renewcommand{\usepackage}[2][]{
-  \ifinlist{#2}{\@packageblacklist}{
-    \ifcsdef{@packageblacklisterrormessage#2}{
-      \ClassError{quantumarticle}{\csname @packageblacklisterrormessage#2\endcsname}{}}{}
-    }{\oldusepackage[#1]{#2}}
-}
-\@blacklistpackage{titlesec}
-
-\if@twocolumn
-\RequirePackage[margin=2cm,bottom=3cm]{geometry}
-\else
-\RequirePackage[margin=3cm,bottom=3cm]{geometry}
-\fi
-\@blacklistpackage{geometry}
-\setlength\lineskip{1\p@}
-\setlength\normallineskip{1\p@}
-\renewcommand\baselinestretch{}
-\setlength\parskip{0\p@ \@plus \p@}
-\@lowpenalty   51
-\@medpenalty  151
-\@highpenalty 301
 
 \AtBeginDocument{
   % avoid bitmap fonts by loading lmodern or at least checking for cm-super
@@ -383,7 +355,6 @@
 }
 \fi
 \def\@maketitle{%
-  \sffamily
   \null
   \let \footnote \thanks
     \noindent\@printtitle
@@ -805,7 +776,6 @@
 \setlength\columnseprule{0\p@}
 \setlength{\footnotesep}{\baselineskip}
 \RequirePackage{fancyhdr}
-\@blacklistpackage{fancyhdr}
 \pagestyle{fancy}
 \renewcommand{\headrule}{}
 \renewcommand{\footrule}{\vbox to 0pt{\hbox to\headwidth{\color{quantumgray}\leaders\hrule\hfil}\vss}}
@@ -909,9 +879,9 @@
     \else%
     \edef\@titleexpanded{\detokenize\expandafter{\@title}}%
     \if@xstring\saveexploremode\exploregroups\StrSubstitute{\@titleexpanded}{ }{\%20}[\@titleforurl]\restoreexploremode\else\gdef\@titleforurl{\@titleexpanded}\fi%
-    \href{http://quantum-journal.org/?s=\@titleforurl\&reason=title-click}{%
+    {%
       \begin{minipage}{1.0\linewidth}%
-        \color{quantumviolet}{%
+        {%
           \@printtitletextwithappropriatefontsize%
         }%
       \end{minipage}}%
@@ -933,17 +903,17 @@
   \newsavebox{\@titelsaveboxHuge}%
   \savebox{\@titelsaveboxHuge}{%
     \parbox[b]{\linewidth}{%
-      \@titleatfontsize{\Huge}%
+      \@titleatfontsize{\large}%
     }%
   }%
   \newsavebox{\@titelsaveboxHugeoneline}%
   \savebox{\@titelsaveboxHugeoneline}{%
-    \@titleatfontsize{\Huge}%
+    \@titleatfontsize{\large}%
   }%
   \newsavebox{\@titelsaveboxhhuge}%
   \savebox{\@titelsaveboxhhuge}{%
     \parbox[b]{\linewidth}{%
-      \@titleatfontsize{\huge}%
+      \@titleatfontsize{\large}%
     }%
   }%
   \ifdim\ht\@titelsaveboxHuge>\ht\@titelsaveboxHugeoneline%
@@ -995,7 +965,7 @@
 \def\@printauthor#1#2{\def\footnote{\ClassError{quantumarticle}{You cannot put a \string\footnote{} command inside the argument of \string\author}{}}\ifcsdef{author#1orcid}{\href{https://orcid.org/\csname author#1orcid\endcsname}{\color{black}#2}}{#2}\ifnumcomp{\the@affiliationcounter}{>}{1}{\textsuperscript{\forlistcsloop{\@@commaspacebefore}{author#1affiliations}\unskip}}{}\ifnumcomp{#1}{<}{\the@authorcounter-1}{, }{\ifnumcomp{#1}{=}{\the@authorcounter-1}{\ifnumcomp{#1}{=}{1}{ and }{, and }}{}}}
 \def\@printauthors{%
   \newcounter{@authornum}%
-  \large\forlistloop{\stepcounter{@authornum}%
+  \forlistloop{\stepcounter{@authornum}%
     \ifcsdef{author\the@authornum hasextras}{%
     \insert\footins{\footnotesize%
 %      \interlinepenalty\interfootnotelinepenalty
@@ -1029,7 +999,6 @@
 \newcommand{\address}[2][]{\affiliation[#1]{#2}}
 
 %for compatibility with authblk
-\@blacklistpackage{authblk} 
 \newcommand{\affil}[2][]{
   \affiliation[#1]{#2}}
 \newcommand{\affiliation}[2][]{%
@@ -1323,50 +1292,6 @@
 \AtEndPreamble{
     \RequirePackage{caption}
 }
-
-\@blacklistpackage[You are not supposed to load custom font packages such as]{berasans}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{arev}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{avant}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{bera}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{bookman}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{cabin}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{chancery}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{charter}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{cmbright}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{concrete}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{courier}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{dejavu}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{droid}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{drm}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{ebgaramond}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{euler}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{fourier}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{fouriernc}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{gentium}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{helvet}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{inconsolata}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{kpfonts}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{lato}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{libertineotf}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{libertine}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{librebaskerville}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{lmodern}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{mathdesign}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{mathpazo}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{mathptmx}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{newcent}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{newtx}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{quattrocento}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{tgadventor}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{tgbonum}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{tgchorus}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{tgcursor}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{tgheros}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{tgpagella}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{tgschola}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{tgtermes}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{times}
-\@blacklistpackage[You are not supposed to load custom font packages such as]{yfonts}
 
 \endinput
 %%
