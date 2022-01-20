@@ -309,7 +309,7 @@
 % \rotFPtop        \rotFPbot          Effect
 % 0pt plus 1fil    0pt plus 1fil      figure/table appears in middle (default value)
 % 0pt              0pt plus 1fil      figure/table appears with its top nearest the edge of the page
-% 0pt plus 1fil    0pt plus 2fil      figure/table’s bottom appears twice as far from the edge as the top does
+% 0pt plus 1fil    0pt plus 2fil      figure/tableï¿½s bottom appears twice as far from the edge as the top does
 
 \@ifpackageloaded{rotating}{%
   \let\@makecaption=\make@table@caption
@@ -2116,8 +2116,8 @@
   \def\ps@plain{\leftskip\z@\let\@mkboth\@gobbletwo\vfuzz=5\p@
     \def\@oddhead{}%
     \def\@evenhead{}%
-    \def\@oddfoot{\@c@pyrightline \hfil}%
-    \def\@evenfoot{\@c@pyrightline \hfil}%
+    \def\@oddfoot{\hfil\rm\thepage \hfil}%
+    \def\@evenfoot{\hfil\rm\thepage \hfil}%
     \def\sectionmark##1{}%
     \def\subsectionmark##1{}%
  }
