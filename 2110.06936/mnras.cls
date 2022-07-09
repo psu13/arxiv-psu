@@ -113,7 +113,7 @@
 \ProcessOptions\relax
 
 % Before we do anything else with layout, ensure that the paper is A4
-\usepackage[a4paper]{geometry}
+%\usepackage[a4paper]{geometry}
 
 % Fix several errors with LaTeX2e, including 2-column floats out of order
 %\usepackage{fixltx2e}
@@ -147,14 +147,14 @@
    \let\@listi\@listI}
  \else
  \ifSFB@referee
-  \renewcommand\normalsize{\@setfontsize\normalsize\@xiipt{14}%
+  \renewcommand\normalsize{\@setfontsize\normalsize\@xiipt{15}%
    \abovedisplayskip 4pt plus 1pt minus 1pt
    \belowdisplayskip \abovedisplayskip
    \abovedisplayshortskip 4pt plus 1pt
    \belowdisplayshortskip \abovedisplayshortskip
    \let\@listi\@listI}
  \else
- \renewcommand\normalsize{\@setfontsize\normalsize\@ixpt{12}%
+ \renewcommand\normalsize{\@setfontsize\normalsize\@xiipt{15}%
    \abovedisplayskip 4pt plus 1pt minus 1pt
    \belowdisplayskip \abovedisplayskip
    \abovedisplayshortskip 4pt plus 1pt
@@ -162,7 +162,7 @@
    \let\@listi\@listI}
  \fi
 \fi
-\newcommand\small{\@setfontsize\small\@viiipt{10}%
+\newcommand\small{\@setfontsize\small\@ixpt{11}%
  \abovedisplayskip 4pt plus 1pt minus 1pt
  \belowdisplayskip \abovedisplayskip
  \abovedisplayshortskip 4pt plus 1pt
@@ -171,7 +171,7 @@
   \topsep 2pt plus 1pt minus 1pt
   \parsep \z@
   \itemsep 2pt}}
-\newcommand\footnotesize{\@setfontsize\footnotesize\@viiipt{10}%
+\newcommand\footnotesize{\@setfontsize\footnotesize\@ixpt{11}%
  \abovedisplayskip 4pt plus 1pt minus 1pt
  \belowdisplayskip \abovedisplayskip
  \abovedisplayshortskip 4pt plus 1pt
@@ -180,16 +180,16 @@
   \topsep 2pt plus 1pt minus 1pt
   \parsep \z@
   \itemsep 2pt}}
-\newcommand\scriptsize{\@setfontsize\scriptsize\@vipt{8}}
-\newcommand\tiny{\@setfontsize\tiny\@vpt{6}}
+\newcommand\scriptsize{\@setfontsize\scriptsize\@viiipt{10}}
+\newcommand\tiny{\@setfontsize\tiny\@vipt{8}}
 %
 \if@twocolumn
-   \newcommand\large{\@setfontsize\large\@xpt{11}}
+   \newcommand\large{\@setfontsize\large\@xivpt{16}}
  \else
-  \newcommand\large{\@setfontsize\large\@xpt{12}}
+  \newcommand\large{\@setfontsize\large\@xivpt{16}}
  \fi
-\newcommand\Large{\@setfontsize\Large\@xiipt{14}}
-\newcommand\LARGE{\@setfontsize\LARGE\@xivpt{17}}
+\newcommand\Large{\@setfontsize\Large\@xivpt{14}}
+\newcommand\LARGE{\@setfontsize\LARGE\@xviipt{17}}
 \newcommand\huge{\@setfontsize\huge\@xviipt{20}}
 \newcommand\Huge{\@setfontsize\Huge\@xxpt{25}}
 %
@@ -1103,7 +1103,7 @@ $\reset@font\displaystyle##$\hfil\cr>\cr\approx\cr}}}
     \labelwidth\z@ \labelsep\z@
     \leftmargin\z@\rightmargin\z@%%was 11pc left
     \parsep 0pt plus 1pt}\item[]%
-    \reset@font\normalsize{\bf ABSTRACT}\\\reset@font\large
+    \reset@font\normalsize{\bf ABSTRACT}
 } % SFB 0.1.01
 %
 \newif\ifSFB@keywords
@@ -1179,7 +1179,7 @@ $\reset@font\displaystyle##$\hfil\cr>\cr\approx\cr}}}
 \gdef\@shorttitle{}
 \def\volume#1{\gdef\@volume{#1}}
 \gdef\@volume{Symmetry}
-\def\tod@y{\today}
+\def\tod@y{6 Jul 2022}
 \def\microfiche#1{\gdef\@microfiche{#1}}
 \gdef\@microfiche{}
 \def\pubyear#1{\gdef\@pubyear{#1}}
