@@ -1,0 +1,91 @@
+/* -*-ePiX-*- */
+#include "epix.h"
+using namespace ePiX;
+
+// Level sets of |exp(x + iy) - 1| = sqrt(e^(2x) - 2e^x cos(y) + 1) = k
+double k(0);
+double tmax(void)
+{
+  return log(1 + k) - 0.0001;
+}
+
+double tmin(void)
+{
+  if (k != 1)
+    return log(fabs(1 - k)) + 0.0001;
+  else
+    return -M_PI; // xmin()
+}
+
+P fp(double x)
+{
+  return P(x, Acos(-0.5*((k + 1)*(k - 1)*exp(-x) - exp(x))));
+}
+
+P fm(double x)
+{
+  return P(x, -Acos(-0.5*((k + 1)*(k - 1)*exp(-x) - exp(x))));
+}
+
+int main()
+{
+  picture(P(-M_PI, -M_PI), P(M_PI_2, M_PI), "2.5 x 3in");
+
+  begin();
+  double dx(0.1);
+  P pO(0,0);
+
+  ddot(pO, P(-2,2), "$0$", tl);
+  ddot(P(-3), P(0,2), "$-3$", t);
+  ddot(P(-2), P(0,2), "$-2$", t);
+  ddot(P(-1), P(0,2), "$-1$", t);
+  ddot(P( 1), P(0,2), "$1$", t);
+
+  ddot(P(0,-M_PI), P(-2, 0), "$-\\pi$", l);
+  ddot(P(0, M_PI), P(-2, 0), "$\\pi$", l);
+
+  bold();
+  line(P(xmin(), 0), P(xmax(), 0), 20);
+  line(P(0, ymin()), P(0, ymax()), 20);
+  int N(120);
+
+  font_size("scriptsize");
+  set_crop();
+  k = exp(-1);
+  plot(fp, tmin(), tmax(), N);
+  plot(fm, tmin(), tmax(), N);
+  label(fp(tmin()), P(-2,2), "I", tl);
+
+  k = exp(-0.2);
+  plot(fp, tmin(), tmax(), N);
+  plot(fm, tmin(), tmax(), N);
+  label(fp(tmin() + dx), P(-2,2), "II", tl);
+
+  k = exp(-0.05);
+  plot(fp, tmin(), tmax(), N);
+  plot(fm, tmin(), tmax(), N);
+  label(fp(tmin() + 6*dx), P(-2,2), "III", tl);
+
+  k = 1;
+  plot(fp, tmin(), tmax(), 2*N);
+  plot(fm, tmin(), tmax(), 2*N);
+  label(fp(tmin() + dx), P(2,2), "IV", tr);
+
+  k = exp(0.05);
+  plot(fp, tmin(), tmax(), 2*N);
+  plot(fm, tmin(), tmax(), 2*N);
+  label(fp(tmin()+ 2*dx), P(2, 0), "V", r);
+
+  k = exp(0.2);
+  plot(fp, tmin(), tmax(), 2*N);
+  plot(fm, tmin(), tmax(), 2*N);
+  label(fp(tmin()), P(2, 0), "VI", r);
+
+  k = exp(1);
+  plot(fp, tmin(), tmax(), 2*N);
+  plot(fm, tmin(), tmax(), 2*N);
+  label(fp(tmin()), P(2,0), "VII", r);
+
+  tikz_format();
+  end();
+}

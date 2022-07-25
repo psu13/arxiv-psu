@@ -1,0 +1,71 @@
+/* -*-ePiX-*- */
+#include "epix.h"
+using namespace ePiX;
+
+// sortable class for drawing hyperboloid rulings
+class Sgmt {
+public:
+  Sgmt(const P& tail, const P& head)
+    : m_tail(tail), m_head(head) { }
+
+  P midpt() const
+  {
+    return 0.5*(m_tail + m_head);
+  }
+  void draw() const
+  {
+    pen(White(), 2);
+    line(m_tail, m_head);
+    bold(Black());
+    line(m_tail, m_head);
+  }
+private:
+  P m_tail, m_head;
+};
+
+// Must not be called until camera location is set
+class by_distance {
+public:
+  by_distance() : m_viewpt(camera.viewpt()) { }
+  // crude hack works for these special purposes
+  bool operator() (const Sgmt& S1, const Sgmt& S2)
+  {
+    return norm(S1.midpt() - m_viewpt) >  norm(S2.midpt() - m_viewpt);
+  }
+
+private:
+  P m_viewpt;
+};
+
+int main()
+{
+  picture(P(-1, -1), P(1, 1), "2 x 2in");
+
+  begin();
+
+  // number of segments
+  const int N(40);
+  double x0(4), y0(0.5), th(Atan(y0/x0)), dth(-M_PI/6), step(2*M_PI/N);
+
+  camera.at(P(x0, y0, 1.25)).range(0);
+  bold();
+
+  // back half of base
+  ellipse(P(0,0,0), E_1, E_2, M_PI_2+th, 3*M_PI_2+th);
+
+  // rulings
+  std::list<Sgmt> data;
+  for (int i=0; i < N; ++i)
+    data.push_back(Sgmt(cyl(1, i*step, 0), cyl(1, i*step + dth, 1)));
+
+  data.sort(by_distance());
+  for (std::list<Sgmt>::const_iterator ep=data.begin(); ep != data.end(); ++ep)
+    (*ep).draw();
+
+  // top, and front half of base
+  ellipse(P(0,0,1), E_1, E_2);
+  ellipse(P(0,0,0), E_1, E_2, -M_PI_2+th, M_PI_2+th);
+
+  tikz_format();
+  end();
+}
