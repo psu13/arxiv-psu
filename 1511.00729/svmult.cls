@@ -265,30 +265,30 @@ passing it to article class \MessageBreak
 
 % fonts, sizes, and the like
 \renewcommand\normalsize{%
-   \@setfontsize\normalsize\@xpt\@xiipt
-   \abovedisplayskip 10\p@ % \@plus2\p@ \@minus5\p@
+   \@setfontsize\normalsize\@xiipt\@xivpt
+   \abovedisplayskip 12\p@ % \@plus2\p@ \@minus5\p@
    \abovedisplayshortskip \z@ % \@plus3\p@
-   \belowdisplayshortskip 6\p@ %\@plus3\p@ \@minus3\p@
+   \belowdisplayshortskip 8\p@ %\@plus3\p@ \@minus3\p@
    \belowdisplayskip \abovedisplayskip
    \let\@listi\@listI}
 \normalsize
 \renewcommand\small{%
-   \@setfontsize\small{8.5}{10}%
-   \abovedisplayskip 8.5\p@ % \@plus3\p@ \@minus4\p@
+   \@setfontsize\small{10}{12}%
+   \abovedisplayskip 10.5\p@ % \@plus3\p@ \@minus4\p@
    \abovedisplayshortskip \z@ %\@plus2\p@
-   \belowdisplayshortskip 4\p@ %\@plus2\p@ \@minus2\p@
+   \belowdisplayshortskip 6\p@ %\@plus2\p@ \@minus2\p@
    \def\@listi{\leftmargin\leftmargini
                \parsep \z@ \@plus\p@ \@minus\p@
-               \topsep 6\p@ \@plus2\p@ \@minus4\p@
+               \topsep 8\p@ \@plus2\p@ \@minus4\p@
                \itemsep\z@}%
    \belowdisplayskip \abovedisplayskip
 }
 %
 \let\footnotesize=\small
 %
-\renewcommand\Large{\@setfontsize\large{14}{16}}
-\newcommand\LArge{\@setfontsize\Large{16}{18}}
-\renewcommand\LARGE{\@setfontsize\LARGE{18}{20}}
+\renewcommand\Large{\@setfontsize\large{16}{18}}
+\newcommand\LArge{\@setfontsize\Large{18}{20}}
+\renewcommand\LARGE{\@setfontsize\LARGE{20}{24}}
 %
 \newenvironment{petit}{\par\addvspace{6\p@}\small}{\par\addvspace{6\p@}}
 %
