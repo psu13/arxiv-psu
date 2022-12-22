@@ -546,7 +546,7 @@
 %
 % SIDE MARGINS:
 %
-  \setlength\oddsidemargin{66pt}
+  \setlength\oddsidemargin{53pt}
   \setlength\evensidemargin{53pt}
   \setlength\marginparwidth{47pt}%53pt minus 6pt
   \setlength\marginparsep{6pt}
@@ -563,7 +563,7 @@
   \setlength\footskip{26\p@}
   \setlength\topskip{10\p@}
 %\fi
-  \setlength\headsep{11\p@}
+  \setlength\headsep{30\p@}
 %
 % DIMENSION OF TEXT:
 %
