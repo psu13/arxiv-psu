@@ -1,0 +1,199 @@
+% STYLE-FILE FOR COMBINATORIAL THEORY
+% Modified to remove journal name etc. for preprint use.
+
+% PACKAGES
+\usepackage[a4paper,twoside]{geometry}
+\usepackage{amssymb,amsmath,amsthm,amsfonts}
+\usepackage{graphicx}
+\usepackage{tgtermes}
+\usepackage[noblocks]{authblk}
+\usepackage{xparse} % see comment (*) below
+\usepackage{color}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\usepackage[colorlinks=true,citecolor=blue,linkcolor=blue,urlcolor=black]{hyperref}
+\usepackage[noabbrev,capitalise]{cleveref}
+
+% GEOMETRY
+\setlength{\textwidth}{6.3in}
+\setlength{\textheight}{8.7in}
+\setlength{\topmargin}{0pt}
+\setlength{\headsep}{16pt}
+\setlength{\headheight}{4pt}
+\setlength{\oddsidemargin}{0pt}
+\setlength{\evensidemargin}{0pt}
+
+% FONTS
+% default fonts
+\renewcommand{\familydefault}{qtm}
+\renewcommand\Authfont{\fontsize{12}{14.4}\selectfont}
+\newcommand\smAuthfont{\fontsize{9}{14.4}\selectfont}
+% fonts and spacing in title, section, and paragraphs headings.
+\renewcommand\title[1]{\gdef\@title{\reset@font\scshape #1}}
+\renewcommand\section{\@startsection{section}{1}{\z@}{-3.5ex \@plus -1ex \@minus -.2ex}{2.3ex \@plus.2ex}{\normalfont\large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}{-3ex\@plus -1ex \@minus -.2ex}{1.5ex \@plus .2ex}{\normalfont\normalsize\bfseries}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}{-2.5ex\@plus -1ex \@minus -.2ex}{1.5ex \@plus .2ex}{\normalfont\normalsize\bfseries}}
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}{2ex \@plus.5ex \@minus.2ex}{-1em}{\normalfont\normalsize\bfseries}}
+\renewcommand\subparagraph{\@startsection{subparagraph}{5}{\parindent}{2ex \@plus.5ex \@minus .2ex}{-1em}{\normalfont\normalsize\bfseries}}
+% fonts in author addresses and emails
+\renewcommand\Affilfont{\fontsize{9}{10.8}\itshape}
+\newcommand\emailfont{\sffamily}
+\newcommand*{\email}[1]{\href{mailto:#1}{\emailfont#1} } 
+% fonts in header appearing on all pages.
+\newfont{\headsc}{cmcsc10 at 8truept}
+\newfont{\headbf}{cmbx10 at 8truept}
+\newfont{\headrm}{cmr10 at 10truept}
+\newfont{\headtt}{cmtt10 at 10truept}
+
+% TITLE
+% dateline
+\newcommand{\dateline}[3]{\footnotesize \def\the@dateline{%
+Preprint: March 2023%
+}}
+% copyright
+\def\copy@right{\copyright \thinspace The author{\ifnum\value{authors}>1 s\fi}.}
+% title, including dateline and copyriht
+\let\old@maketitle\maketitle
+\renewcommand{\maketitle}{\date{\small\the@dateline\\[0.5ex]\copy@right}\old@maketitle}
+
+% ABSTRACT
+% keywords
+\newcommand{\keywords}[1]{\def\the@keywords{\ignorespaces#1}}
+% MSC classes
+\newcommand{\MSC}[1]{\def\the@MSC{\ignorespaces#1}}
+% abstracts presentation, including keywords and MSC classes
+\def\abstractheadfont{\bfseries}
+\def\@setabstracthead{{\abstractheadfont\abstractname}}
+\renewenvironment{abstract}{%
+	\small\quotation
+	\noindent{\abstractheadfont{\abstractname}}.\normalfont
+}{
+	\par\smallskip\noindent\textbf{Keywords.} \the@keywords
+	\par\smallskip\noindent\textbf{Mathematics Subject Classifications.} \the@MSC
+	\endquotation
+}
+% no table of contents
+\renewcommand{\tableofcontents}{}
+\renewcommand{\listoffigures}{}
+\renewcommand{\listoftables}{}
+
+% PREPARE INFORMATIONS FOR HEADERS
+% get specifications of the paper
+\newcommand{\specs}[4]{\def\papno{#1}\def\volno{#2}\def\volyear{#3}\def\papid{#4}}
+\ifx\volno\undefined\def\volno{27}\fi
+\ifx\volyear\undefined\def\volyear{2020}\fi
+\ifx\papno\undefined\def\papno{P00}\fi
+\ifx\papid\undefined\def\papid{abcd}\fi
+% format authors in header
+\let\authblkauthor\author
+\ExplSyntaxOn
+\seq_new:N \g_ct_authors_seq
+\RenewDocumentCommand{\author}{om}{
+	\seq_gput_right:Nn \g_ct_authors_seq { #2 }
+	\IfNoValueTF { #1 } { \authblkauthor{#2} } { \authblkauthor[#1]{#2} }
+}
+% The following command returns the m-th author
+\NewDocumentCommand{\ABgetauthor}{m}{\seq_item:Nn \g_ct_authors_seq {#1}}
+\ExplSyntaxOff
+\newcommand*{\authorshead}{%
+	\begingroup
+	\renewcommand\footnotemark[1][]{}% ignore \footnotemark
+	\let\footnote\@gobble% ignore \footnote
+	\let\thanks\@gobble% ignore \thanks
+	\let\textsuperscript\@gobble% ignore protected \textsuperscript
+	\expandafter\let\csname textsuperscript \endcsname\@gobble
+	\let\Authfont\relax% do not use a special font
+	\def\Authand{, }% separate list of authors by ,
+    \ifnum\value{authors}<3 % one ore two authors
+		\AB@authlist% show them all
+	\else% 3 or more authors
+	\ABgetauthor{1}\,et~al.
+	\fi
+	\endgroup
+}
+% ----------------------------
+% Comment (*)
+% The following solution would ideally have
+% \NewCommandCopy{\authblkauthor}{\author}
+% 		instead of
+% \let\authblkauthor\author
+% but this requires everyone to have the newest LaTeX.
+% Likewise, we load xparse so that we can use \ReNewCommand. This
+% is also in the newest LaTeX kernel.
+% ----------------------------
+
+% HEADERS
+\renewcommand{\ps@plain}{%
+	\ps@headings
+	% headers
+	\renewcommand{\@evenhead}{{\headsc \thepage} \hfil \smAuthfont \authorshead}
+	\renewcommand{\@oddhead}{
+		\headsc preprint \hfil \ifnum\value{page}>1{\thepage}
+		\else\relax\fi
+	}
+	% footers
+	\renewcommand{\@evenfoot}{}
+	\renewcommand{\@oddfoot}{}
+}
+\pagestyle{plain}
+
+% THEOREMS
+% theorems
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{observation}[theorem]{Observation}
+\newtheorem{claim}[theorem]{Claim}
+% definitions
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\newtheorem{open}[theorem]{Open Problem}
+\newtheorem{problem}[theorem]{Problem}
+\newtheorem{question}[theorem]{Question}
+% remarks
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{note}[theorem]{Note}
+% change numbering of some things to within section
+\numberwithin{equation}{section}
+\numberwithin{figure}{section}
+\numberwithin{table}{section}
+\theoremstyle{theorem}
+
+% BIBLIOGRAPHY
+% Squashing the bibliography
+\newlength{\BiblioSpacing}
+\setlength{\BiblioSpacing}{0.4ex plus 0.1ex minus 0.1ex}
+\let\oldthebibliography\thebibliography
+\let\endoldthebibliography\endthebibliography
+\renewenvironment{thebibliography}[1]{
+	\begin{oldthebibliography}{#1}
+	\setlength{\parskip}{\BiblioSpacing}
+	\setlength{\itemsep}{\BiblioSpacing}
+}{
+    \end{oldthebibliography}
+}
+% arXiv reference
+\newcommand{\arxiv}[1]{\href{https://arxiv.org/abs/#1}{\texttt{arXiv:#1}}}
+% Typeset a doi (some magic to make underscores work)
+\def\doi{\begingroup\catcode`\_=12\relax\doi@arg}
+\def\doi@arg#1{\href{https://doi.org/#1}{\texttt{https://doi.org/#1}}\endgroup}
+
+% OTHERS
+% section formatting
+\def\@seccntformat#1{\@ifundefined{#1@cntformat}%
+   {\csname the#1\endcsname\space}% default
+   {\csname #1@cntformat\endcsname}}% enable individual control
+\newcommand\section@cntformat{\thesection.\space} % section-level
+\newcommand\subsection@cntformat{\thesubsection.\space} % subsection-level
+
+% fix math symbols
+\renewcommand{\geq}{\geqslant}
+\renewcommand{\leq}{\leqslant}
+\renewcommand{\ge}{\geqslant}
+\renewcommand{\le}{\leqslant}
+\renewcommand{\emptyset}{\varnothing}
