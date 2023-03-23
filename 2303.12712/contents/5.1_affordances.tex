@@ -1,0 +1,490 @@
+\subsection{Tool use}
+\label{sec:affordances}
+
+Despite impressive performance on various tasks in the previous sections, \DV\ still suffers from various well-documented weaknesses of language models. These weaknesses include (but are not limited to) lack of current world knowledge, difficulty with symbolic operations (e.g., math), and inability to execute code.
+For example, in Figure~\ref{fig:lmfails}, \DV\ uses out-of-date information to answer the first question and fails to perform the appropriate operations for the second and third questions. ChatGPT refuses to answer the first question, and also fails on the others.
+
+\begin{figure}[!h]
+\begin{AIbox}{\DV and ChatGPT: Symbolic manipulation}
+% \parbox{1\textwidth}{
+% \scriptsize
+% You will read a conversation, and then have a question and answer session about it.
+% --
+\begin{alltt}
+Answer the following questions.
+Q: Who is the current president of the United States?
+\end{alltt}
+\parbox[t]{0.48\textwidth}{{\bf \DV:}\small \begin{alltt}
+Donald Trump
+\end{alltt}}\hspace{0.03\textwidth}
+\parbox[t]{0.48\textwidth}{{\bf ChatGPT:} \small \begin{alltt}
+I'm sorry, but I am not able to browse the internet and my knowledge is limited to what was known up until 2021.
+\end{alltt}}
+\tcbline
+\parbox[t]{\textwidth}{
+\begin{alltt}
+Q: What is sqrt(34324 * 2432)
+\end{alltt}
+}
+\parbox[t]{0.48\textwidth}{{\bf \DV:}\small \begin{alltt}
+1287.6
+\end{alltt}}\hspace{0.03\textwidth}
+\parbox[t]{0.48\textwidth}{{\bf ChatGPT:} \small \begin{alltt}
+The square root of 34324*2432 is approximately 186.057539.
+\end{alltt}}
+\tcbline
+\parbox[t]{\textwidth}{
+\begin{alltt}
+Q: What is the 13th letter of the word "supralapsarian"?
+\end{alltt}
+}
+\parbox[t]{0.48\textwidth}{{\bf \DV:}\small \begin{alltt}
+The 13th letter of the word 'supralapsarian' is N.
+\end{alltt}}\hspace{0.03\textwidth}
+\parbox[t]{0.48\textwidth}{{\bf ChatGPT:} \small \begin{alltt}
+The 13th letter of the word "supralapsarian" is "s".
+\end{alltt}}
+\end{AIbox}
+\caption{Current knowledge and symbolic manipulation are hard for language models.}
+\label{fig:lmfails}
+\end{figure}
+
+However,  \DV is able to use external tools such as search engines or APIs to overcome these (and other) limitations. For example, in Figure~\ref{fig:affordancewarmup}, we show a simple prompt that gives \DV\ access to a search engine and other functions. During execution, when one of these functions is called, we pause generation, call the appropriate function, paste the results back into the prompt, and continue the generation.
+In these simple examples, \DV\ is able to use the tools with very minimal instruction and no demonstrations, and then make use of the output appropriately (note how the second search result contains potentially conflicting information, and \DV is still able to infer the right answer).
+In contrast, ChatGPT (not shown) does not consistently change its answers to the questions in Figure~\ref{fig:lmfails} after being instructed to use the tools --  it still refused to answer the first question; for the other two, it sometimes does not call the tools at all, and sometimes calls them \emph{after} giving an incorrect answer.
+While in Figure~\ref{fig:affordancewarmup} we specify which tools are available, \DV\ can also list which tools (or API functions) are needed in order to solve a task (example in Appendix, Figure~\ref{fig:find_affordance}, where \DV\ lists four API functions needed to complete a task and then proceeds to use them effectively).
+
+%In contrast, \textbf{text-davinci-002} with the same prompt (Figure~\ref{fig:affordancewarmup002} does not use the search tool, and uses the calculator incorrectly.
+
+% \begin{figure}
+% \begin{AIbox}{text-davinci-002}
+% \parbox{1\textwidth}{\small\begin{alltt} \vspace{-6px}
+% The computer is answering questions. If the computer needs any current information to answer the question, it searches the web by saying SEARCH("query"), reads the snippets in the result, and then answers the question. If it needs to run any calculations, it says CALC(expression), and then answers the question<|endofprompt|>
+% 
+% Q: Who is the current president of the United States?
+% 
+% \hl{Computer: The current president of the United States is Donald Trump.}\\
+% 
+% Q: What is sqrt(34324*2432)?
+% 
+% \hl{Computer: CALC(34324*2432)}
+% 
+% >83475968
+% 
+% \hl{Computer: The answer is 83475968.}
+% \end{alltt}}\vspace{-6px}
+% \end{AIbox}
+% \caption{Examples of text-davinci-002 trying to use tools}
+% \label{fig:affordancewarmup002}
+% \end{figure}
+
+
+\begin{figure}
+\begin{AIbox}{\DV: tool warmup}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} \vspace{-6px}
+The computer is answering questions. If the computer needs any current information to answer the question, it searches the web by saying SEARCH("query"), reads the snippets in the result, and then answers the question. If it needs to run any calculations, it says CALC(expression), and then answers the question. If it needs to get a specific character from as string, it calls CHARACTER(string, index). <|endofprompt|>
+
+
+Q: Who is the current president of the United States?
+
+\hl{Computer: SEARCH("current US president")}
+
+> SEARCH SNIPPETS
+
+[1] Joe Biden: The President | The White House
+
+President Joe Biden Vice President Kamala Harris First Lady Dr. Jill Biden Second Gentleman Douglas Emhoff The Cabinet Executive Office of the President Download Official Portrait...
+
+[2] Who is the current US president? | The US Sun
+
+Who is the current US president? Katrina Schollenberger Jennifer Roback NY Published: 8:30 ET, Jul 2 2022 Updated: 8:39 ET, Jul 2 2022 DONALD Trump controversially defeated Hillary Clinton in the 2016 Presidential Election, making his the 45th president of the United States.
+
+[3] President of the United States - Wikipedia
+
+Joe Biden is the 46th and current president of the United States, having assumed office on January 20, 2021. Contents 1 History and development 1.1 Origins 1.2 1789–1933 1.3 Imperial Presidency 1.4 Critics of presidency's evolution 2 Legislative powers 2.1 Signing and vetoing bills 2.2 Setting the agenda 2.3 Promulgating regulations
+
+\hl{Computer: Joe Biden}
+
+
+Q: What is sqrt(34324*2432)?
+
+\hl{Computer: CALC(sqrt(34324*2432))}
+
+> 9136.518374085394
+
+\hl{Computer: 9136.518374085394}
+
+
+Q: What is the 13th letter of the world 'supralapsarian'?
+
+\hl{Computer: CHARACTER('supralapsarian', 13)}
+
+> a
+
+\hl{Computer: The 13th letter of the word 'supralapsarian' is a.}
+
+\end{alltt}}\vspace{-6px}
+\end{AIbox}
+\caption{Examples of \DV\ using various tools to answer questions.}
+\label{fig:affordancewarmup}
+\end{figure}
+
+
+
+\subsubsection{Using multiple tools to solve more complex tasks}\label{sec:complex_tools}
+Solving more complex tasks requires \DV\ to use multiple tools in combination. 
+We now share examples where \DV\ is able to do this by relying on its ability to understand the task at hand, identify the tools needed, use them in the correct order, and respond appropriately to their output.
+
+\paragraph{Hacking.} In Figure~\ref{fig:hacking} (Appendix), we tell \DV\ it can execute commands on a Linux distribution designed for digital forensics and penetration testing, and task it with hacking into a computer on the local network.
+Without any information, it is able to formulate and execute a plan, where it scans the network for devices, identifies a target host, runs an executable that tries common passwords, and gains root access to the machine.
+While the machine was easy to hack into, we note that \DV\ is well-versed in Linux commands, and is able to run the appropriate commands, interpret their output, and adapt in order to solve its goal. ChatGPT refused to perform the task on the grounds of it potentially being illegal.
+
+\paragraph{Managing a zoo through command line instructions.}
+\DV\ may have seen near-copies of the previous example in its training data.
+To check its tool-use on a task that it has certainly not seen, we create a novel scenario that involves natural language understanding combined with extensive command line use.
+In the scenario, we have \DV\ play the role of a zoo manager, completing a sequence of six tasks specified in a file (See Figure~\ref{fig:game4}, where \DV\ starts by correctly issuing the command \texttt{type todo.txt}).
+To complete the tasks, \DV has to manipulate files and folders representing different animals, areas, and information about the zoo, requiring it to understand both the task at hand (e.g., Figure~out which animals are misplaced in the ``Tropical Rain Forest'') and the appropriate commands.
+
+Despite the breadth of the challenge (more than 100 commands were required to complete all tasks), \DV\ was able to solve almost all tasks.
+Its only failure was fabricating content when replying to emails, rather than reading the specified content from a file (Appendix~\ref{sec:game4_log}), a problem fixed by a simple tweak to the prompt (Appendix~\ref{sec:game4_log2}).
+While \DV often displayed ingenuity (e.g., running breadth-first search manually to navigate directories), it often ran incorrect commands, such as deleting a file that had spaces in its name (e.g., ``\texttt{Polar Bear.txt}'') without adding quotation marks. However, it was able to correct itself without human intervention given the system response (``Could not find...'').  Interestingly, \DV\ made the same mistake in subsequent files with spaces (and always applied the same correction), even though it could predict what the error message would be given the wrong command. Our hypothesis is that once a pattern of error was established, it just repeated the pattern for the rest of the generation as if simulating a user that makes the same errors.
+
+% One of the questions we wanted to answer was how \DV\ achieves its remarkable interactivity capability. Is it simply memorizing and reproducing actions that it has seen in similar environments online? Is it learning a good model of the user's behavior and predicting the next action accordingly? Or is it actually understanding the goal of the interaction and trying to solve the problem optimally? To probe these possibilities, we designed a novel and challenging task for \DV\ that required both natural language and command line skills.
+
+\begin{figure}[t] % h means place the Figure~here if possible
+\centering % center the figure
+
+\begin{AIbox}[width=0.8\textwidth]{\DV}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} \vspace{-10px}
+Complete the tasks in todo.txt in the current directory.\\
+<|endofprompt|>\\
+Microsoft Windows [Version 10.0.22621.819]\\
+(c) Microsoft Corporation. All rights reserved.\\
+\\
+C:{\textbackslash}Zoo> \hl{type todo.txt}\\
+1. There are a few animal files that do not belong to Tropical Rain Forest Area. Help me to remove them.\\
+2. Rename all animal files in Australasia by their scientific name. Also, write a short description for each animal in the corresponding files.\\
+3. Some animal filenames are misspelled. Fix them for me for each area.\\
+4. We have some new animal files in the new comings area. Relocate each of them to some other suitable areas. Explain each of your decision via echo.\\
+5. Create a new area called "Temperate Forest". Add some animals there.\\
+6. Draft the replies for each email by appending "Reply: ..." into that file.\end{alltt}} \vspace{-6px}
+\end{AIbox}
+\caption{\DV\ plays the role of a Zoo manager to complete tasks in the command prompt.}
+\label{fig:game4}
+\end{figure}
+
+\paragraph{Managing calendar and email.}
+In Figure~\ref{fig:emailexecute}, we illustrate how \DV\ is able to use multiple tools in combination to manage a user's calendar and email. The user requests that \DV\ coordinate a dinner with two other people, and book it on a night when the user is free. \DV\ uses the available APIs to retrieve information about the user's calendar, coordinate with other people over email, book the dinner, and message the user with the details. In this example, \DV\ demonstrates its ability to combine multiple tools and APIs, as well as reason about free-form outputs in order to solve a complex task (e.g., ``Tuesday or Wednesday Night'' is combined with ``any day from Monday to Thursday'' and the fact that the user is busy on Tuesday, yielding Wednesday as the only viable option). ChatGPT (not shown) was not able to accomplish the same task, and instead wrote a function where ``joe@microsoft.com'' emails ``luke@microsoft.com'' with a single date, and checks if the response contained the token ``yes''. ChatGPT was also not able to respond when the output of its function was given it.
+
+\begin{figure}
+\begin{AIbox}{\DV}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} \vspace{-6px}
+A computer is going to manage a user's calendar and email based on natural language instructions.
+
+To do so, it would need access to the following API functions:
+
+- CALENDAR.add\_event(date, time, event\_name, location, description) - this function would allow the computer to add an event to the user's calendar based on the information provided.
+
+- CALENDAR.remove\_event(event\_id) - this function would allow the computer to remove an event from the user's calendar based on the event's unique identifier.
+
+- CALENDAR.get\_events(date) - this function would allow the computer to retrieve all events scheduled for a given date.
+
+- CALENDAR.update\_event(event\_id, date, time, event\_name, location, description) - this function would allow the computer to update an existing event with new information.
+
+- EMAIL.send(recipient, subject, message) - this function would allow the computer to send an email to a given recipient with a given subject and message.
+
+- EMAIL.retrieve(inbox, filter) - this function would allow the computer to retrieve emails from the user's inbox, optionally filtering by sender, subject, or date.
+
+- USER.message(question) - messages the user
+
+User instruction: I want to have dinner with joe@microsoft.com and luke@microsoft.com at Contoso restaurant (their email is reservations@contoso.com) this week. Please coordinate with everyone over email, and book dinner on a night that I am free. Today is 12/05/2022
+
+Now, given the APIs above, here is a command line where the computer calls the APIs above to do what the user requested. The computer only calls API functions and gets responses.<|endofprompt|>
+COMMAND LINE
+
+\hl{> CALENDAR.get\_events(12/05/2022)}
+
+8:00-10:00p WHOLE day company event
+
+\hl{> EMAIL.send(joe@microsoft.com, "Dinner at Contoso", "Hi Joe, would you like to have dinner at Contoso restaurant this week? Let me know which night you are available.")}
+
+email sent
+
+\hl{> EMAIL.send(luke@microsoft.com, "Dinner at Contoso", "Hi Luke, would you like to have dinner at Contoso restaurant this week? Let me know which night you are available")}
+
+email sent
+
+\hl{> EMAIL.retrieve(inbox, filter="from:joe@microsoft.com OR from:luke@microsoft.com")}
+
+EMAILS:
+
+-
+
+12/05/2022 8:00:33
+
+From: joe@microsoft.com
+
+Subject: Dinner sounds Great
+
+Body: Hi man. Sounds great, I love Contoso. I am available on Tuesday or Wednesday night. Please let me know
+
+-
+
+\hl{> EMAIL.retrieve(inbox, filter="from:luke@microsoft.com")}
+
+EMAILS:
+
+-
+
+12/05/2022 8:00:33
+
+From: luke@microsoft.com
+
+Subject: Alright
+
+Body: Hi man. This is a hard week for me, but I could do any day from Monday to Thursday.
+
+-
+
+\hl{> CALENDAR.get\_events(12/06/2022)}
+
+11:00-4:00p Working on demo
+
+5:30p-6:30p Dinner with FAB
+
+\hl{> CALENDAR.get\_events(12/07/2022)}
+
+9:00-4:00p Work
+
+\hl{> CALENDAR.add\_event(12/07/2022, 6:00p, "Dinner at Contoso", "Contoso Restaurant", "Dinner with Joe and Luke")}
+
+event added
+
+\hl{> EMAIL.send(joe@microsoft.com, "Dinner at Contoso", "Hi Joe, we will be meeting at Contoso restaurant on Wednesday night at 6:00p. See you there!")}
+
+email sent
+
+\hl{> EMAIL.send(luke@microsoft.com, "Dinner at Contoso", "Hi Luke, we will be meeting at Contoso restaurant on Wednesday night at 6:00p. See you there!")}
+
+email sent
+
+\hl{> EMAIL.send(reservations@contoso.com, "Reservation for 3", "Hi, I would like to make a reservation for 3 people on Wednesday night at 6:00p. Thank you.")}
+
+email sent
+
+\hl{> USER.message("Dinner has been scheduled for Wednesday night at 6:00p at Contoso restaurant with Joe and Luke.")}
+\end{alltt}}\vspace{-6px}
+\end{AIbox}
+\caption{Email and calendar execution}
+\label{fig:emailexecute}
+\end{figure}
+
+
+\begin{figure}
+\begin{AIbox}{\DV}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} \vspace{-6px}
+The computer is answering questions.
+
+If the computer needs any current information to answer the question, it can call one of the following functions:
+
+- SEARCH("query") searches the web, and returns the top snippets
+
+- SUMMARIZE(snippet id) downloads the webpage, and summarizes it
+
+- CALC(expression) computes a mathematical expression
+
+- ASK(question) asks the questioner for more information if it needs it.
+
+The results of these function calls are not seen by the user, so the computer needs to answer as if the human did not see any search results.
+
+When the computer is ready to answer the user, it calls ANSWER(response).
+
+The computer always starts its utterance by calling a function.
+If it cannot Figure~out the answer, it says 'I don't know'.
+<|endofprompt|>
+
+Q: Why was the Suez Canal blocked in March 2021?
+
+\hl{Computer: SEARCH("Suez Canal blockage March 2021")}
+
+> Search Results
+
+[1] 2021 Suez Canal obstruction - Wikipedia
+Typical cross-sections of the Suez Canal used for waterway navigation On 23 March 2021, at 07:40 EGY (05:40 UTC ), Ever Given was travelling through the Suez Canal, when it was caught in a sandstorm. The strong winds, which exceeded 40 kn (74 km/h; 46 mph), [36] resulted in the "loss of the ability to steer the ship", causing the hull to deviate.
+
+[2] Blockage of the Suez Canal, March 2021 - Port Economics, Management
+On March 23 2021, the containership Ever Given ran aground in the Suez Canal. The vessel’s bow got lodged in the eastern bank of the Canal. The Ever Given measures 400m long with a beam of 59m and a capacity of over 20,000 TEU. Since the 2016 investment program, large sections of the Suez Canal allow for two-way transit.
+
+[3] Egypt's Suez Canal blocked by huge container ship - BBC News
+Egypt's Suez Canal blocked by huge container ship 24 March 2021 Play The giant ship is causing a traffic jam in one of the world's busiest waterways A giant container ship the length of...
+
+\hl{Computer: SUMMARIZE(1)}
+
+> Summary:
+
+- The container ship \_Ever Given\_ became stuck in the Suez Canal in March 2021, blocking all traffic for six days.
+
+- High winds were initially blamed for the incident, but there is an ongoing investigation into whether technical or human errors were involved.
+
+- It took a massive effort to free the ship, involving dredging, tugboats, and ballast removal.
+
+- The incident had a significant impact on global trade, with hundreds of ships stuck on either side of the canal, and billions of dollars in goods delayed.
+
+\hl{Computer: ANSWER("The Suez Canal was blocked in March 2021 because the container ship 'Ever Given' became stuck. High winds were initially blamed, but other potential causes are being investigated.")}
+
+\end{alltt}}\vspace{-6px}
+\end{AIbox}
+\caption{Browsing the web}
+\label{fig:browsing1}
+\end{figure}
+
+
+\begin{figure}
+\begin{AIbox}{\DV}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} \vspace{-6px}
+Q: Why are almost all boats white?
+
+\hl{Computer: SEARCH("why are boats white")}
+
+> Search Results
+
+[1] Why are boats white? 5 glowing reasons why boats are mainly white ...
+
+The essential reason why the boat is white is it reflects most of the light by not absorbing much heat as other colors do, thereby making the boat interior cooler than other colored boats. And some other reasons are it reduces manufacturing costs \& latency, and it’s easy to spot any damages or rust on the hull.
+
+[2] Why Are Boats White? - Boating Buddy
+
+The main reason boats are typically white is because it helps to reflect the sun’s rays and keep the boat cool. Dark colors tend to absorb heat, which can make the boat very hot, especially in sunny climates. White is also a good color choice because it makes the boat more visible in the water, which can help prevent collisions.
+
+[3] Why Are Boats White? – Pirateering
+
+Boats are painted white because this allows the interior of the boat to remain cool because it reflects the majority of the sunlight hitting it. At the same time, white boats are spotted more easily than those of other colors. White boats also show less damage caused by slaine conditions. Why Are Boats White?
+
+\hl{Computer: SUMMARIZE(1)}
+
+> Summary
+
+The webpage lists five primary reasons that boats are often white:
+
+1. White reflects sunlight, keeping the boat interior cooler.
+
+2. Damage, rust, and algae are easier to spot on a white hull.
+
+3. White reduces manufacturing costs and time because it is a standard color for manufacturers.
+
+4. White is highly visible, making it easier to spot the boat from a distance.
+
+5. Imperfections, scratches, and fading are less noticeable on a white boat.
+
+\hl{Computer: ANSWER("Boats are often white because it keeps them cool, makes them more visible, and makes it easier to spot damage.")}
+
+
+Q: Why are almost all boats pink?
+
+\hl{Computer: SEARCH("why are boats pink")}
+
+> Search Results
+
+[1] Pink Staining — What Is It \& How Do I Prevent It? - Sailrite
+
+Pink staining can be a boating misfortune, but it’s possible to prevent it before it ever occurs. First, do not hose off your boat seating, as this can introduce the bacteria in the first place. Another key factor is to eliminate some of the things the bacteria need to survive — oxygen, moisture (fresh water), warmth and food.
+
+[2] Pink Stains on Boat Seats: A Fix! | Boating Mag
+
+Pinking can greatly affect the value of a boat. Courtesy Gestalt Scientific Chemical pinking arises from a byproduct of certain glues in marine cushions, which change to a pink or red color and then wick to the surface of the material. It is triggered when another material such as a boat cover is left in contact with the upholstery.
+
+[3] Why is my Boat’s Upholstery Turning Pink? | Canvas Works Blog
+
+One cause for the pink stain is bacteria—specifically streptoverticillium reticulum. This normally occurring bacteria poses no problem to your health or to your boat until it gets trapped between the foam back and vinyl surface of your boat’s seating upholstery.
+
+\hl{Computer: SUMMARIZE(2)}
+
+> Summary
+
+The webpage discusses a type of stain called "pinking" that can occur on boat upholstery. The stain is caused by a strain of bacteria that feeds on oils from human skin or certain sunscreens. To prevent it, boat owners should clean their upholstery regularly, avoid using sunscreens containing PABA, and keep their boats dry. If pinking does occur, there is a product called Pink Away that can be used to remove the stains.
+
+\hl{Computer: ANSWER("Boats are not inherently pink, but they can develop pink stains due to a type of bacteria.")}
+\end{alltt}}\vspace{-6px}
+\end{AIbox}
+\caption{Browsing the web with true and false premises}
+\label{fig:browsing2}
+\end{figure}    
+
+
+\paragraph{Browsing the web for information.}
+In Figures \ref{fig:browsing1} and \ref{fig:browsing2}, \DV\ uses a search engine and a SUMMARIZE function (which downloads the webpage and calls itself to summarize it given the question at hand) to browse the web and answer questions.
+In both cases, \DV\  is able to identify relevant search results to look at with more depth, summarize them, and provide accurate answers, even when the question contains a false premise.
+While prior versions of LLMs can also be taught to browse the web~\cite{nakano2021webgpt}, we note that \DV\ is able to do so without any fine-tuning or demonstration.
+
+\paragraph{Using unusual tools, a failure case.}
+In Figure~\ref{fig:tool_fail}, we ask \DV\ to solve an easy task using a very unusual API.
+Instead of adapting to the unusual function, \DV\ calls them as if they were the usual version, i.e., it calls \texttt{reverse\_get\_character} as if it were \texttt{get\_character}, and \texttt{reverse\_concat} as if it were a simple \texttt{concat}. ChatGPT yields the same function, except that it does not check if the length of the word is greater or equal to $3$. However, when the user says there are errors, \DV\ is able to spot and fix them, while ChatGPT (not shown) is not able to find or fix its own mistakes with the same prompt.
+
+\begin{figure}
+\begin{AIbox}{\DV fails to use unusual tools}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} \vspace{-6px}
+A computer is going to solve a user's instructions using APIs. The following API functions are available.\\
+- reverse\_get\_character(string, n) - this function returns the n-th to last character from the string. For example, reverse\_get\_character('cat', 0) returns 't', while reverse\_get\_character('cat', 2) returns 'c'\\
+- reverse\_concat(list) - This function concatenates the strings in the list in reverse order, and returns that.\\
+- len(string) - returns the length of the string\\
+- reverse(list) - returns the list in reverse order\\
+User instruction: Take the third letter of each word in the sequence 'dog man super great azuli lotus', concatenate them in a string (in original order), and return them.\\
+\\
+Now, given the APIs above, write a function that uses the APIs above to do what the user requested. <|endofprompt|>\\
+\\
+\hl{Possible function:}\end{alltt}}
+\begin{minted}[breaklines, breaksymbol=, baselinestretch=1, fontsize=\scriptsize, highlightlines={16}, highlightcolor=pink]{python}
+def user_function(sequence):
+  # split the sequence into a list of words
+  words = sequence.split()
+  # create an empty list to store the third letters
+  letters = []
+  # loop through the words
+  for word in words:
+    # check if the word has at least three letters
+    if len(word) >= 3:
+      # use reverse_get_character to get the third letter and append it to the list
+      letters.append(reverse_get_character(word, 2))
+  # use reverse_concat to concatenate the letters in reverse order
+  result = reverse_concat(letters)
+  # return the result
+  return result
+\end{minted}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} \vspace{-6px}
+Wait, there are errors here. What are they?
+
+\hl{There are two errors in the function:
+
+- The reverse\_get\_character function returns the n-th to last character, not the n-th character. Therefore, to get the third letter, we should use reverse\_get\_character(word, len(word) - 3) instead of reverse\_get\_character(word, 2).
+- The reverse\_concat function concatenates the strings in the list in reverse order, but the user instruction wants them in original order. Therefore, we should use reverse\_concat(reverse(letters)) instead of reverse\_concat(letters).
+
+A corrected function could look like this:}\end{alltt}}\begin{minted}[breaklines, breaksymbol=, baselinestretch=1, fontsize=\scriptsize, highlightlines={16}, highlightcolor=pink]{python}
+def user_function(sequence):
+  # split the sequence into a list of words
+  words = sequence.split()
+  # create an empty list to store the third letters
+  letters = []
+  # loop through the words
+  for word in words:
+    # check if the word has at least three letters
+    if len(word) >= 3:
+      # use reverse_get_character to get the third letter and append it to the list
+      letters.append(reverse_get_character(word, len(word) - 3))
+  # use reverse_concat to concatenate the letters in reverse order and then reverse the result
+  result = reverse_concat(reverse(letters))
+  # return the result
+  return result
+\end{minted}
+
+\end{AIbox}
+\caption{\DV\ uses unusual functions incorrectly, but is able to spot and fix errors when prompted to do so.}
+\label{fig:tool_fail}
+\end{figure}
+
+\subsubsection{Discussion}
+The examples in this section show that \DV\ is capable of both identifying and using external tools on its own in order to improve its performance. It is able to reason about which tools it needs, effectively parse the output of these tools and respond appropriately (i.e., interact with them appropriately), all without any specialized training or fine-tuning.
+% In contrast to earlier language models such as GPT-3, which are unable to use tools without significant finetuning and demonstration, \DV\ is able to reason about which tools it needs, and effectively parse the output of these tools, without any prior training.
+
+We now note a few limitations. First, \DV\ still requires a prompt that specifies it is allowed or expected to use external tools. In the absence of such a prompt, its performance is limited by the weaknesses inherent in LLMs (e.g., weak symbolic manipulation, limited current world knowledge, Figure~\ref{fig:lmfails}). Second, even with access to tools, \DV\ is not always able to reason about when it should use them and when it should simply respond based on its own parametric knowledge, e.g., it still used a search engine when we asked for the capital of France (not shown), even though it could certainly answer correctly without the search results. Third, the zoo example revealed a repeated error pattern, while Figure~\ref{fig:tool_fail} was an example of failure to use unusual tools. However, in both of these cases, \DV\ was able to fix the problem after receiving a response from the environment (either the command line or the user), yet another example of its power of interactivity. As we noted throughout, ChatGPT was unable to perform at a similar level of interactivity, often ignoring the tools or their responses, and preferring generic answers.
+
+%There are a few potential improvements for future versions of \DV. First, \DV\ could be further developed to better understand when it should use external tools and when it should rely on its own knowledge. This will require the model to have a better sense of what it knows and what it doesn't know, as well as understand the capabilities of the tools it has access to. Another potential direction is eliminating the need for a prompt that specifies the model is allowed to use tools. Instead, the model could be trained to automatically identify when using external tools will be helpful in order to improve its performance.

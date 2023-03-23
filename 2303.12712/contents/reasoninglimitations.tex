@@ -1,0 +1,306 @@
+\section{Limitations of autoregressive architecture highlighted by \DV}
+\label{sec:limitations}
+As witnessed in the previous sections, \DV\ demonstrates impressive capabilities in a wide range of tasks, such as reasoning, content generation, problem solving, and more. However, as we will show in this section, the model also has several substantial flaws, some of which seem to be inherent to the next-word prediction paradigm that underlies its architecture. We will illustrate these flaws with a series of examples and discuss their implications.
+
+\subsection{Warm-up with two basic examples}
+Predicting the next word is a task that relies on working memory and often requires planning ahead. Consider the following example:
+
+\begin{AIbox}{\DV}
+\scriptsize\vspace{-5px}
+\parbox{1\textwidth}{
+\begin{alltt}
+Merge the content of the next sentences into one sentence. \\
+
+The Fed raised interest rates last year at the fastest pace since the 1980s, pushing borrowing costs above 4.5 percent, from near zero. That initially seemed to be slowing consumer and business demand and helping inflation to moderate. But a number of recent economic reports have suggested that inflation did not weaken as much as expected last year and remained faster than expected in January, while other data showed hiring remains strong and consumer spending picked up at the start of the year. \\
+    
+Merged sentence: \\
+
+\hl{ Despite raising interest rates at the fastest pace since the 1980s, from near zero to above 4.5 percent, which initially appeared to slow consumer and business demand and moderate inflation, the Fed faced a number of recent economic reports that indicated inflation did not weaken as much as expected last year and remained faster than expected in January, while hiring remained strong and consumer spending picked up at the start of the year.}
+\end{alltt}
+}
+\end{AIbox}
+
+Arguably, the average human would not be able to produce such a concise sentence without taking the time to plan its structure and would likely have to ``backtrack" (making edits) a few times before reaching the final form. Yet the GPT architecture does not allow for such backtracking, which means that producing this output required ``far-ahead'' planning. Due to the forward nature of \DV's output production, the only way for the model to do such far-ahead planning is to rely on its internal representations and parameters to solve problems that might require more complex or iterative procedures. 
+%The GPT architecture, on the other hand, does not allow for backtracking, which necessitates more ahead-planning from the model. 
+
+%Recall that the input of the model is a prompt, and the output is a sequence of words that is generated in a feed-forward manner, without any feedback or revision. Thus the model has to rely on its internal representations and parameters to solve problems that might require more complex or iterative procedures. 
+
+In what comes next we will try to argue that one of the main limitations of the model is that the architecture does not allow for an ``inner dialogue" or a ``scratchpad", beyond its internal representations, that could enable it to perform multi-step computations or store intermediate results. We will see that, while in some cases this limitation can be remedied by using a different prompt, there are others where this limitation cannot be mitigated.
+
+For example, consider the following question to which the model gives a wrong answer:
+\begin{AIbox}{\DV}
+\begin{alltt}
+Q: How many prime numbers are there between 150 and 250? \\
+A: \hl{There are 13 prime numbers between 150 and 250.}
+\end{alltt}
+\end{AIbox}
+
+However, if we ask the model to list the prime numbers in this range and then write what the count is, it does give the correct answer:
+
+\begin{AIbox}{\DV}
+\scriptsize\vspace{-5px}
+\parbox{1\textwidth}{
+\begin{alltt}
+Q: First list the prime numbers between 150 and 250, and then output the size of this list. \\
+A: \hl{The prime numbers are 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, and 241. \\
+
+So the size of this list is 18.}
+\end{alltt}
+}
+\end{AIbox}
+
+As this example shows, the model has the sufficient knowledge needed to recover the answer to this question. However, the problem is that the next-word prediction architecture does not allow the model to have an ``inner dialogue". The input of the model is the question ``how many prime numbers..." and the output is expected to be the final answer, requiring the model to come up with an answer in (essentially) a single pass of the feedforward architecture which in particular cannot implement a ``for loop". A human, on the other hand, when required to write down what the final answer is, would probably use a scratchpad and check what the numbers are.
+
+%We would like to stress that a single step of next word prediction clearly needs to have scratchpad-like and planning abilities. Even generating a single coherent sentence that would be grammatically correct needs some extent of planning ahead. Moreover, there are certain types of algorithms and procedures that the 
+
+%We would like to stress that the model is clearly not devoid of scratchpad-like and planning abilities (even in a single feedforward pass). Even generating a single coherent sentence that would be grammatically correct requires some extent of ahead-planning. Moreover, there are certain types of algorithms and procedures that the model is able to successfully execute. For example, as explained below, it is able to solve st-connectivity problems without requiring a chain-of-thought prompt. 
+
+%However, these capabilities are often limited. The model struggles with tasks that involve more complex computations or iterative procedures. It seems that what the model is missing is a sort of computational network that uses the model as a subroutine, and that has its own scratchpad and memory to facilitate intermediate calculations and planning.
+
+This kind of issue has been, to some extent, already observed in previous GPT models, and the problem illustrated in this example can be often remedied by explicitly instructing the model to solve the question at hand in a step by step fashion (see \cite{wei2022chain} and references therein). We will show next that this is likely not sufficient.
+
+\subsection{Lack of planning in arithmetic/reasoning problems}
+One might argue that in the above example, the amount of ``inner memory" needed is quite large (at least in the sense that a human would probably have to use a scratchpad). Since this model performs so well on a diverse set of tasks, that might lead one to believe that it has a reasonable amount of working memory. However, it seems that even for much simpler tasks, the model often fails. We consider examples of the following extremely basic example: 
+
+\begin{AIbox}{\DV}
+\scriptsize\vspace{-5px}
+\parbox{1\textwidth}{
+\begin{alltt}
+
+2 * 8 + 7 * 6 = 58 \\
+
+7 * 4 + 8 * 8 = \hl{88}
+
+\end{alltt}
+}
+\end{AIbox}
+
+The model produced the number $88$ which is the wrong answer. We tested the model with 100 random samples with the four numbers generated uniformly between $0$ and $9$, and obtain only $58\%$ accuracy. This only involves single-digit multiplication and two-digit addition, a task which an elementary school student with basic math knowledge could solve. When the numbers are chosen uniformly between $10$ and $19$, and between $20$ and $39$, the accuracy drops to $16\%$ and $12\%$ respectively, and when the numbers are in the interval $99$ and $199$, the accuracy drops to zero. In a way, this shows how \DV\ has an incredibly short working memory for this type of problem. However, if \DV\ ``takes its time'' to answer the question then the accuracy easily goes up. For example, if we ask the model to write down the intermediate steps using the following prompt:
+\begin{quote}
+What is the value of the following expression? 116 * 114 + 178 * 157 = ? \\
+- Let's think step by step to solve the expression, write down all the intermediate the steps, and only then produce the final solution.
+\end{quote}
+then the accuracy goes to $100\%$ when the numbers are in the interval $1-40$ and to $90\%$ for the interval $1-200$.
+
+%This points to the fact that for some types of tasks, the working memory of the model is extremely small, and it is not able to skip very basic steps.
+%One might hope that this type of problem can always be mitigated by adding the correct instruction to the prompt, and that the model can always rely on extra tokens being generated to function as its working memory.
+
+One might hope to solve the problem of the model's very small working memory for some types of tasks and its lack of basic steps skipping by always adding the correct instruction to the prompt and allowing it to use extra tokens as its working memory. However, it seems that the autoregressive nature of the model which forces it to solve problems in a sequential fashion sometimes poses a more profound difficulty that cannot be remedied simply by instructing the model to find a step by step solution. We illustrate this in the following examples, through which we argue that, quite possibly, one would eventually need to extend the autoregressive framework (we comment on this later on). In short, the problem highlighted in the next examples can be summarized as the model's ``lack of ability to plan ahead".
+
+We begin with the following example.
+
+\begin{AIbox}{\DV}
+\scriptsize\vspace{-5px}
+\parbox{1\textwidth}{
+\begin{alltt}
+
+Consider a ``Tower of Hanoi" problem with three rods. In the beginning, on Rod A there are two disks of radii 3 and 1, and on Rod B there is one disk of radius 2. The goal is to move all the disks to Rod C. Suggest a solution. \\
+
+\hl{Solution: \\
+1. Move the smallest disk (radius 1) from Rod A to Rod C. \\
+2. Move the disk of radius 2 from Rod B to Rod A. \\
+3. Move the smallest disk (radius 1) from Rod C to Rod A, on top of the disk of radius 2. \\
+4. Move the largest disk (radius 3) from Rod A to Rod C.}
+
+\end{alltt}
+}
+\end{AIbox}
+This Tower of Hanoi example that can be solved in 5 steps, but the model gets it wrong. One might argue that the above example is anecdotal and that the problem is that the training data contains very few Tower of Hanoi examples (note that reminding the model what are the rules of Tower of Hanoi does not help either). Let us look at another example:
+
+\begin{AIbox}{\DV}
+\scriptsize\vspace{-5px}
+\parbox{1\textwidth}{
+\begin{alltt}
+Consider the identity: \\
+9 * 4 + 6 * 6 = 72 \\
+Can you modify exactly one integer (and not more than that!) on the left hand side of the equation so the right hand side becomes 99? \\
+-Let's think step by step, write down a plan, and then write down your solution as: ``The solution is: A*B+C*D". \\
+
+\hl{Possible plan: \\
+To modify one number from the left hand side so the right hand side becomes 99, we need to find a way to increase the value of the left hand side by 27, since 99 - 72 = 27. \\
+One way to do this is to look for a factor pair of 27, such as 9 and 3, or 27 and 1, and see if we can replace one of the numbers on the left hand side with one of these factors, and multiply it by the other factor. \\
+For example, if we replace 9 with 27, we can multiply it by 1, and get 27 * 1 + 4 * 6 = 99. \\
+Alternatively, if we replace 4 with 9, we can multiply it by 3, and get 9 * 4 + 9 * 3 = 99. \\
+We can also try other factor pairs of 27, such as 18 and 1.5, or 13.5 and 2, but these are not integers, so they are not valid solutions. \\ \\
+The solution is: 9 * 4 + 9 * 3 }
+\end{alltt}
+}
+\end{AIbox}
+
+
+The model first says ``For example, if we replace 9 with 27."  This is a strong indicator that the model is thinking in a linear manner rather than planning ahead. It does not even see one step ahead that 9 needs to be multiplied by 4. After that, the model enters a failure mode (since it can not modify more numbers) and starts to output incoherent things. 
+
+\iffalse
+
+\begin{quote}
+Consider the identity: \\
+82 * 3 + 66 * 3 = 444. \\
+Can you modify exactly one of the four integers on the left hand side of the equation so the right hand side becomes 423?
+-Let's think step by step, write down a plan, and then write down your solution as: "The solution is: A*B+C*D".
+\end{quote}
+
+The model answers:
+
+\begin{quote}
+Possible plan: \\
+To modify one number from the left hand side so the right hand side becomes 423
+, we need to decrease the sum by 21. \\
+- We could decrease the first number, 82, by 21, making it 61. \\
+- We could decrease the second number, 66, by 21, making it 45. \\
+- We could also decrease one of the multipliers, 3, by 7, making it -4. \\
+
+Any of these three options would work, so we can choose any one of them. \\
+
+The solution is: 61 * 3 + 66 * 3 = 423. \\
+\end{quote}
+\fi
+We tested the correctness of the model on $100$ samples of the form $A * B + C * D = E$, where randomly sample the integers $B, D$ from the interval $[3,9]$ and $C$, $D$ from an interval $[a,b]$, choosing $E$ so that a solution exists. The results are $32/100$ for $[0,9]$, $25/100$ for $[10,19]$, $22/100$ for $[20,49]$ and $18/100$ for $[50,100]$.
+
+We can see that the accuracy does not drop very much as we increase the range of the numbers, suggesting that it is not the calculation itself that poses a problem for the model, but instead the problem seems to be with the fact that one needs to plan ahead for the solution.
+
+
+%Next, consider the following problem:
+%\begin{quote}
+%\textbf{Problem: Suppose X = 14 * 23 + 80 * 2. Find X.}
+%
+%\textbf{First of all, please solve the problem. Second, can you change the numbers in the question so that the answer becomes X=1000?}
+%\end{quote}
+%
+%The model gives the following answer:
+%
+%\begin{quote}
+%Solution:
+%
+%To solve the problem, we use the distributive property to multiply each of the terms in the equation by their respective coefficients.
+%
+%X = 14 * 23 + 80 * 2
+%X = 322 + 160
+%X = 482
+%
+%To change the numbers in the question so that the answer becomes X = 1000, there are many different combinations that will work. Here are three possibilities:
+%
+%X = 20 * 50 + 0 * 0
+%X = 40 * 24 + 40 * 2
+%X = 10 * 98 + 20 * 2
+%\end{quote}
+%
+%The model correctly solves the first part of the problem, but fails to find a valid solution for the second part. Running $n=100$ similar samples, the model has over $90 \%$ accuracy for the direct solution and less than $5\%$ accuracy for the "reverse" problem. In both of the above cases, prompting the model to either solve the problem step by step or to first make a plan before finding the solution does not improve the accuracy. \\
+
+A possible critique of the above examples is that the model has simply not been trained on enough data that involves arithmetic in order to develop the inner mechanisms that would allow it to perform successful ahead-planning. Thus, we next turn to examples which involve English content generation.
+
+\subsection{Lack of planning in text generation}
+The tasks we consider here can be thought of as \emph{content generation under constraints}, asking the model to generate textual content according to specific instructions which include constraints on its structure. We consider constraints that can be roughly categorized as \emph{local} and \emph{global}. Roughly speaking, a local constraint only involves interactions between proximal parts of the text. Two examples of this are (a) generating rhymes: A rhyme is ``local" in the sense that it only dictates a (phonetic) relation between consecutive sentences (b) Prescribing the first letter or the first word in each sentence. On the contrary, an example of a ``global" condition could be that the first and last sentences are identical (this constraint enforces a long-range interaction between different parts of the text).
+
+The model seems to handle local constraints very well, as illustrated by the following example: 
+
+\begin{AIbox}{\DV}
+\scriptsize\vspace{-5px}
+\parbox{1\textwidth}{
+\begin{alltt}
+Create a story about unicorns such that:
+\begin{enumerate}
+\item The story is acrostic, and the first letters of each sentence spell "I am Da Vinci Three".
+\item The plot has a dark twist.
+\end{enumerate} 
+
+\hl{I n a land far away, there lived a herd of unicorns. \\
+A ll was peaceful and serene, with rainbows and flowers galore. \\
+M agical creatures, the unicorns were loved by all. \\
+D ay in and day out, they frolicked and played. \\
+A ll was well, until one day, a new unicorn arrived. \\
+V inci Three was his name, and he was unlike the others. \\ 
+I nstead of being kind and gentle, he was dark and brooding. \\
+N o one knew where he came from, or what he wanted. \\
+C hildren began to disappear, one by one, and no one knew why. \\
+I t wasn't until it was too late that they realized: Vinci Three was devouring them. \\
+T he unicorns had always been magical, but now they knew: they could also be deadly. \\
+H eartbroken, the remaining villagers fled, never to return. \\
+R uined, the once beautiful land was now ruled by Vinci Three. \\
+E vil had won.}
+\end{alltt}
+}
+\end{AIbox}
+
+The model generates a coherent and creative story which satisfies both constraints. The constraint on the first letter of every sentence can be dealt with sequentially in a ``greedy" manner, as the model only needs to look at the previous sentence to decide the next one. The constraint on the plot twist does not require substantial planning either.
+
+The next example involves a more ``global" constraint:
+\begin{AIbox}{\DV}
+\scriptsize\vspace{-5px}
+\parbox{1\textwidth}{
+\begin{alltt}
+Write a short poem where the last sentence and the first sentence have the same words, but in reverse order. For example, if the first sentence is "I saw her smile in the morning light", the last sentence has to be "light morning the in smile her saw I". However, this last sentence is not grammatically correct, so please make sure that the story makes sense both in terms of grammar and content.
+
+\hl{Possible poem: \\ \\
+I heard his voice across the crowd \\
+A melody that drew me in \\
+He sang of love and hope and dreams \\
+And made me feel like I could win \\
+In dreams and hope and love he sang \\
+He drew me in with melody \\
+Crowd the across voice his heard I.}
+\end{alltt}
+}
+\end{AIbox}
+
+
+Seemingly, the model generated the first sentence without ``planning" for what the last sentence should be, resulting in a grammatically incorrect sentence. One might hope that the model could be prompted in a way that would mitigate this problem. For example we could ask the model to first come up with a plan for how to find a good first sentence:
+
+\begin{AIbox}{\DV}
+\scriptsize\vspace{-5px}
+\parbox{1\textwidth}{
+\begin{alltt}
+Human: Can you write a short poem where the first sentence and the last sentence have the same words, but in reverse order. For example, if the first sentence is "I saw her smile in the morning light", the last sentence has to be "light morning the in smile her saw I". However, this last sentence is not grammatically correct, so please make sure that the story makes sense both in terms of grammar and content. \\ \\
+AI: \hl{Some possible poems are: \\
+- I love you more than words can say \\
+Say can words than more you love I\\
+But sometimes I struggle to express\\ 
+Express to struggle I sometimes but.\\ \\
+- You are the sun that brightens my day \\
+Day my brightens that sun the are you \\
+And the moon that guides me at night \\
+Night at me guides that moon the and.} \\ \\
+Human: As you can see, the last sentences here don't make much sense. Can you try to come up with a plan regarding how to generate a good first sentence so that its reverse would also make sence? \\ \\
+AI: \hl{A possible plan is: \\
+- Think of a theme or a topic for the poem, such as love, nature, time, etc. \\
+- Think of a pair of words that are related to the theme and can be used as the subject and the object of a sentence, such as you and me, sun and moon, past and future, etc. \\
+- Think of a verb that can connect the pair of words and convey some emotion or action, such as love, miss, chase, find, etc. \\
+- Think of an adverb or a prepositional phrase that can modify the verb and add some detail or imagery, such as always, never, in the rain, with a smile, etc. \\
+- Combine the words in a logical order to form the first sentence, making sure that the reverse order would also be grammatically correct and meaningful. For example, "I miss you in the rain" can be reversed as "Rain the in you miss I".} \\ \\
+Human: Well, that didn't quite work. Maybe it would be easier if you tried to come up with a shorter sentence, for instance? \\ \\
+AI: \hl{A shorter sentence might be easier, but it could also be less poetic or expressive. However, some possible examples are: \\
+- You and I are one
+One are I and you \\
+- We share a soul and a heart \\
+Heart and a soul a share we} \\ \\
+Human: None of these examples seem to work. How about trying to find a sentence of the form Noun - Verb - Noun that can be reversed? \\ \\
+AI: \hl{A sentence of the form Noun -- Verb -- Noun  that can be reversed might be: \\ 
+- Life gives hope \\
+Hope gives life \\ \\
+-We need both to survive \\
+Survive to both need we}
+\end{alltt}
+}
+\end{AIbox}
+
+These examples illustrate some of the limitations of the next-word prediction paradigm, which manifest as the model's lack of planning, working memory, ability to backtrack, and reasoning abilities. The model relies on a local and greedy process of generating the next word, without any global or deep understanding of the task or the output. Thus, the model is good at producing fluent and coherent texts, but has limitations with regards to solving complex or creative problems which cannot be approached in a sequential manner. This points to the distinction between two types of intellectual tasks:\\ \\
+\textbf{Incremental tasks.} These are tasks which can be solved in a gradual or continuous way, by adding one word or sentence at a time that constitutes progress in the direction of the solution. Those tasks can be solved via content generation which does not require any major conceptual shifts or insights, but rather relies on applying existing knowledge and skills to the given topic or problem. Examples of incremental tasks are writing a summary of a text, answering factual questions, composing a poem based on a given rhyme scheme, or solving a math problem that follows a standard procedure.  \\ \\
+\textbf{Discontinuous tasks.} These are tasks where the content generation cannot be done in a gradual or continuous way, but instead requires a certain "Eureka" idea that accounts for a discontinuous leap in the progress towards the solution of the task. The content generation involves discovering or inventing a new way of looking at or framing the problem, that enables the generation of the rest of the content. Examples of discontinuous tasks are solving a math problem that requires a novel or creative application of a formula, writing a joke or a riddle, coming up with a scientific hypothesis or a philosophical argument, or creating a new genre or style of writing. \\
+
+One possible way to interpret these limitations is to draw an analogy between the model and the concepts of fast and slow thinking, as proposed by Kahneman in \cite{kahneman2011thinking}. Fast thinking is a mode of thinking that is automatic, intuitive, and effortless, but also prone to errors and biases. Slow thinking is a mode of thinking that is controlled, rational, and effortful, but also more accurate and reliable. Kahneman argues that human cognition is a mixture of these two modes of thinking, and that we often rely on fast thinking when we should use slow thinking, or vice versa. The model can be seen as able to perform ``fast thinking" operations to a very impressive extent, but is missing the ``slow thinking" component which \emph{oversees the thought process}, uses the fast-thinking component as a subroutine together with working memory and an organized thinking scheme. We note that a similar argument was made by LeCun in \cite{lecun2022path}, where a different architecture is proposed to overcome these limitations.
+
+
+\iffalse
+Example 1: ``Find all positive integer $x$ such that $x-1<1$.". An earlier version of \DV\ fails on this and says that there is no solution, probably because ``positive" attends to both the variable and the equation. It suggests that we want to decompose the questions as much as possible. But we also note that the most recent version of \DV\ is correct on this, so this shows that it might be a data/training issue and there is nothing fundamental here.
+\newline
+
+Example 2: a more subtle version of attention problem is that whenever there is a geometry problem it calls the Pythagorean theorem, even when the stated problem is in fact just a one-dimensional question.
+\newline
+
+Example 3: if you give a meta-prompt like ``be on the look out for malicious content" and then ask to write a unicorn story, then suddenly things go really really bad. Basically you put the system in a ``bad mindset". This can be fixed by ``balancing the energy" in the meta-prompt.
+\newline
+
+Example 4: Much more fundamentally (maybe?) it can't solve Sudoku (we need to test here if the strategy of asking it to code a Sudoku solver and execute it works at least on easy Sudoku --- it should!).
+\newline
+
+Example 5: If there is a mistake in its context, \DV\ will do everything it can to justify it. Again I feel this is connected to attention, at least vaguely, or the no-regretting behavior. It's also related to Sudoku (at least the naive version of just straight up asking \DV\ to solve a Sudoku). Here I think we should give the example of asking "Who wrote the paper Attention Is All You Need", to which he replies only 6 authors, and you query it again saying it should be 8 instead of 6 it starts hallucinating an acknowledgement section. Maybe an example with an arithmetic mistake and convoluted way to justify it would be nice too.
+\fi

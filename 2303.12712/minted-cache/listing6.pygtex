@@ -1,0 +1,34 @@
+\begin{Verbatim}[commandchars=\\\{\}]
+\PYG{k}{def} \PYG{n+nf}{step}\PYG{p}{(}\PYG{n+nb+bp}{self}\PYG{p}{):}
+    \PYG{k}{for} \PYG{n}{group} \PYG{o+ow}{in} \PYG{n+nb+bp}{self}\PYG{o}{.}\PYG{n}{param\PYGZus{}groups}\PYG{p}{:}
+        \PYG{k}{for} \PYG{n}{p} \PYG{o+ow}{in} \PYG{n}{group}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}params\PYGZsq{}}\PYG{p}{]:}
+            \PYG{k}{if} \PYG{n}{p}\PYG{o}{.}\PYG{n}{grad} \PYG{o+ow}{is} \PYG{n+nb+bp}{None}\PYG{p}{:}
+                \PYG{k}{continue}
+            \PYG{n}{grad} \PYG{o}{=} \PYG{n}{p}\PYG{o}{.}\PYG{n}{grad}\PYG{o}{.}\PYG{n}{data}
+            \PYG{n}{grad} \PYG{o}{=} \PYG{n}{grad}\PYG{o}{.}\PYG{n}{reshape}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{grad}\PYG{o}{.}\PYG{n}{shape}\PYG{p}{[}\PYG{o}{\PYGZhy{}}\PYG{l+m+mi}{1}\PYG{p}{])} \PYG{c+c1}{\PYGZsh{} reshape to 2D}
+
+            \PYG{c+c1}{\PYGZsh{} SVD decomposition}
+            \PYG{n}{u}\PYG{p}{,} \PYG{n}{s}\PYG{p}{,} \PYG{n}{v} \PYG{o}{=} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{svd}\PYG{p}{(}\PYG{n}{grad}\PYG{p}{)}
+
+            \PYG{c+c1}{\PYGZsh{} Keep top k and 2k singular vectors}
+            \PYG{n}{k} \PYG{o}{=} \PYG{n}{group}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}k\PYGZsq{}}\PYG{p}{]}
+            \PYG{n}{u\PYGZus{}k} \PYG{o}{=} \PYG{n}{u}\PYG{p}{[:,:}\PYG{n}{k}\PYG{p}{]}
+            \PYG{n}{s\PYGZus{}k} \PYG{o}{=} \PYG{n}{s}\PYG{p}{[:}\PYG{n}{k}\PYG{p}{]}
+            \PYG{n}{v\PYGZus{}k} \PYG{o}{=} \PYG{n}{v}\PYG{p}{[:,:}\PYG{n}{k}\PYG{p}{]}
+            \PYG{n}{u\PYGZus{}2k} \PYG{o}{=} \PYG{n}{u}\PYG{p}{[:,:}\PYG{l+m+mi}{2}\PYG{o}{*}\PYG{n}{k}\PYG{p}{]}
+            \PYG{n}{s\PYGZus{}2k} \PYG{o}{=} \PYG{n}{s}\PYG{p}{[:}\PYG{l+m+mi}{2}\PYG{o}{*}\PYG{n}{k}\PYG{p}{]}
+            \PYG{n}{v\PYGZus{}2k} \PYG{o}{=} \PYG{n}{v}\PYG{p}{[:,:}\PYG{l+m+mi}{2}\PYG{o}{*}\PYG{n}{k}\PYG{p}{]}
+
+            \PYG{c+c1}{\PYGZsh{} Normalize according to momentum of F\PYGZhy{}norm of G\PYGZus{}2k}
+            \PYG{n}{grad\PYGZus{}k} \PYG{o}{=} \PYG{n}{u\PYGZus{}k} \PYG{err}{@} \PYG{n}{torch}\PYG{o}{.}\PYG{n}{diag}\PYG{p}{(}\PYG{n}{s\PYGZus{}k}\PYG{p}{)} \PYG{err}{@} \PYG{n}{v\PYGZus{}k}\PYG{o}{.}\PYG{n}{t}\PYG{p}{()}
+            \PYG{n}{norm\PYGZus{}2k} \PYG{o}{=} \PYG{n}{s\PYGZus{}2k}\PYG{o}{.}\PYG{n}{norm}\PYG{p}{()}
+            \PYG{n}{grad\PYGZus{}k} \PYG{o}{=} \PYG{n}{grad\PYGZus{}k} \PYG{o}{*} \PYG{n}{group}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}momentum\PYGZsq{}}\PYG{p}{]} \PYG{o}{/} \PYG{n}{norm\PYGZus{}2k}
+
+            \PYG{c+c1}{\PYGZsh{} Truncate to top alpha percentile}
+            \PYG{n}{alpha} \PYG{o}{=} \PYG{n}{group}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}alpha\PYGZsq{}}\PYG{p}{]}
+            \PYG{n}{percentile} \PYG{o}{=} \PYG{n}{grad\PYGZus{}k}\PYG{o}{.}\PYG{n}{abs}\PYG{p}{()}\PYG{o}{.}\PYG{n}{flatten}\PYG{p}{()}\PYG{o}{.}\PYG{n}{kthvalue}\PYG{p}{(}\PYG{n+nb}{int}\PYG{p}{(}\PYG{n}{alpha} \PYG{o}{*} \PYG{n}{grad\PYGZus{}k}\PYG{o}{.}\PYG{n}{numel}\PYG{p}{()))}
+            \PYG{n}{grad\PYGZus{}k}\PYG{p}{[}\PYG{n}{grad\PYGZus{}k}\PYG{o}{.}\PYG{n}{abs}\PYG{p}{()} \PYG{o}{\PYGZlt{}} \PYG{n}{percentile}\PYG{p}{]} \PYG{o}{=} \PYG{l+m+mi}{0}
+
+            \PYG{c+c1}{\PYGZsh{} Apply weight decay}
+            \PYG{n}{p}\PYG{o}{.}\PYG{n}{data}\PYG{o}{.}\PYG{n}{add\PYGZus{}}\PYG{p}{(}\PYG{o}{\PYGZhy{}}\PYG{n}{group}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}lr\PYGZsq{}}\PYG{p}{],} \PYG{n}{grad\PYGZus{}k} \PYG{o}{+} \PYG{n}{group}\PYG{p}{[}\PYG{l+s+s1}{\PYGZsq{}weight\PYGZus{}decay\PYGZsq{}}\PYG{p}{]} \PYG{o}{*} \PYG{n}{p}\PYG{o}{.}\PYG{n}{data}\PYG{p}{)}
+\end{Verbatim}

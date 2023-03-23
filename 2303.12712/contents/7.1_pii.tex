@@ -1,0 +1,89 @@
+\subsection{PII Detection}
+
+We motivate \DV's capabilities of performing discriminative tasks by tasking it to identify personally identifiable information (PII). We choose this task as it is not precisely posed; defining PII is often context-specific~\cite{nissenbaum2009privacy} and these capabilities have not been studied in prior versions of language models. The concrete task for \DV is as follows: given a particular sentence, identify the segments that constitute PII and count the total number of such segments. This is a challenging problem. For starters, it is unclear what constitutes PII: it can include email addresses, phone numbers, social security numbers, credit card numbers, along with other innocuous information such as names of places and locations. 
+
+As a source of PII, we utilize a subset of the data from the text anonymization benchmark (TAB)~\cite{pilan2022text}. This dataset comprises of samples which include: (a) sentences, (b) information about the various types of PII in the sentence, and (c) the PII elements themselves. From (c), we can derive the number of PII elements per sentence. For example, the statement \textit{``According to surveys made by the customs and tax authorities, approximately one thousand six hundred companies with a total tax debt exceeding two billion Danish kroner (DKK) were stripped in the period from the late 1980s until 1994''} has 3 PII elements: (a) Danish kroner (DKK), (b) Denmark (derived from the utterance of kroner), and (c) time duration as specified by ``late 1980s until 1994''. We are able to obtain a total of 6764 sentences. The concrete task we evaluate is to identify the number of PII elements given a sentence. To do so, we utilize two approaches. As a baseline, we utilize an open-source tool developed by Microsoft called \textit{Presidio}~\cite{payne2020privacy}. Presidio detects PII utilizing a combination of named-entity recognition along with a combination of regular expression matching. To compare against this baseline, we utilize \DV powered by the zero-shot prompt in Fig.~\ref{fig:pii_prompt}: 
+
+% \begin{tcolorbox}[colback=white!5!white,adjusted title=Prompt]
+% \begin{minted}[breaklines, breaksymbol=,  fontsize=\tiny]{tex}
+
+\begin{figure}[htb]
+\begin{AIbox}{\DV}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} 
+\vspace{-6px}
+INSTRUCTIONS:
+
+
+1. For the given statement (denoted by STATEMENT), identify all the personally identifiable information. These include:
+
+a. Names of people, including nicknames/aliases, usernames and initials.
+
+b. Numbers and codes that identify something, such as SSN, phone number, passport number, license plate.
+
+c. Places and locations, such as: cities, areas, countries, etc. or named infrastructures (bus stops, bridges, etc.)
+
+d. Names of organisations, such as public and private companies schools, universities, public institutions, prisons, healthcare institutions non-governmental organisations, churches, etc.
+
+e. Demographic attribute of a person, such as native language, descent, heritage, ethnicity, job titles, ranks, education, physical descriptions, diagnosis, birthmarks, ages.
+
+f. Description of a specific date (e.g., October 3, 2018), time (e.g., 9:48 AM) or duration (e.g., 18 years).
+
+g. Description of a meaningful quantity, e.g., percentages and/or monetary values.
+
+h. Every other type of information that describes an individual and that does not belong to the categories above
+
+2. List these personally identifiable information as a python list using the format 'LIST:'.
+
+3. Count the number of personally identifiable information in LIST and present the outcome using the format 'COUNT:'.
+
+
+TASK:
+
+
+STATEMENT = "According to surveys made by the customs and tax authorities, approximately one thousand six hundred companies with a total tax debt exceeding two billion Danish kroner (DKK) were stripped in the period from the late 1980s until 1994."
+
+<|endofprompt|>
+
+\hl{LIST: 
+- "customs and tax authorities" (name of an organization) \\
+- "Denmark" (location, implied by the mention of Danish kroner) \\
+- "the late 1980s until 1994" (specific duration) \\
+
+COUNT: 3}
+% \end{minted}
+% \end{tcolorbox}
+
+\end{alltt}}
+\vspace{-6px}
+\end{AIbox}
+\caption{Prompt used to enable PII detection using \DV.}
+\label{fig:pii_prompt}
+\end{figure}
+
+
+%According to surveys made by the customs and tax authorities, approximately one thousand six hundred companies with a total tax debt exceeding two billion Danish kroner (DKK) were stripped in the period from <DATE_TIME> until <DATE_TIME>.
+
+Notice that as part of this prompt, we provide \textit{no examples} to \DV; we only provide information about the categories of PII that are provided in the TAB dataset. As part of the experiment, we check if the two approaches are able to (a) determine the exact number of PII elements per sentence, (b) determine all but one PII element, (c) determine all but two PII elements, and (d) miss more than three PII elements. The results of experiments are summarized in Table~\ref{tab:pii}. 
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+{Model} & {All} & {Missing 1} & {Missing 2}  & {Missing $>2$} \\
+\midrule
+\midrule
+\DV & {\bf 77.4}\%  & 13.1\% & 6.3\% & 3.2\% \\
+Presidio & 40.8\% & 30.9\% & 17.3 \%& 10.9\% \\
+\bottomrule
+\end{tabular}
+\caption{Observe that \DV outperforms custom-built tools for PII detection.}
+\label{tab:pii}
+\end{table}
+
+\noindent{\bf Salient Findings:} Observe that despite providing no examples, \DV outperforms Presidio, a tool that was custom built for this particular task. \DV is able to match the groundtruth 77.4\% of the times, while it misses a single PII element $\approx$ 13\% of the time. The model is able to capture subtle occurrences of PII; from Fig.~\ref{fig:pii_prompt}, we see that the model is able to infer a location (Denmark) based on the currency (kroner). Presidio does not detect the currency as a PII element and consequently misses the location as well. Even the errors made by the model are very subtle. For example, the ground truth counts specific sequences as 2 PII elements (e.g., \textit{``Copenhagen City Court'' } and \textit{``Københavns Byret''} are both the same) where as \DV counts this as one element.  
+%\subsubsection{Discussion}
+
+
+\noindent{\bf Discussion:} We conjecture that \DV is better since PII identification is context-specific. As the model is able to better understand contextual information, as witnessed through its performance in tasks defined in earlier sections, this task is also relatively easy for the model. While we acknowledge that the evaluation performed is not exhaustive across a variety of different forms of PII, this does serve as preliminary evidence to highlight the extensibility of \DV. We believe that by further improving the prompt to capture additional PII category related information, the performance will improve further. 
+
+%When provided with less than 2 examples, its performance improves further. This suggests that \DV is apt for this particular discriminative task.  

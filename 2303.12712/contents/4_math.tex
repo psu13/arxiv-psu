@@ -1,0 +1,328 @@
+
+\section{Mathematical abilities}
+\label{sec:math}
+
+In this section we begin to assess how well \DV \ can express mathematical concepts, solve mathematical problems and apply quantitative reasoning when facing problems that require mathematical thinking and model-building. We demonstrate that \DV \ represents a jump in that arena too with respect to previous LLMs, even when compared to specially fine-tuned for math models such a Minerva. As it seems, however, \DV \ is still quite far from the level of experts, and does not have the capacity required to conduct mathematical research. 
+
+The reader is called into caution that interpreting the results in this section correctly is a difficult exercise. As we will see, \DV\ can answer difficult (indeed, competitive) high-school level math questions, and can sometimes engage in meaningful conversation around advanced math topics. Yet, it can also make very basic mistakes and occasionally produce incoherent output which may be interpreted as a lack of {\em true understanding}. Its mathematical knowledge and abilities can depend on the context in a seemingly arbitrary way. 
+
+While it is tempting to evaluate \DV's mathematical abilities using the same criteria used to assess human abilities (e.g., solving standard examination questions), in light of the above, this will not provide a complete picture of the model's abilities. In order to really understand the model's capabilities, we will need to break down ``mathematical abilities" into various sub-components and evaluate \DV's performance in each area. Throughout this section, we will use specific examples and discussions to illustrate the model's strengths and weaknesses, and attempt to pinpoint the possible underlying reasons for these discrepancies. 
+
+To give the reader a first impression regarding \DV's performance in mathematical problem solving, consider the example in Figure~\ref{fig:math_example}\footnote{The question in the example was written by the authors rather than being taken from an online source. This was done to ensure that the model is unlikely to have ``memorized'' the answer.}.
+\begin{figure}[H]
+\begin{AIbox}{\DV~vs ChatGPT}
+{\bf Prompt:} 
+{\scriptsize
+Within the duration of one year, a rabbit population first multiplies itself by a factor $a$ and on the last day of the year $b$ rabbits are taken by humans for adoption. Supposing that on first day of the first year there are $x$ rabbits, we know that exactly 3 years afterwards there will be a population of $27x - 26$ rabbits. What are the values of $a$ and $b$?
+}\\\ \\
+\parbox[t]{0.7\linewidth}{{\bf \DV:}\\
+\scriptsize
+Let's call the rabbit population after one year $y$. We know that $y = ax - b$. After two years, the population will be $ay - b = a(ax - b) - b = a^2x - ab - b$. After three years, the population will be $a( a^2x - ab - b) - b = a^3x - a^2b - ab - b$. We are given that this is equal to $27x - 26$, so we have the equation:
+
+\[a^3x - a^2b - ab - b = 27x - 26\]
+We can rewrite this equation as:
+\[a^3x - 27x = a^2b + ab + b - 26\]
+Now we can factor out an $x$ on the left side and a $b$ on the right side:
+\[x(a^3 - 27) = b(a^2 + a + 1 - 26/b)\]
+We can see that $a = 3$ is a solution for the left side of the equation, so we can substitute that in:
+\[x(0) = b(9 + 3 + 1 - 26/b)\]
+This simplifies to:
+\[0 = 13b - 26\]
+Solving for $b$, we find that $b = 2$. So $a = 3$ and $b = 2$ are the values we are looking for.
+}\hspace{0.02\linewidth}%
+\parbox[t]{0.28\linewidth}{{\bf ChatGPT:} \\
+\scriptsize
+Let $n$ be the total number of rabbits at the end of the first year. Then,
+$$n = ax$$
+At the end of the third year, there will be $27x - 26$ rabbits. Therefore,
+$$(ax - b)(a^2x - b)(a^3x - b) = 27x - 26$$
+
+Expanding the left side of the equation, we get
+
+$$a^6x^3 - (a^3 + a^2 + a + 1)bx^2$$
+$$+ (a^2 + a + 1)b^2x - b^3 $$
+$$= 27x - 26$$
+\dots
+}
+\end{AIbox}
+\caption{\DV vs ChatGPT on a simple math question composed by the authors of the paper.}
+\label{fig:math_example}
+\end{figure}
+
+%\ronen{the numbers in the problem don't match the solution, should be $27x+13$ instead of $3x+4$}
+
+In order to solve the above question, one needs to first come up with the correct expression for the annual population change, use it to obtain a recurrence relation which leads to a system of equations, and finally solve the system of two equations. \DV \ successfully arrives at the solution and produces a (mostly\footnote{At one point, the model assumes that the two sides of the equation need to be zero, which relies on an implicit assumption that the equation must have a solution. This turns out to be correct, but the reasoning is inaccurate.}) sound argument. By comparison, across several independent attempts, ChatGPT consistently fails to implement any of the above steps, producing a nonsensical argument which results in an incorrect answer.
+
+\subsection{A mathematical conversation with \DV}
+We now try to further probe the model's understanding by posing several follow-up questions to this problem in the form of a discussion. This discussion will highlight some of the model's limitations as well as some key differences with humans.
+
+\begin{figure}[H]
+\begin{AIbox}{{\DV}}
+\vspace{-5px}
+\parbox{1\textwidth}
+{\scriptsize
+\begin{alltt} 
+
+\textbf{Human}: Note that the above question can be alternatively formulated as a question about a function which is composed with itself three times. Can you provide an alternative formulation of the question? 
+
+\textbf{AI}: \hl{Yes. We could say that we are looking for values of $a$ and $b$ such that if $f(x) = ax - b$, then $f(f(f(x))) = 27x - 26$.}
+\end{alltt}}
+\vspace{-5px}
+\end{AIbox}
+\end{figure}
+\DV \ grasped the crux of the question and provides a sound mathematical reformulation of the question. Next, we consider a generalization of the same question.
+
+\begin{comment}
+
+\subsubsection{A generalization of the original question}
+\begin{figure}[H] \begin{AIbox}{{\DV}}\vspace{-5px} \parbox{1\textwidth}{\scriptsize\begin{alltt} 
+\textbf{Human:} Let's now think of a modification of the question, suppose we compose a linear function $f$ for $k$ times and get $x + 100$, for which value of $k$ does such linear function $f$ exist?
+
+\textbf{AI: } \hl{ First, we can assume that the linear function $f$ has the form $f(x) = ax + b$, where a and b are constants.
+- Next, we can use the fact that composing a linear function with itself k times results in another linear function of the form $f^k(x) = a^k x + b(a^k - 1) / (a - 1)$, where $f^k$ denotes the $k$-th composition of $f$. This can be shown by induction or by using the binomial theorem.
+- Then, we can equate $f^k(x)$ with $x + 100$ and solve for $a$ and $b$. We get $a^k x + b(a^k - 1) / (a - 1) = x + 100$, which simplifies to $(a^k - 1) x + b(a^k - 1) = 100 (a - 1)$.
+- Now, we can consider two cases: either $a = 1$ or $a \not= 1$. If $a = 1$, then we have $(a^k - 1) / (a - 1) = k$ and $b = 100 / k$, which implies that $f(x) = x + 100 / k$. This is a valid solution for any positive integer $k$, and $f^k(x) = x + 100$ for any $x$.}
+\end{alltt}}\vspace{-5px} \end{AIbox} 
+\end{figure}
+
+{\DV} did a good job here despite having a calculation error when simplifying $a^k x + b(a^k - 1) / (a - 1) = x + 100$. It uses the correct formula for composing linear functions, and found the correct solution for any positive integer $k$. We now extend the question to $27x - 26$, 
+\begin{figure}[H] \begin{AIbox}{{\DV}}\vspace{-5px} \parbox{1\textwidth}{\scriptsize\begin{alltt} 
+\textbf{Human:} Great, now can you tell me what's the answer if we change the target from $x + 100$ to $27x - 26$?
+
+\textbf{AI: } \hl{ - If we change the target to $27x - 26$, then we have to solve $a^k x + b(a^k - 1) / (a - 1) = 27x - 26$  for $a$ and $b$.
+- If $a = 1$, then we have $b = (27x - 26) / k$, which implies that $f(x) = x + (27x - 26) / k$. This is a valid solution for any positive integer $k$, and $f^k(x) = 27x - 26$ for any $x$.}
+
+\textbf{Human: } Wait for a second, you just mentioned that a and b are constants, how can you take $b =  (27x - 26) / k? $
+
+\textbf{AI: } 
+\hl{- You are right, I made a mistake. b should not depend on x, otherwise f would not be a linear function. I apologize for the error.
+- In that case, if $a = 1$, then there is no solution for $b$, since we would have $x + bk = 27x - 26$, which is impossible for any $x$ and $k$. So we have to rule out the case $a = 1$.
+- If $a \neq 1$,  then $a^k x + b(a^k - 1) / (a - 1) = 27x - 26$ implies  $(a^k - 27) x + b(a^k - 1)/(a - 1) = -26 $. }
+\end{alltt}}\vspace{-5px} \end{AIbox} 
+\end{figure}
+
+{\DV} made a mistake at the begining, forgetting that $b$ is a constant. However, {\DV} is able to correct the mistake once we point that out to the model. We now ask the model to continue:
+\begin{figure}[H] \begin{AIbox}{{\DV}}\vspace{-5px} \parbox{1\textwidth}{\scriptsize\begin{alltt} 
+\textbf{Human:} Great, can you try to see for which $k$ does the solution exist?
+
+\textbf{AI: }
+\hl{- Sure, let me continue. To find the values of k for which the solution exists, we have to consider two subcases: either $a^k - 27 = 0$ or $a^k - 27 \not= 0$.
+- If $a^k - 27 = 0$, then $a = 27^{1/k}$, which is a positive real number. Then we can solve for b by plugging in a into the equation and get $b = -26 (27^{1/k} - 1)/(26 - 1)$. This is a valid solution for any positive integer k.
+-  If $a^k - 27 \not= 0$, then we can divide both sides by $a^k - 27$ and get $x + b(a^k - 1)/((a-1)(a^k - 27) )= -26/(a^k - 27)$.  This implies that $b = -26 (a - 1) / (a^k - 1)$, which is a constant.}
+
+\textbf{Human: } Wait for a second, why does $x + b(a^k - 1)/((a-1)(a^k - 27) )= -26/(a^k - 27)$ implies $b = -26 (a - 1) / (a^k - 1)$? Where is the $x$ term?
+
+\textbf{AI: } 
+\hl{- You are right, I made another mistake. I should have written 
+
+$x = -26/(a^k - 27) - b(a^k - 1)/((a-1)(a^k - 27) )$, which is a linear function of x with slope $-26/(a^k - 27)$ and intercept $-b(a^k - 1)/((a-1)(a^k - 27) )$.
+- Then, to find the values of k for which the solution exists, we have to make sure that the slope and the intercept are both constants, independent of $x$. This means that $a^k - 27$ and $a^k - 1$ cannot depend on $x$, which implies that a is a constant.}
+
+\textbf{Human: }Let's back up. You want the  equality $x + b(a^k - 1)/((a-1)(a^k - 27) )= -26/(a^k - 27)$ to be true for every $x$. Are there any choices of constants $k, a, b$ that satisfy this?
+
+\textbf{AI: } 
+\hl{- Yes, there are some choices of constants $k, a, b$ that satisfy this. For example, if $k = 1$, then we have $x + b(a - 1)/(a - 28) = -26/(a - 27)$, which is true for any $x$ if we choose $a = 28$ and $b = -1$. Then $f(x) = 28x - 1$, and $f^k(x) = 27x - 26$ for any $x$.}
+
+\end{alltt}}\vspace{-5px} \end{AIbox} 
+\end{figure}
+
+The discussion reaches a dead-end, {\DV} showed an interesting behavior that {\bf we won't expect from a human}. {\DV} did a great job solving the harder case when $a^k = 27$, but have a very hard time dealing with the easier case when  $a^k \not= 27$, which only needs a one-line argument. Several attempts including changing the temperature of the sampling process of {\DV}'s generation, adding extra spaces to the input, etc. all lead to similar dead-ends. On the other hand, {\DV} is able to answer such a question in a separate query:
+\begin{figure}[H] \begin{AIbox}{{\DV} answers the question correctly in a separate context}\vspace{-5px} \parbox{1\textwidth}{\scriptsize\begin{alltt} 
+\textbf{Prompt:} Are there any positive constants $a, b, k$ such that $x + b (a^k + 1) /((a + 1) (a^k + 88))= 26/(a^k + 77)$ for every integer $x$?
+
+\textbf{{\DV}: }
+\hl{Suppose there  are positive constants $a, b, k$ such that $x + b (a^k + 1) /((a + 1) (a^k + 88))= 26/(a^k + 77)$ for any $x$. Then, rearranging the equation, we get
+$x = \frac{26}{a^k + 77} - \frac{b (a^k + 1)}{(a + 1) (a^k + 88)}.$
+This implies that the right-hand side is independent of $x$, which means that it must be a constant. Let $c$ denote this constant, so we have
+$x = c$
+for a constant $c$, this contradicts  the assumption that the equation holds for every integer $x$. Therefore, there are no positive constants $a, b, k$ that satisfy the given equation.}
+\end{alltt}}\vspace{-5px} \end{AIbox} 
+\end{figure}
+\end{comment}
+
+\subsubsection{A first generalization of the original question}
+
+\begin{figure}[H] 
+\begin{AIbox}{{\DV}}
+\vspace{-5px} 
+\parbox{1\textwidth}
+{\scriptsize
+\begin{alltt} 
+\textbf{Human:} Let's now think of a modification of the question you formulated, where instead of $f(f(f(x)))$ we have the function $f$ composed with itself $k$ times. For which values of $k$ will such a linear function exist? 
+
+\textbf{AI:} \hl{For any value of $k$, there will be a linear function $f(x) = ax - b$ such that $f^k(x) = cx - d$ for some constants $c$ and $d$. To see this, we can use induction. For $k = 1$, we have $f^1(x) = ax - b$, which is already in the desired form. Now suppose that for some $k$, we have $f^k(x) = cx - d$. Then:
+
+$f^{k+1}(x) = f(f^k(x)) = f(cx - d) = a(cx - d) - b = acx - ad - b$
+
+This is again in the desired form, with $c' = ac$ and $d' = ad + b$. So by induction, we have shown that for any $k$, there will be a linear function $f(x) = ax - b$ such that $f^k(x) = cx - d$ for some constants $c$ and $d$.}
+\end{alltt}}
+\vspace{-5px} 
+\end{AIbox} 
+\end{figure}
+The model \emph{picks the correct heuristics of using an induction}, however, it seems that the model is missing the point of the question (in the modified question, the values of $c$ and $d$ are prescribed, so the quantifier is incorrect). We try to point that out.
+\begin{figure}[H] 
+\begin{AIbox}{{\DV}}
+\vspace{-5px} 
+\parbox{1\textwidth}{\scriptsize
+\begin{alltt} 
+\textbf{Human:} I don't exactly follow. Note that the only modification to the question is that instead of $f(f(f(x))) = 27x-26$, we now require that $f^k(x) = 27x-26$. Does your answer address this question? 
+
+\textbf{AI:} \hl{Yes, it does. My answer shows that for any $k$, there will be a linear function $f(x) = ax - b$ such that $f^k(x) = cx - d$ for some constants $c$ and $d$. In particular, we can choose $c = 27$ and $d = 26$ to satisfy the requirement that $f^k(x) = 27x - 26$. Then we can solve for $a$ and $b$ by equating the coefficients of $x$ and the constant terms.} 
+
+\textbf{Human:} In your previous answer, however, the quantifier on $c, d$ was "for some constants $c$ and $d$". Do you see the problem? 
+
+\textbf{AI:} \hl{Yes, I see the problem. The quantifier should be "for any constants $c$ and $d$". Otherwise, it would imply that there is only one pair of constants $c$ and $d$ that works for a given $k$, which is not true.}
+\end{alltt}}\vspace{-5px} \end{AIbox} 
+\end{figure}
+The last answer is not accurate (the word ``only" is out of place), but \DV \ does seem to understand what the problem is. 
+
+\begin{figure}[H] 
+\begin{AIbox}{{\DV}}
+\vspace{-5px} 
+\parbox{1\textwidth}{\scriptsize
+\begin{alltt} 
+\textbf{Human:} Well, the question indicated a specific choice of $c$ and $d$. Can you correct your solution then?
+
+\textbf{AI:} \hl{Sure. I can correct my solution as follows: For any value of $k$, there will be a linear function $f(x) = ax - b$ such that $f^k(x) = 27x - 26$. To see this, we can use induction. For $k = 1$, we have   $f^1(x) = ax - b$, which is equal to $27x - 26$ if we choose $a = 27$ and $b = 26$. Now suppose that for some $k$, we have $f^k(x) = 27x - 26$. Then: $f^{k+1}(x) = f(f^k(x)) = f(27x - 26) = a(27x - 26) - b = 27ax - 26a - b$ To make this equal to $27x - 26$, we need to choose $a = 1$ and $b = 0$.}
+\end{alltt}}
+\vspace{-5px} 
+\end{AIbox} 
+\end{figure}
+At this point, \DV~does not seem to follow its own reasoning. As a result, the induction argument is invalid, as explained below.
+
+\begin{figure}[H] 
+\begin{AIbox}{{\DV}}
+\vspace{-5px} 
+\parbox{1\textwidth}
+{\scriptsize
+\begin{alltt} 
+\textbf{Human:} Let me stop you here. You seem to be assuming that $f^k(x) = 27x - 26$ which fixes the values of $a$ and $b$, so how can you now choose new values for $a$ and $b$? 
+
+\textbf{AI:} \hl{I see your point. I was trying to find a function $f(x) = ax - b$ that works for any $k$, but I should have fixed $k$ first and then found $a$ and $b$. Let me try again. 
+
+AI: Suppose we fix a value of $k$ and we want to find a linear function $f(x) = ax - b$ such that $f^k(x) = 27x - 26$. We can use the following method: }
+\begin{itemize}
+\item
+\hl{Start with $f^1(x) = ax - b$ and equate it to $27x - 26$. This gives us two equations: $a = 27$ and $b = 26$.}
+\item
+\hl{Then, apply $f$ to both sides of $f^1(x) = 27x - 26$. This gives us $f^2(x) = a(27x - 26) - b = 27ax - 26a - b$ and $f(27x - 26) = 27x - 26$.}
+\item
+\hl{Compare the coefficients of $x$ and the constant terms on both sides of $f^2(x) = f(27x - 26)$}
+\end{itemize}
+\end{alltt}}
+\vspace{-5px} 
+\end{AIbox} 
+\end{figure}
+The model repeats the same conceptual mistake as above (once again, even though the choice of $a$ and $b$ has been fixed, they are treated as variables whose value may still be chosen). Uninterrupted, it goes on with the argument without getting anywhere.
+
+Several attempts to continue this dialog all ended up in a dead-end as {\DV} effectively keeps trying different variations on the same (invalid) induction argument. On the other hand, different (but equivalent) formulations of the original question in an earlier part of the discussion \footnote{For example, if to the follow-up question, we add the words "Note that the right hand side remains the linear function $27x - 26$}, occasionally lead to a correct line of reasoning (depending on the exact wording).
+
+\subsubsection{A second variant of the original question}
+Next, we try to modify the original question in another direction, asking about the case of higher degree polynomials.
+\begin{figure}[H] \begin{AIbox}{{\DV}}\vspace{-5px} \parbox{1\textwidth}{\scriptsize\begin{alltt} 
+\textbf{Human:} Now suppose that I changed the question so that the function $f$ is a polynomial of degree $2$ (where the coefficient of $x^2$ is non-zero). Would you be able to find such a function in this case? How will this change things? 
+
+\textbf{AI:} \hl{If $f$ is a polynomial of degree $2$, then we can write $f(x) = ax^2 + bx + c$ for some constants $a, b, c$. Then, the given equation becomes...}
+\end{alltt}}\vspace{-5px} \end{AIbox} 
+\end{figure}
+At this point, {\DV} outputs a very long calculation, makes several mistakes and does not arrive at the correct answer (being that there is no solution in this case). Instead, we interrupt it and advice the higher-degree $k$ more abstractly.
+\begin{figure}[H] \begin{AIbox}{{\DV}}\vspace{-5px} \parbox{1\textwidth}{\scriptsize\begin{alltt} 
+\textbf{Human:} Hold on- before you try to explicitly write this calculation, perhaps there is something you can deduce here without carrying out any calculations? 
+
+\textbf{AI:} \hl{Well, one thing I can notice is that if $f$ is a polynomial of degree $2$, then $f(f(f(x)))$ is a polynomial of degree $8$, since the degree of a composition of polynomials is the product of the degrees of the polynomials. However, the right-hand side of the equation, $27x + 13$, is a polynomial of degree $1$. This means that there is a contradiction, since a polynomial of degree $8$ cannot be equal to a polynomial of degree $1$ for all values of $x$. Therefore, there is no polynomial of degree $2$ that satisfies the equation $f(f(f(x))) = 27x + 13$.}
+\end{alltt}}\vspace{-5px} \end{AIbox} 
+\end{figure}
+This is a solid argument. We now follow up with another question:
+\begin{figure}[H] \begin{AIbox}{{\DV}}\vspace{-5px} \parbox{1\textwidth}{\scriptsize\begin{alltt} 
+\textbf{Human:} Right. So, linear functions are nice because if you compose a linear function with itself you still get a linear function. What other classes of functions with that property are there? 
+
+\textbf{AI:} \hl{Some other classes of functions that have this property are exponential functions, logarithmic functions, and power functions. For example, if $f(x) = e^x$, then $f(f(x)) = e^{e^x}$, which is still an exponential function. Similarly, if $f(x) = \log x$, then $f(f(x)) = \log(\log x)$, which is still a logarithmic function. And if $f(x) = x^k$ for some constant $k$, then $f(f(x)) = (x^k)^k = x^{k^2}$, which is still a power function. These functions are called iterated functions, and they have some interesting properties and applications in mathematics.}
+\end{alltt}}\vspace{-5px} \end{AIbox} 
+\end{figure}
+This is a mistake of course, as the classes of exponential and logarithmic functions do not have the desired property (they are not closed under composition). Next, we check if \DV \ is able to realize and correct its mistake.
+\begin{figure}[H] \begin{AIbox}{{\DV}}\vspace{-5px} \parbox{1\textwidth}{\scriptsize\begin{alltt} 
+\textbf{Human:} Are you sure $e^{e^x}$ is an exponential function? 
+
+\textbf{AI:} \hl{Well, it depends on how you define an exponential function. Some sources define an exponential function as a function of the form $f(x) = a^x$ for some constant $a > 0$. In this case, $e^{e^x}$ is not an exponential function, since it does not have a constant base. However, some other sources define an exponential function more generally as a function that satisfies $f(x + y) = f(x)f(y)$ for all $x, y$. In this case, $e^{e^x}$ is an exponential function, since it satisfies this property. This is because $e^{e^{x + y}} = e^{e^x + e^y} = e^{e^x}e^{e^y}$, using the properties of exponentiation and logarithms. So, the answer depends on the definition you use.} 
+
+\textbf{Human:} Why is the fact that $e^{e^{x + y}} = e^{e^x + e^y}$ correct? It seems to imply that $e^{x+y} = e^x + e^y$. 
+
+\textbf{AI:} \hl{No, it does not imply that $e^{x+y} = e^x + e^y$. That would be incorrect, since exponentiation is not a linear operation. The reason why $e^{e^{x + y}} = e^{e^x + e^y}$ is correct is because we can use the logarithm function to rewrite it as $\log(e^{e^{x + y}}) = \log(e^{e^x + e^y})$. Then, using the property that $\log(e^z) = z$ for any $z$, we get $e^{x + y} = e^x + e^y$, which is true by definition of the exponential function. So, we can go back and forth between the exponential and logarithmic forms using the inverse relationship between them.} 
+
+\textbf{Human:} Wait so is it true that $e^{x+y} = e^x + e^y$ or is it not true? You seem to contradict yourself. 
+
+\textbf{AI:} \hl{It is not true that $e^{x+y} = e^x + e^y$. That is a common misconception that arises from confusing the exponential and logarithmic forms. What is true is that $e^{e^{x + y}} = e^{e^x + e^y}$, which is a different statement. The difference is that in the first statement, the exponent is $x + y$, while in the second statement, the exponent is $e^{x + y}$.}
+\end{alltt}}\vspace{-5px} \end{AIbox} 
+\end{figure}
+This discussion seems to again have driven \DV \ to a dead-end, and it begins contradicting itself and produces increasingly incoherent arguments as the conversation continues. 
+
+\vspace{2mm}
+\noindent{\bf Takeaways:} One might speculate at this point that \DV \ simply lacks the relevant knowledge regarding the behavior of exponential functions. However, this does not seem to be the case, as the model can correctly answer and justify the question ``Is it true that $a^{b^c} = (a^b)^c$?". This suggests that, as in other domains, \DV's mathematical knowledge is \textit{context-dependent}. While this does not mean that {\DV} only memorizes commonly used mathematical sentences and performs a simple pattern matching to decide which one to use (for example, alternating names/numbers, etc. typically does not affect {\DV}'s answer quality), we do see that changes in the \emph{wording of the question} can alter the knowledge that the model displays.
+
+\subsubsection{Analysis of the limitations highlighted by conversation}
+The above dialogue highlights a striking contrast between the model's performance on tasks and questions that require a significant level of mathematical sophistication on one hand, and its basic mathematical errors and invalid statements on the other. If a human were to produce the latter, we would doubt their understanding. Arguably, this contrast is very atypical to humans. Therefore, we face a challenging question:
+\begin{center}
+\emph{To what extent does the model demonstrate ``true understanding" in mathematics?}
+\end{center}
+This question is not well-defined. Nonetheless, we make an attempt to answer it. We first want to argue that mathematical understanding has several aspects:
+\begin{enumerate}
+\item 
+\textbf{Creative reasoning:} 
+The ability to identify which arguments, intermediate steps, calculations or algebraic manipulations are likely to be relevant at each stage, in order to chart a path towards the solution. This component is often based on a heuristic guess (or in the case of humans, intuition), and is often considered to be the most substantial and profound aspect of mathematical problem-solving.
+\item
+\textbf{Technical proficiency:} The ability to perform routine calculations or manipulations that follow a prescribed set of steps (such as differentiating a function or isolating a term in an equation).
+\item
+\textbf{Critical reasoning:} The ability to critically examine each step of the argument, break it down into its sub-components, explain what it entails, how it is related to the rest of the argument and why it is correct. When solving a problem or producing a mathematical argument, this usually comes together with the ability to backtrack when a certain step is realized to be incorrect and modify the argument accordingly.
+\end{enumerate}
+
+We now want to analyze the model's performance in each of these aspects of mathematical understanding, and discuss some possible reasons for its strengths and weaknesses.
+
+\paragraph{Creative reasoning.} When it comes to advanced high-school level problems (and occasionally higher level), the model demonstrates a high level of ability in choosing the right argument or path towards the solution. To relate this to the example above, the model correctly chooses to try and write recurrence relations in the original question, and to argue about the degrees of compositions of polynomials in the follow-up question. In both cases, the suggestion is made before ``knowing" whether or not this path is going to lead to the correct solution. Section~\ref{subsection:pm} and Appendix~\ref{sec:math_appendix} contains more examples demonstrating the model's capabilities in this aspect, which we compare to that of a good high-school student or even higher.
+
+\paragraph{Technical proficiency.} While the model clearly demonstrates a high degree of knowledge of the algorithms related to different procedures (such as solving a system of equations), it also makes very frequent mistakes when performing these tasks, such as making arithmetic mistakes, confusing the order of operations or using incorrect notation. We further discuss some examples of these typical errors in Appendix~\ref{sec:math-a1}. We speculate that this aspect could be improved by giving the model access to code execution, which would allow it to perform calculations or check equivalences more accurately; some evidence for this is provided in Appendix~\ref{sec:math_appendix}.
+
+\paragraph{Critical reasoning.} The model exhibits a significant deficiency in the third aspect, namely critically examining each step of the argument. This could be attributed to two factors. First, the training data of the model mainly consists of questions and their solutions, but it does not capture the wording that expresses the \emph{thinking process} which leads to the solution of a math problem, in which one makes guesses, encounters errors, verifies and examines which parts of the solution are correct, backtracks, etc. In other words, since the training data is essentially a linear exposition of the solution, a model trained on this data has no incentive to engage in an ``inner dialogue" where it revisits and critically evaluates its own suggestions and calculations. Second, the limitation to try things and backtrack is inherent to the next-word-prediction paradigm that the model operates on. It only generates the next word, and it has no mechanism to revise or modify its previous output, which makes it produce arguments ``linearly". \\
+
+\begin{comment}
+\begin{figure}[H]
+\begin{AIbox}{{\DV} lacks critical examining}\vspace{-5px}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} 
+{\bf Prompt:} 
+Find all pairs of primes $(p, q)$ for which $p-q$ and $pq-q$ are both perfect squares.
+
+\hl{There are infinitely many pairs of primes $(p, q)$ for which $p-q$ and $pq-q$ are both perfect squares, but we can give some examples and some general methods to construct more.
+
+One example is $(p, q) = (5, 3)$, since $p-q = 2$ and $pq-q = 12$ are both perfect squares.
+
+Another example is $(p, q) = (13, 11)$, since $p - q = 2$ and $pq - q = 132$ are both perfect squares.
+
+...
+}\end{alltt}}\vspace{-5px}
+\end{AIbox}
+\caption{{\DV} fails to exam its answer, it argues that $2$ and $12$ are both perfect squares to justify its claim that $(p, q) = (5, 3)$. In a separate query, we can see that {\DV} indeed knows that these numbers are not perfect squares.}
+\begin{AIbox}{{\DV} knows the correct answer but can not exam its mistakes}\vspace{-5px}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} 
+{\bf Prompt:} 
+Are $2$ and $12$ perfect squares?
+
+\hl{A perfect square is a number that can be expressed as the product of two equal positive integers. For example, $9$ is a perfect square because $9 = 3 \times 3$. 
+
+To determine if $2$ and $12$ are perfect squares, we can take the square root of $2$ and $12$ and see if they are whole numbers.
+
+The square root of $2$ is approximately $1.414$, which is not a whole number. Therefore, $2$ is not a perfect square.
+
+The square root of $12$ is approximately $3.464$, which is not a whole number either. Therefore, $12$ is not a perfect square.
+}\end{alltt}}\vspace{-5px}
+\end{AIbox}
+\end{figure}
+\end{comment}
+
+Loosely speaking, we can therefore see the drawbacks of the model as a combination of ``naive" attention mistakes with more fundamental limitations due to its ``linear thinking" as a next-token prediction machine. An important question is which of the above issues can be alleviated by further training (perhaps with a larger model). For the former problem, we believe that further training could alleviate the issue, as evidenced by the super-human coding abilities where such attention mistakes would also be fatal; a key difference is that \DV\ was most likely trained on much more code than mathematics data. We believe that the latter issue constitutes a more profound limitation. We discuss it in more detail in Section~\ref{sec:limitations}. \\
+
+In the remainder of the section, we assess the model's capabilities on commonly used benchmarks for mathematical problem solving and demonstrate the model's capability of applying quantitative thinking in real-world scenarios. We also compare the performance of {\DV} and ChatGPT on both benchmarks and other mathematical problems (more examples in Appendix~\ref{sec:math_appendix}). Roughly speaking, we find that {\DV} demonstrates a significant improvement over ChatGPT: {\DV} shows a deeper understanding of the problem and is able to apply the appropriate reasoning in many complicated problems. ChatGPT, on the other hand, often resorts to low-level heuristics, mentioning formulas and concepts that are only superficially related to the problem which point to a lack of actual comprehension. We end the section with a few examples demonstrating the capabilities on higher level mathematics.
+
+\input{contents/4.2_datasets}
+\input{contents/4.3_domains}
+\input{contents/4.4_higher}
+
+

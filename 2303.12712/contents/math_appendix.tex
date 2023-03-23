@@ -1,0 +1,1043 @@
+\section{Additional examples for mathematical reasoning}\label{sec:math_appendix}
+
+\subsection{Limitations}\label{sec:math-a1}
+
+While \DV \ has made some strides in solving math problems, it is not yet a perfect system. While some failures to arrive at correct solutions can result from a lack of comprehension, many others can be traced to more localized mistakes. Such mistakes can typically be ascribed to one of a few categories, such as errors in attention or arithmetic. Below, we highlight and discuss (in a non-exhaustive way) some of the typical categories of mistakes which are frequently encountered when solving math problems.
+
+%\DV \ is still far from perfect at solving math problems. While in some cases it demonstrates a lack of comprehension of the problem at hand, in many cases its failure to arrive at a correct solution can be attributed to a more "local" mistakes which can be classified into a rather small number of categories, such as attention mistakes and arithmetic mistakes. Below, we highlight and discuss some of the typical mistakes we encounter when solving (advanced high-school level) math problems.
+
+%We think that many of the mistakes are potentially due to the fundamental limitation of \emph{auto-regressive way of training}, and could not be easily mitigated. In this section, we examine these mistakes through a sequence of examples.% There are three types of basic mistakes that {\DV} makes: 1) arithmetic mistakes, 2) starting with a wrong conclusion, then drawing the target around the arrow, 3) unfamiliar math subjects.
+
+\paragraph{Arithmetic mistakes:} While \DV \ outperforms older models in terms of making fewer arithmetic mistakes, it still struggles with these types of errors, regardless of whether it is working with concrete numbers or abstract expressions. 
+
+\begin{comment}
+Here, we observe that the main reason for such a mistake is not that \DV \ does not know how to do the calculation, but 
+\begin{center}
+\emph{\DV \ makes arithmetic mistakes mostly due to skipping steps.}
+\end{center}
+\end{comment}
+
+An important observation is that  \DV \ is more prone to arithmetic mistakes when it \emph{skips over steps} in the calculation rather than breaking it down into smaller steps. To illustrate this, consider the following example:
+
+\begin{AIbox}{\DV}\scriptsize
+$$(x + 5)^2 - 2x + 7 = (2x - 4)^2 + (3x - 2)^2 - 8x + 7$$
+Expanding the squares, we get:
+$$x^2 + 10x + 25 - 2x + 7 = 4x^2 - 16x + 16 + 9x^2 - 12x + 4 - 8x + 7$$
+Simplifying and collecting like terms, we get:
+\fcolorbox{aired}{aired}{$-12x^2 + 34x + 12 = 0$}
+\end{AIbox}
+
+In this example, the equation produced contains an error. On the other hand, if we prompt the model to break down the calculation into smaller steps, it arrives at a correct solution:
+\begin{figure}[H]
+\begin{AIbox}{\DV}
+{\bf Prompt:} \\
+{\scriptsize
+$x^2 + 10x + 25 - 2x + 7 = 4x^2 - 16x + 16 + 9x^2 - 12x + 4 - 8x + 7.$\\
+Simplify the equation, try to move each term step by step. 
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+$x^2 + 10x + 25 - 2x + 7 = 4x^2 - 16x + 16 + 9x^2 - 12x + 4 - 8x + 7.$\\
+Combine like terms on the left side: $x^2 + 8x + 32 = 4x^2 - 16x + 16 + 9x^2 - 12x + 4 - 8x + 7$\\
+Combine like terms on the right side: $x^2 + 8x + 32 = 13x^2 - 36x + 27$\\
+Subtract $x^2$ from both sides: $8x + 32 = 12x^2 - 36x + 27$\\
+Subtract $8x$ from both sides: $32 = 12x^2 - 44x + 27$\\
+Subtract $32$ from both sides: $0 = 12x^2 - 44x - 5$\\
+}
+\end{AIbox}
+\end{figure}
+
+These examples highlight a very common issue where performing several atomic manipulations in one step of the calculation leads to an error (this issue is well-known in the literature and also discussed in section \ref{sec:limitations}). Since it is common for online mathematics sources to omit calculation steps (with an expectation that the reader can fill them in), it is not surprising that an autoregressive model trained this data will develop a tendency to do this as well.
+
+One might have hoped that this issue can be completely mitigated by simply prompting the model to ``think step by step''. However, it is not always clear from the context what that instruction means, as highlighted by the following example:
+
+\begin{comment}
+The ``skipping step'' seems to be solvable if we ask the model with the previously proposed prompt: ``Let's think step by step''. However, \textbf{we see that if we hide $(x + 5)^2 - 2x + 7 = (2x - 4)^2 + (3x - 2)^2 - 8x + 7$ as some intermediate steps of the question, then the model still thinks that ``solving $(x + 5)^2 - 2x + 7 = (2x - 4)^2 + (3x - 2)^2 - 8x + 7$'' is one intermediate step, and then still skips the step for simplification:}
+\end{comment}
+\begin{figure}[H]
+\begin{AIbox}{\DV}
+{\bf Prompt:} \\
+{\scriptsize
+If Alice has $x$ apples, Bob and Bilbo also have $x$ apples. Suppose Alice gets 5 more apples, and then square her number of apples, then she loses $2x$ apple and buys another 7 apples. Suppose Bob double the apple then lose 4, and then Bob squares his number of apples. Suppose Bilbo triples the apple and loss 2, and then he also squares his number of apples. Now, Bob and Bilbo combine their apples together, and then loses 8x apple and buys 7 apples. They have the same amount of Apple as Alice now. What is $x$? \\
+\textbf{Let's think step by step.}
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+Alice has $x + 5$ apples, then she squares it, so she has $(x + 5)^2$ apples, then she loses $2x$ apples, so she has $(x + 5)^2 - 2x$ apples, then she buys 7 apples, so she has $(x + 5)^2 - 2x + 7$ apples.
+Bob has x apples, then he doubles it, so he has $2x$ apples, then he loses 4 apples, so he has $2x - 4$ apples, then he squares it, so he has $(2x - 4)^2$ apples.
+Bilbo has x apples, then he triples it, so he has 3x apples, then he loses 2 apples, so he has $3x - 2$ apples, then he squares it, so he has $(3x - 2)^2$ apples.
+Bob and Bilbo combine their apples, so they have $(2x - 4)^2 + (3x - 2)^2$ apples, then they lose 8x apples, so they have $(2x - 4)^2 + (3x - 2)^2 - 8x$ apples, then they buy 7 apples, so they have $(2x - 4)^2 + (3x - 2)^2 - 8x + 7$ apples.
+They have the same amount of apples as Alice, so we can set up an equation:
+$$(x + 5)^2 - 2x + 7 = (2x - 4)^2 + (3x - 2)^2 - 8x + 7$$
+Expanding the squares and simplifying, we get:
+$$x^2 + 10x + 25 - 2x + 7 = 4x^2 - 16x + 16 + 9x^2 - 12x + 4 - 8x + 7$$
+Collecting like terms, we get:
+\fcolorbox{aired}{aired}{$12x^2 - 34x - 20 = 0$}
+}
+\end{AIbox}
+\end{figure}
+
+To systematically test such calculation errors, we create the following synthetic task: We ask the model to write $\sum_{i \in [L]} a_i(b_ix + c_i)^2$ as $ax^2 + bx + c$ and calculate $|a| + |b| + |c|$. The prompt looks like:
+\begin{figure}[H]
+\begin{AIbox}{\DV}
+{\bf Prompt:} \\
+{\scriptsize
+Problem: Write the expression: $+(5x-5)^2+(3x+5)^2+(3x+5)^2-(3x-5)^2-(1x-5)^2$ as $ax^2 + bx + c$, what is $\mathrm{abs}(a) + \mathrm{abs}(b) + \mathrm{abs}(c)$?\\
+Let's think step by step. \\
+\textbf{Try to write all the intermediate steps!}\\
+\textbf{Try to be careful about plus-minus signs!}\\
+\textbf{Try to merge the like terms one by one!}
+}\\
+{\bf \DV:} \\
+{\scriptsize
+First, we can expand the squares using the formula $(a+b)^2 = a^2 + 2ab + b^2$ and $(a-b)^2 = a^2 - 2ab + b^2$. We get:\\
+$+(5x-5)^2+(3x+5)^2+(3x+5)^2-(3x-5)^2-(1x-5)^2$\\
+$= (25x^2 - 50x + 25) + (9x^2 + 30x + 25) + (9x^2 + 30x + 25) - (9x^2 - 30x + 25) - (x^2 - 10x + 25)$\\
+Next, we can combine the like terms by adding or subtracting the coefficients of the same powers of $x$. We get:\\
+$= (25 + 9 + 9 - 9 - 1)x^2 + (-50 + 30 + 30 - (-30) - 10)x + (25 + 25 + 25 - 25 - 25)$\\
+\fcolorbox{aired}{aired}{$= 33x^2 + 110x + 25$}\\
+}
+\end{AIbox}
+\end{figure}
+We can see that the model is still likely to skip steps \textbf{even if we ask it not to merge like terms in one shot. }
+We test the model by choosing $L \in [5]$, and random sample each $a_i \in \{-1, 1\}, b_i, c_i \in \{-5, -4, \cdots, 4, 5\}$. The accuracy is shown in the following table:
+\begin{center}
+\begin{tabular}{c|ccccc}
+\toprule
+Accuracy / Length & 1 & 2 & 3 & 4 & 5 \\
+\midrule
+\midrule
+\DV & 98.1\% & 71.2\% & 59.1\% & 44.4\% & 34.6\% \\
+text-davinci-003 & 51.5\% & 13.7\% & 3.9\% & 1.9\% & 1.0\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The table above analyzes the performance of the LLMs on the task of a very simple algebra problem. Although \DV \ outperforms the previous model by a significant margin, we can see that as $L$ increases, the model is more likely to make a calculation mistake. We manually inspect $100$ instances of the mistake and find out that $\geq 90 \%$ of them are due to the skipping steps when merging similar terms. This points to a substantial limitation of the model, and inspires the following research question:
+\begin{quote}
+Is there an efficient way to train or fine-tune LLM's so that they would break down calculations into smaller steps, resulting in an ability to perform more accurare calculations?
+\iffalse
+The large-scale languange model \DV \ can merge like terms and perform the calculation correctly, but it often omits some steps, especially when combining the like terms. This results in low accuracy for the generated solutions. A fundamental challenge for this task is how to train the NLG models to show all steps \emph{in great detail} in the calculation. Humans tend to skip steps when writing mathematical proofs, so how can we teach the model to avoid this habit?
+\fi
+\end{quote}
+
+\paragraph{Counting errors:} It is reasonable to assume that LLMs struggle with counting. Not only is this operation not easy to implement with a transformer architecture, but also the scarcity of counting examples in data sets only exacerbates the issue. To systematically assess \DV's ability in that respect, we create a data set that contains a sequence of strings of the form $A_1, A_2, \cdots, A_L$. Where each $A_i$ is a sequence of random digits of length $k$. We ask the model to count the number of distinct elements in the sequence, with the answer range between $L/2$ and $L - 1$. Here is an example of $L = 5, k = 2$:
+\begin{AIbox}{Prompt} \scriptsize
+I have a sequence of numbers: 11, 23, 88, 42, 11. How many distinct numbers are there?\\
+Let's think step by step.
+\end{AIbox}
+We tested the model with $L \in [5, 10, 15, 25]$ and $k = 2, 7, 12$. We obtain the following result:
+\begin{figure}[H]
+\centering
+\begin{comment}
+    
+
+\end{comment}
+\begin{tabular}{c|c|c|c|c|c|c|c|c|c|c|c|c}
+\hline
+$L$, $k$ &5,2&5,7&5,12&10,2&10,7&10,12&15,2&15,7&15,12&25,2&25,7&25,12\\
+\hline
+\DV&92.0\%&99.5\%&95.9\%&20.3\%&34.0\%&36.2\%&4.3\%& 7.5\%&30.3&12.8\%&1.6\%&22.0 \%\\
+\hline
+TD3&39.5\%&67.2\%&43.0\%&12.7\%&31.3\%&14.6\%&3.9\%&10.9\%&5.4\%&3.0\%&14.5\%&8.4\%\\
+\hline
+\end{tabular}
+
+\end{figure}
+
+
+While \DV's counting ability has substantially improved compared to the previous model for short sequences, a significant drop in \DV's accuracy still occurs as the sequence length grows from 5 to 10, indicating that it has a much lower counting capacity than humans. Since counting is a basic requirement for many applications, it may be beneficial to combine such a component into the architecture.
+
+\paragraph{Reverse reasoning and verification}
+
+Mathematical content produced by humans often presents a conclusion before outlining the reasoning that led to it. For example, the sentences ``we will show next that $x = 0$ is a solution ...'' or ``We are going to prove the claim: AC is perpendicular to BD'' can appear in a math problem's solution. This stylistic choice can improve readability, but it poses a challenge for natural language generation models, as it requires the model to infer the answer before producing the reasoning steps. We observe that not only does \DV \ adopt this style, but it has an additional related drawback: \textbf{even when it infers a clearly wrong answer at the start, it will still attempt to create justifications for it, instead of correcting it}. This may again be due to the style of the training data, which mostly contains straightforwards solutions rather than trial-and-error style discussions and it is not clear whether or not it can be mitigated through a reinforcement learning phase (such as GPT-Instruct).
+
+In Figure \ref{fig:math-justification}, we can see that when \DV \ starts with a wrong conclusion, this can quickly lead to very incoherent or nonsensical content (for example, stating that $2 \leq 0$ in order to justify the conclusion). The model is conflicted between making a local mistake and contradicting its own conclusion, and often favors matching the conclusion rather than verifying the local consistency of the logic (arguably, the training data is more likely to contain "local" errors in the intermediate reasoning, than steps which clearly contradict the stated conclusion). 
+ On the other hand, if the model produces a bottom-up argument, first writing down the steps and only then drawing the conclusion, the performance improves significantly. We summarize with the following research question, inspired by this discussion:
+\begin{quote}
+Mathematics is often written in a different order than the thought process that has led to it. How can we encourage LLMs to produce mathematical content in an order that corresponds to the human thought process?
+\end{quote}
+
+\begin{figure}[H]
+\begin{AIbox}{\DV}
+{\bf Prompt:} \\
+{\scriptsize
+Find all positive integers $x$ are that $x-1 \leq 0$.
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+\fcolorbox{aired}{aired}{There are no positive integers $x$ that satisfy the inequality $x-1 \leq 0$.}\\
+To see this, suppose for a contradiction that there is some positive integer $x$ such that $x-1 \leq 0$. Then adding $1$ to both sides of the inequality, we get $x \leq 1$. But since $x$ is a positive integer, it must be at least $1$, so the only possibility is that $x = 1$. However, plugging in $x = 1$ into the original inequality, we get $1-1 \leq 0$, which simplifies to $0 \leq 0$. This is true, but it is not a strict inequality, so it does not satisfy the original condition. Therefore, we have reached a contradiction, and there are no positive integers $x$ that satisfy $x-1 \leq 0$.
+}
+\tcbline
+{\bf Prompt:} \\
+{\scriptsize
+Find all positive integers $x$ are that $x-1 \leq 0$.\\
+There is one positive integer $x$ that satisfy the inequality $x-1 \leq 0$. 
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+That is $x = 1$.\\
+To see why, note that if $x > 1$, then $x-1 > 0$, which contradicts the inequality. \\
+On the other hand, if $x < 1$, then $x$ is not a positive integer, since positive integers are greater than or equal to 1 by definition. \\
+Therefore, $x = 1$ is the only positive integer that satisfies the inequality $x-1 \leq 0$.
+}
+\tcbline
+{\bf Prompt:} \\
+{\scriptsize
+Find all positive integers $x$ are that $x-1 \leq 0$.\\
+There are three positive integers $x$ that satisfy the inequality $x-1 \leq 0$. 
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+They are:\\
+
+- $x=1$, since $1-1=0$ and $0 \leq 0$.\\
+- $x=2$, since $2-1=1$ and $1 \leq 0$.\\
+- $x=3$, since $3-1=2$ and $2 \leq 0$.\\
+
+Any other positive integer $x$ would have $x-1 \geq 1$, which would not satisfy the inequality. Therefore, the only positive integers $x$ that are $x-1 \leq 0$ are $x=1,2,3$.
+}
+\tcbline
+{\bf Prompt:} \\
+{\scriptsize
+Find all positive integers $x$ are that $x-1 \leq 0$. \\
+We can approach the problem
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+by rearranging the inequality as follows:
+\begin{align*}
+x-1 &\leq 0 \\
+x &\leq 1
+\end{align*}
+This means that $x$ must be less than or equal to $1$ to satisfy the inequality. The only positive integer that meets this condition is $x=1$. Therefore, the solution is $x=1$.
+}
+\end{AIbox}
+\caption{Starting with a wrong conclusion.}
+\label{fig:math-justification}
+\end{figure}
+
+\subsection{Further examples}
+In what follows, we showcase \DV's performance on questions from different branches of mathematics. The examples in this section are not meant to be comprehensive or representative of the model's performance across different mathematical branches or levels, but rather to give a sense of the range of the model's capabilities. Most questions below were composed exclusively for this study (others have been taken or translated from online sources which appeared after the model was trained) and are therefore unlikely to have been seen by the model during training, thereby addressing the concern that the model has simply memorized the answers.
+
+These examples will reveal, for instance, that the model can handle geometric concepts well, despite being a language model, and that it can engage in meaningful conversations on some specialized topics in advanced mathematics. A comparison with ChatGPT's performance on the same questions shows a clear improvement in the model's mathematical abilities. 
+
+The questions presented below vary in their level of difficulty, and some of them may be slightly out of reach for \DV. However, the overall level is clearly beyond the capabilities of ChatGPT. We tested these questions with ChatGPT several times and found that the vast majority of attempts resulted in incorrect answers. We emphasize that we collected the questions first and then tested them on both models without any modification, so we did not select the questions to favor \DV's performance.
+
+In most examples, the answers produced by ChatGPT exhibit a poor understanding of the mathematical questions and concepts involved. One common characteristic of ChatGPT's answers is that they seem to rely on a form of "template matching", where the model tries to fit the question into a familiar pattern of a structured question, but fails to do so because the question does not match the pattern. This results in incoherent or nonsensical output that does not address the question at all. Another common characteristic of ChatGPT's answers is that they often contain arguments based on incorrect reasoning or irrelevant information. The model does not seem to grasp the crux of the question or the logic behind the mathematical steps. Even when it does suggest a correct general strategy to solve the question, it usually makes mistakes in the implementation or the calculation. The model also tends to perform algebraic manipulations or computations without a clear direction or purpose, leading to confusion or errors. On the other hand, the answers given by \DV are usually more coherent, accurate, and relevant to the question. They demonstrate a better understanding of the mathematical concepts and methods involved, and provide clear and logical explanations and justifications for their steps and solutions. 
+
+We do not attempt to analyze the reasons for ChatGPT's failure or \DV's success in these examples, but we provide a brief commentary for each example, where we evaluate the models' answers as if they were written by a human. We try to point out the aspects of comprehension or insight, or the lack thereof, that are demonstrated by the answers. %We also highlight the differences between the models' performance and the expected performance of a human with a similar level of mathematical knowledge.
+
+\subsubsection{Algebra}
+The following question is advanced high-school level in mathematics, and relies on knowledge of the concepts of function composition and inversion. 
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+Suppose $g(x) = f^{-1}(x), g(0) = 5, g(4) = 7, g(3) = 2, g(7) =  9, g(9) = 6$ what is $f(f(f(6)))$?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+There are different ways to approach this problem, but one possible method is to use the fact that $g(x) = f^{-1}(x)$ implies that $f(g(x)) = x$ for any $x$ in the domain of $g$. That is, applying $f$ to both sides of the equation $g(x) = f^{-1}(x)$ gives $f(g(x)) = f(f^{-1}(x)) = x$. This means that we can undo the effect of $f$ by applying $g$, and vice versa.\\
+
+Using this idea, we can try to find $f(6)$ by looking for the value of x such that $g(x) = 6$. From the given information, we see that $g(9) = 6$, so $f(6) = f(g(9)) = 9$. Similarly, we can find $f(9)$ by looking for the value of $x$ such that $g(x) = 9$. We see that $g(7) = 9$, so $f(9) = f(g(7)) = 7$. Finally, we can find $f(7)$ by looking for the value of $x$ such that $g(x) = 7$.  We see that $g(4) = 7$, so $f(7) = f(g(4)) = 4$.\\
+
+Therefore, $f(f(f(6))) = f(f(9)) = f(7) = 4$.
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+We know that $g(x)=f^{-1}(x)$, so $f(f^{-1}(x))=x$. Therefore, we have $$f(f(f(6)))=f(f(g(9)))=f(f(6))=f(g(7))=f(9).$$
+}
+\end{AIbox}
+\end{figure}
+The solution given by \DV \ is correct and the argument is sound, while ChatGPT produces an incorrect solution which (in the case of a human) would reflect a lack of understanding of the concept of function inversion.
+
+In the next example, both models produce a wrong answer. The argument produced by \DV \ actually has the correct answer hidden in it, but it still gives a wrong bottom line (perhaps because it begins by stating a wrong answer). The argument produced by ChatGPT is mostly incoherent.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+Take a number $x$, and then apply an iterative procedure where each iteration multiplies the previous number by $2$ and then subtract $1$ from it. What is the condition on the starting number, $x$ so that at some point we reach a number higher than $1000$? 
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+There is no condition on the starting number $x$ that is necessary in order to eventually reach a number higher than $1000$. No matter what number we start with, repeated application of the procedure (multiply by $2$, subtract $1$) will eventually yield a number greater than $1000$.
+
+To see why, note that each time we apply the procedure, the number either stays the same (if we started with $x=1$) or it increases. Specifically, if we start with a number $x>1$, then after applying the procedure we will have:
+
+$$2x-1 > 2x-2 = x+x > x$$
+
+So the number increases with each iteration. As a result, no matter what number we start with, we will eventually surpass any finite target (such as $1000$).
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+At each iteration, the number $x$ is multiplied by $2$ and then subtracted by $1$. Hence, after $n$ iterations, the result is:
+
+$$x_n = 2^n (x) - (2^n - 1)$$
+
+The number $x_n$ will be greater than $1000$ if $2^n (x) - (2^n - 1) > 1000$, which can be rearranged to:
+
+$$2^n (x) > 1001 + (2^n - 1)$$
+
+$$2^n (x) > 2^n$$
+
+$$x > 2^{n-1}$$
+
+So, the condition for the starting number $x$ to reach a number greater than $1000$ after $n$ iterations is that $x > 2^{n-1}$. For $n=10$, we have $2^{10-1} = 512$, so $x > 512$ is a sufficient condition for $x_n > 1000$.
+}
+\end{AIbox}
+\end{figure}
+
+The next question is fairly simple. In order to solve it, one needs to simplify an equation in a straightforward way, after which one is only left with an equation involving terms $x^0, X^4$ and $x^8$, at which point one can realize that this is a quadratic equation in $x^4$ which can be solved by substitution.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+Find the real roots to $x^8 - 2x^4 - 7= (x + 1)^2 - x^2 - 2x .$
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+Simplify the  equation by moving everything to one side:
+$$x^8 - 2x^4 - 7 - (x + 1)^2 + x^2 + 2x = 0$$
+
+Expanding and combining like terms, we get:
+$$x^8 -2x^4 - 7 -  x^2 - 2x - 1 + x^2 + 2x = 0$$
+$$x^8 - 2x^4 - 8 = 0$$
+
+To find the real roots, we can try to factor this polynomial. One way to do this is to make a substitution, such as $u = x^4$. Then the equation becomes:
+$u^2 - 2u - 8 = 0$. This is a quadratic equation in $u$, which we can factor as:
+$(u - 4)(u + 2) = 0$. Then we can solve for $u$ by setting each factor to zero:
+\[u - 4 = 0 \implies u = 4\]
+\[u + 2 = 0 \implies u = -2\]
+
+Now we can substitute back $x^4$ for $u$ and solve for $x$:
+
+\[x^4 = 4 \implies x = \pm \sqrt[4]{4} \approx \pm 1.414\]
+
+\[x^4 = -2 \implies x = \pm \sqrt[4]{-2} \]
+
+However, the second equation has no real solutions, since we cannot take an even root of a negative number. Therefore, the only real roots are:
+
+\[x \approx \pm 1.414\]
+}
+
+{\bf ChatGPT:} \\
+{\scriptsize
+We can rewrite the given equation as
+\[(x^2 + 1)^2 - x^2 - 2x = x^8 - 2x^4 - 7,\]
+so
+\[(x^2 + 1)^2 - 2x = x^8 - 2x^4 - 7 + x^2.\]
+Then
+\[(x^2 + 1)^2 - 2x - x^2 = x^8 - 2x^4 - 7,\]
+so
+\[(x^2 + 1 - x)^2 = x^8 - 2x^4 - 7.\]
+We can factor the right side as $(x^4 - 1)(x^4 + 7),$ so
+\[(x^2 + 1 - x)^2 = (x^4 - 1)(x^4 + 7).\]
+If $x^4 - 1 = 0,$ then $x = 1.$ Otherwise, $x^4 + 7 = 0,$ so $x = \pm i \sqrt[4]{7}.$
+
+Thus, the roots are $x = \boxed{1, \pm i \sqrt[4]{7}}.$
+}
+\end{AIbox}
+\end{figure}
+\DV \ gives a correct solution while ChatGPT begins by rearranging the terms without any clear direction or purpose, and ends up with an incorrect solution. \\
+
+Our final example involves high-school level trigonometry question that has been translated from the 2022 Chinese College Entrance Exam problems.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+If $\sin(a + b) = x$ and $\cos(a) = y$, what is $\sin(a-b)$ in terms of $x, y$ assuming $\sin(a)$, $\sin(b)$, $\cos(a)$, $\cos(b)$ are all positive?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+There are a couple of ways to approach this problem, but one possible method is to use the sum and difference formulas for sine and cosine and the Pythagorean identity $1 = \sin^2(t) + \cos^2(t)$ for any angle $t$. Here are the steps:\\
+- Start with the given equation $\sin(a + b) = x$ and apply the sum formula: $\sin(a + b) = \sin(a)\cos(b) + \cos(a)\sin(b) = x$\\
+- Rearrange the equation to isolate $\sin(b)$: $sin(b) = (x - \sin(a)\cos(b))/\cos(a)$\\
+- Use the Pythagorean identity to find $\cos(b)$ in terms of $\sin(b)$: $\cos^2(b) = 1 - \sin^2(b) = 1 - ((x - \sin(a)\cos(b))/\cos(a))^2$\\
+- Simplify the expression for $\cos^2(b)$ by multiplying both sides by $\cos^2(a)$ and expanding the square: $\cos^2(a)\cos^2(b) = \cos^2(a) - (x - \sin(a)\cos(b))^2 = \cos^2(a) - x^2 + 2x\sin(a)\cos(b) - \sin^2(a)\cos^2(b)$\\
+- Collect the terms with $\cos^2(b)$ on one side and factor out $\cos^2(b)$: $\cos^2(b)(\cos^2(a) + \sin^2(a)) = \cos^2(a) - x^2 + 2x\sin(a)\cos(b)$\\
+- Use the Pythagorean identity again to simplify the factor $\cos^2(a) + \sin^2(a) = 1$: $\cos^2(b) = (\cos^2(a) - x^2 + 2x\sin(a)\cos(b))/(\cos^2(a) + \sin^2(a)) = (\cos^2(a) - x^2 + 2x\sin(a)\cos(b))/1$\\
+- Rearrange the equation to isolate $\cos(b)$: $\cos^2(b) - 2x \sin(a)\cos(b) + x^2 - \cos^2(a) = 0$\\
+- Use the quadratic formula to solve for $\cos(b)$: $\cos(b) = (2x\sin(a) \pm \sqrt{(2x\sin(a))^2 - 4(1)(x^2 - \cos^2(a)))}/(2(1)) = (x\sin(a) \pm \sqrt{\cos^2(a) - x^2 + x^2\sin^2(a))}/1$\\
+- Since we are assuming $\cos(b)$ is positive, we choose the positive sign for the square root: $\cos(b) = x\sin(a) + \sqrt{\cos^2(a) - x^2 + x^2\sin^2(a)}$\\
+- Now we have expressions for both $\sin(b)$ and $\cos(b)$ in terms of $x$, $y$, and $\sin(a)$, so we can use the difference formula for sine to find $\sin(a - b)$: $\sin(a - b) = \sin(a)\cos(b) - \cos(a)\sin(b)$\\
+- Substitute the expressions for $sin(b)$ and $cos(b)$ and simplify: $\sin(a - b) = \sin(a)(x\sin(a) + \sqrt{\cos^2(a) - x^2 + x^2\sin^2(a)}) - \cos(a)((x - \sin(a)(x\sin(a) + \sqrt{\cos^2(a) - x^2 + x^2\sin^2(a)}))/\cos(a))$ \\
+...
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+To find $\sin(a - b)$ in terms of $x$, $y$ assuming $\sin(a)$, $\sin(b)$, $\cos(a)$, $\cos(b)$ are all positive, we can use the identity:
+$$\sin(a - b) = \sin(a)\cos(b) - \cos(a)\sin(b)$$
+Since $\sin(a)$ and $\cos(a)$ are both positive, we can substitute the given value of $x$ for $\sin(a + b)$ and the given value of $y$ for $\cos(a)$ to get:
+$$\sin(a - b) = x\cos(b) - y\sin(b)$$
+This gives us an expression for $\sin(a - b)$ in terms of $x$, $y$.
+}
+\end{AIbox}
+\end{figure}
+In the above, both models reach an incorrect answer. The argument by \DV \ is based on correct reasoning but has several calculation mistakes, whereas the argument by ChapGPT contains mostly invalid reasoning steps.
+
+\subsubsection{Geometry}
+It is reasonable to assume that geometric math questions would pose a more substantial challenge for language models. Nonetheless, it is possible for \DV \ to successfully address certain questions which would typically necessitate a diagram or illustration, as shown next. \\
+
+Our first example requires basic knowledge in vector calculus.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+In a triangle $ABC$, $D$ is on the edge $AB$, $|DB| = 2|DA|$. Suppose $\vec{CA} = m, \vec{CD} = n$, what is $\vec{CB}$?
+} \\
+
+{\bf \DV:} \\
+{\scriptsize
+There are a couple of ways to approach this problem, but one possible method is to use vector addition and subtraction. We can write:
+\[\vec{CB} = \vec{CA} + \vec{AB} \tag{1}\]
+and
+\[\vec{AB} = \vec{AD} + \vec{DB} \tag{2}\]
+
+Using the given information that $|DB| = 2|DA|$, we can also write:
+\[\vec{DB} = 2\vec{AD} \tag{3}\]
+
+Substituting (3) into (2), we get:
+\[\vec{AB} = \vec{AD} + 2\vec{AD} = 3\vec{AD} \tag{4}\]
+
+Substituting (4) into (1), we get:
+\[\vec{CB} = \vec{CA} + 3\vec{AD} \tag{5}\]
+
+Now, we can use the fact that $\vec{CD} = n$ to write:
+$\vec{CD} = \vec{CA} + \vec{AD} \quad (6)$. Solving for $\vec{AD}$, we get:
+\[\vec{AD} = \vec{CD} - \vec{CA} = n - m \tag{7}\]
+
+Substituting (7) into (5), we get:
+\[\vec{CB} = \vec{CA} + 3(n - m) \tag{8}\]
+
+Simplifying, we get:
+\[\vec{CB} = m + 3n - 3m \tag{9}\]
+\[\vec{CB} = -2m + 3n \tag{10}\]
+
+This is the final answer.
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+
+
+Let's call the length of segment $AB$ $x$. Then the length of segment $AD $is $x/3$ and the length of segment $DB$ is $2x/3$.
+
+Since $D$ is a point on line $AB$, we can write the following equation:
+$n + m = x$.
+
+Since the length of segment $AD$ is $x/3$ and the length of segment $DB$ is $2x/3$, we can write the following equation:
+
+$$m + n = x/3 + 2x/3 = x$$
+
+Solving the system of equations, we get:
+
+$$m = 2x/3$$
+$$n = x/3$$
+
+Therefore, the vector $CB$ is equal to the negative of the vector $CA$, or $-2x/3$.
+
+
+}
+\end{AIbox}
+\end{figure}
+\DV \ obtains the correct solution, associating the geometric objects described in the question with the vector notation and performing manipulations on these vectors. ChatGPT, near the beginning of the solution, writes the equation $n + m = x$ which compares vectors and scalars (which is incoherent).
+
+%The example shows that ChatGPT, as expected, relies on superficial ``pattern matching'' to generate responses. It might produce $m + n = x$ simply because $x$ is a point on $AB$, and the definition of $m$, $n$, and x all contain some letters from $A$, $B$, $C$, and $D$, without any regard for their actual geometric relations. ChatGPT does not even comprehend the basic notions of geometry, such as what a vector is, while {\DV} can manipulate those concepts and perform the vector calculations to obtain the correct solution.
+The following question relies on the application of basic geometric concepts such as the Pythagorean theorem.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+In a perfect square $ABCD$, $|AB| = |BC| = |CD| = |DA|$, $E$ is the middle point of $AD$,  $F$ is the middle point of $EB$. Suppose $|BF| = 6$, what is the area of $ABCD$?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+There are a couple of ways to approach this problem, but one possible method is to use the Pythagorean theorem. \\
+
+We can observe that triangle $ABE$ is a right triangle,  with $AE$ and $AB$  as the legs and $EB$ as the hypotenuse. \\
+
+Since E is the middle point of $AD$, we have $|AE| = |ED| = |AB| / 2$. \\
+
+Since F is the middle point of $EB$, we have $|BF| = |FE| = |EB| / 2$. \\
+
+We are given that $|BF| = 6$, so we can deduce that $|EB| = 12$. \\
+
+Using the Pythagorean theorem, we can find $|AB|$ by solving:
+$$|AB|^2 + |AE|^2 = |EB|^2$$
+$$|AB|^2 + (|AB| / 2)^2 = 12^2$$
+$$|AB|^2 + |AB|^2 / 4 = 144$$
+$$5|AB|^2 / 4 = 144$$
+$$|AB|^2 = 144 \times 4 / 5$$
+$$|AB|^2 = 115.2$$
+$$|AB| = \sqrt{115.2}$$
+$$|AB| = 10.72 \textbf{ (approximate)}$$\\
+
+Now that we have $|AB|$, we can find the area of $ABCD$ by squaring it, since $ABCD$ is a perfect square.\\
+Area of $ABCD = |AB|^2$\\
+Area of $ABCD = 10.72^2$\\
+Area of $ABCD = 114.92$ (approximate)\\
+
+Therefore, the area of $ABCD$ is about 114.92 square units.
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+Since $E$ is the midpoint of $AD$, $AE = ED$. Similarly, since $F$ is the midpoint of $EB$, $EF = FB$. Therefore, $AE = ED = EF = FB$. It follows that triangle $AEF$ is an isosceles triangle with $AF$ as the base and $AE$ and $EF$ as the equal legs.\\
+
+Since $AF = 12$ (the side length of the square), the area of triangle $AEF$ is $36$. Since triangle $AEF$ is half of the area of square $ABCD$, the area of square $ABCD$ is $2 \times 36 = 72$. Therefore, the area of $ABCD$ is $72$.
+}
+\end{AIbox}
+\end{figure}
+In this example, one needs to first realize that the Pythogorean theorem is required and find the triangle on which it needs to be applied, which {\DV} does correctly (and later on correctly employs geometric concepts such as the area of a perfect square and the midpoint of a line segment). Curiously, note that it takes the square root of $115$ and later takes the square of that number, using numerical estimates thus arriving at a slightly innacurate number, rather than realizing that these estimates are unnecessary. Once again, the output of ChatGPT is incoherent. \\
+
+The following question is quite simple, though unstructured, and relies on the understanding of the concept of equivalence up to translations and rotations.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+Let $A,B,C,D$ be four points on the plane. Suppose that the points $A,B,C$ form the vertices of an equilateral triangle and that the distance between $A$ and $D$ is equal to the distance between B and D, which is equal to two thirds of the distance between A and B. How many different configurations which satisfy this are there up to rotation and dilation?
+}\\
+
+The following question is rather simple, but one would typically need an illustration.
+{\bf \DV:} \\
+{\scriptsize
+There are two different configurations which satisfy this up to rotation and dilation. One way to see this is to use complex numbers to represent the points on the plane. Let $A = 0$, $B = 1$, and $C = (1/2) + (\sqrt{3})/2)i$ be the vertices of an equilateral triangle with unit side length. Then the point $D$ must satisfy $|D| = 2/3$ and $|D - 1| = 2/3$, which implies that $D$ is either $(1/3) + (\sqrt{3})/3)i$ or $(1/3) - (\sqrt{3})/3)i$, depending on whether $D$ lies inside or outside the triangle. These two choices correspond to the two configurations, and any other configuration can be obtained by rotating or dilating these two.
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+
+There are exactly two different configurations up to rotation and dilation which satisfy the given conditions.
+
+The first configuration is when point D is the midpoint of one of the sides of the equilateral triangle formed by A, B, and C. In this case, the distance between A and D, as well as the distance between B and D, will be equal to one-third of the distance between A and B.
+
+The second configuration is when point D is the centroid of the equilateral triangle. In this case, the distance between A and D, as well as the distance between B and D, will be equal to two-thirds of the distance between A and B.
+
+Therefore, there are exactly two different configurations which satisfy the given conditions.
+}
+\end{AIbox}
+\end{figure}
+Here, both models give a correct final answer. However, scrutiny of ChatGPT's argument reveals that it is invalid, and points to a lack of comprehension the geometry underlying the problem.
+
+\subsubsection{Calculus}
+The next exercise, which involves the calculation of an integral, is typical of undergraduate calculus classes in STEM subjects.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+What is the intergal of $\ln(\cos(x)) - x\tan(x)$?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+We can split the integral of $\ln(\cos(x)) - x\tan(x)$ into two parts:
+
+$$\int \ln(\cos(x)) - x\tan(x) dx
+= \int \ln(\cos(x)) dx - \int x\tan(x) dx$$
+
+To find the first part, we can use integration by parts, which states that:
+
+$$\int u dv = uv - \int v du$$
+
+Let $u = \ln(\cos(x))$ and $dv = dx$. Then $du = -\frac{\sin(x)}{\cos(x)} dx = -\tan(x) dx$ and $v = x$.  Substituting these into the formula, we get:
+
+$$\int \ln(\cos(x)) dx = x\ln(\cos(x)) + \int x\tan(x) dx$$
+
+So the first part is equal to the second part plus $x\ln(\cos(x))$. This means we can simplify the original integral as:
+
+$$\int \ln(\cos(x)) - x\tan(x) dx
+= x\ln(\cos(x)) + \int x\tan(x) dx - \int x\tan(x) dx
+= x\ln(\cos(x)) + C$$
+
+where $C$ is an arbitrary constant of integration. Therefore, the answer is:
+
+$$\int \ln(\cos(x)) - x\tan(x) dx
+= x\ln(\cos(x)) + C$$
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+To find the indefinite integral of $\ln(\cos(x)) - x\tan(x)$, we can use the following steps:
+
+Use the identity $\tan(x) = \frac{\sin(x)}{\cos(x)}$ to rewrite the expression as $\ln(\cos(x)) - x\frac{\sin(x)}{\cos(x)}$.
+
+Use the identity $\ln(ab) = \ln(a) + \ln(b)$ to rewrite the expression as $\ln(\cos(x)) - \ln(\cos(x)) - x\frac{\sin(x)}{\cos(x)}$.
+
+Combine the two logarithms using the identity $\ln(a) - \ln(b) = \ln\left(\frac{a}{b}\right)$ to get $\ln\left(\frac{\cos(x)}{\cos(x)}\right) - x\frac{\sin(x)}{\cos(x)}$.
+
+Simplify the fraction $\frac{\cos(x)}{\cos(x)}$ to get $\ln(1) - x\frac{\sin(x)}{\cos(x)}$.
+
+Use the identity $\ln(1) = 0$ to simplify the expression to $0 - x\frac{\sin(x)}{\cos(x)}$.
+
+Use the identity $\ln(a^n) = n\ln(a)$ to rewrite the expression as $-x\ln(\cos(x))$.
+
+Use the identity $\ln(\cos(x)) = \ln(|\cos(x)|) + i\operatorname{Arg}(\cos(x))$ to rewrite the expression as $-x(\ln(|\cos(x)|) + i\operatorname{Arg}(\cos(x)))$.
+
+The indefinite integral of $\ln(\cos(x)) - x\tan(x)$ is therefore $-x(\ln(|\cos(x)|) + i\operatorname{Arg}(\cos(x))) + C$, where $C$ is a constant of integration.
+}
+\end{AIbox}
+\end{figure}
+
+\DV \ applies the integration by parts technique, which is based on a successful decision of splitting the integral into two parts, reaching a correct solution. ChatGPT applied several identities without an apparent purpose, makes several mistakes on the way and arrives at a wrong result. \\
+
+We continue to another typical college-level calculus example, which deals with the differentiation of an implicit function.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+If $xy = \ln(x + y)$, what is $\frac{dy}{dx}$?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+There are different methods to find $\frac{dy}{dx}$, but one possible way is to use implicit differentiation. Implicit differentiation is a technique that allows us to differentiate both sides of an equation with respect to x, and then solve for $\frac{dy}{dx}$ by isolating it. Here are the steps:\\
+
+- Differentiate both sides of the equation with respect to x, using the product rule, the chain rule, and the derivative of $\ln(u) = u'/u$.
+$$xy = \ln(x + y)$$
+$$\frac{d xy}{dx} = \frac{d}{dx} ln(x + y) = \frac{(x + y)'}{x + y} = \frac{1 + \frac{dy}{dx}}{x + y}$$
+
+- Use the product rule to expand $\frac{d xy}{dx} = x'y + xy'$.
+$x'y + xy' = y + x \frac{dy}{dx}.$
+
+- Substitute the expression for $\frac{d xy}{dx}$ from step 1 into the equation from step 2 and simplify.
+$$(y + x \frac{dy}{dx}) = (1 + \frac{dy}{dx})/(x + y)$$
+$$(x + y)(y + x \frac{dy}{dx}) = 1 + \frac{dy}{dx}$$
+$$xy + y^2 + x^2 \frac{dy}{dx} + xy \frac{dy}{dx} = 1 + \frac{dy}{dx}$$
+$$x^2 \frac{dy}{dx} + xy \frac{dy}{dx}- \frac{dy}{dx} = 1 - xy - y^2$$
+$$\frac{dy}{dx}(x^2 + xy - 1) = 1 - xy - y^2$$
+
+- Solve for $\frac{dy}{dx}$ by dividing both sides by the coefficient of $\frac{dy}{dx}$.
+$\frac{dy}{dx} = \frac{1 - xy - y^2}{x^2 + xy - 1}$
+}
+
+{\bf ChatGPT:} \\
+{\scriptsize
+To find the derivative of $y$ with respect to $x$, we can use the chain rule. The chain rule states that if $y$ is a function of $u$, and $u$ is a function of $x$, then the derivative of $y$ with respect to $x$ is equal to the derivative of $y$ with respect to $u$ multiplied by the derivative of $u$ with respect to $x$.\\
+
+In this case, we can let $u = x + y$. Then $y$ is a function of $u$, since $y = \ln(u)$. The derivative of $y$ with respect to $u$ is $1/u$, since the derivative of $\ln(u)$ is $1/u$.\\
+
+The derivative of $u$ with respect to $x$ is $1$, since $u = x + y$ and the derivative of a constant is $0$. Therefore, the derivative of $y$ with respect to $x$ is:
+$\frac{dy}{dx} = (1/u) \times (1) = \frac{1}{x + y}$
+}
+\end{AIbox}
+\end{figure}
+
+{\DV} correctly applies implicit differentiation, which accounts for the dependency of the derivatives in $y$ and $x$. ChatGPT's response starts with "we can use the chain rule", which is irrelevant to this question, and continues with a mostly incoherent argument. \\
+
+The last question in this subsection is an exercise in calculus of variations (typically taught in first year undergraduate in STEM subjects):
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+Let $P$ be a point on the hyperbola $x^2 + 3xy + 4x - 5y = - 9y^2 - 133.$ Find the shortest possible distance from the origin to $P.$ 
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+There are different methods to approach this problem, but one possible way is to use calculus. We can try to minimize the distance function square  $d^2 = x^2 + y^2$ subject to the constraint $x^2 + 3xy + 4x - 5y = - 9y^2 - 133.$ To do this, we can use the method of Lagrange multipliers, which says that if $d^2$ has a local extremum at a point $(x,y)$ that satisfies the constraint, then there exists a constant $\lambda$ such that the gradient of $d^2$ is parallel to the gradient of the constraint, or equivalently,
+
+$$\nabla d^2 = \lambda \nabla g,$$
+
+where $g(x,y) = x^2 + 3xy + 4x - 5y + 9y^2 + 133$ is the constraint function. The gradient of a function is a vector of its partial derivatives, so we have
+
+$$\nabla d^2 = (2x, 2y) \quad \text{and} \quad \nabla g = (2x + 3y + 4, 3x - 5 + 18y).$$
+
+Equating the components of these vectors, we get the system of equations
+
+$$\begin{cases}
+2x = \lambda (2x + 3y + 4) \\
+2y = \lambda (3x - 5 + 18y)
+\end{cases}$$
+
+Moreover,  we also have the constraint equation
+
+$$x^2 + 3xy + 4x - 5y = - 9y^2 - 133.$$
+
+We can try to solve this system of three equations in three unknowns $(x,y,\lambda)$ ...
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+We can write the equation of the hyperbola in standard form as
+\[\frac{x^2 + 4x - 9y^2}{4} - \frac{5y}{3} = 1.\]To find the distance from the origin to a point on the hyperbola, we can use the distance formula:
+\[d = \sqrt{(x - 0)^2 + (y - 0)^2}.\]Substituting the coordinates of the point $(x,y)$ into this formula, we get
+\[d = \sqrt{x^2 + y^2}.\]We want to minimize this distance subject to the constraint that the point lies on the hyperbola. This leads us to the following optimization problem:
+
+\hspace{0.25\textwidth} Minimize $\sqrt{x^2 + y^2}$ subject to $\frac{x^2 + 4x - 9y^2}{4} - \frac{5y}{3} = 1.$
+
+We can write this as a Lagrange optimization problem by introducing a Lagrange multiplier $\lambda$:
+
+\hspace{0.15\textwidth} Minimize $\sqrt{x^2 + y^2}$ subject to $\frac{x^2 + 4x - 9y^2}{4} - \frac{5y}{3} - \lambda (\sqrt{x^2 + y^2} - d) = 0.$
+
+Setting the partial derivatives of this expression with respect to $x,$ $y,$ and $\lambda$ equal to 0, we get the system of equations
+\begin{align*}
+\frac{x}{2} + 2x\lambda &= 0, \\
+\frac{y}{2} - 5\lambda &= 0, \\
+\sqrt{x^2 + y^2} - d &= 0.
+\end{align*}
+}
+\end{AIbox}
+\end{figure}
+Both models realize that the method of Lagrange multipliers is useful in this question (this strategy is relevant for questions involving minimizing a certain expression under a constraint). While ChatGPT applies this method in an incorrect way (which, in case of a human, could be considered as a lack of comprehension), \DV \ produces a sound argument.
+
+\begin{comment}
+We end the subsection with a question whose level could easily reflect an exam question in an undergraduate calculus course for mathematicians. It is a simplification of a question which appeared in an International Mathematics Olympiad (IMO).
+\begin{figure}[H]
+\begin{AIbox}{\DV}
+{\bf Prompt:} \\
+{\scriptsize
+Determine all polynomials $P(x)$ with real coefficients such that $(x + 1) P(x - 1) - (x - 1)P(x)$ is a constant polynomial.
+
+Can you solve it by taking derivatives?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+One possible way to solve it by taking derivatives is as follows:
+
+Let $Q(x) = (x + 1)P(x - 1) - (x - 1)P(x)$. Then $Q(x)$ is a constant polynomial, say $Q(x) = c$ for some real $c$.
+
+Taking the derivative of both sides, we get
+$$Q'(x) = (x + 1)P'(x - 1) - P(x - 1) - (x - 1)P'(x) - P(x) = 0$$
+
+Rearranging, we get
+$$(x + 1)P'(x - 1) - (x - 1)P'(x) = P(x - 1) + P(x)$$
+
+Now, if $P(x)$ is a non-constant polynomial, then it has a nonzero leading term, say $a_n x^n$ for some $n > 0$ and $a_n \neq 0$. Then the leading term of $P'(x)$ is $n a_n x^{n-1}$, and the leading term of the left-hand side of the equation above is
+
+$$(x + 1)(n a_n x^{n-1}) - (x - 1)(n a_n x^{n-1}) = x(n a_n x^{n-1}) + n a_n x^{n-1} - x(n a_n x^{n-1}) + n a_n x^{n-1} = 2n a_n x^{n-1}$$
+
+On the other hand, the leading term of the right-hand side of the equation above is
+
+$$a_n x^n + a_n (x - 1)^n = a_n x^n + a_n (x^n - n x^{n-1} + ... + (-1)^n) = a_n x^n (1 + (-1)^n) - n a_n x^{n-1} + ...$$
+
+For the leading terms to cancel out, we must have either $n = 0$ or $a_n = 0$, both of which contradict the assumption that $P(x)$ is a non-constant polynomial. Therefore, $P(x)$ must be a constant polynomial, say $P(x) = b$ for some real $b$.
+}
+\end{AIbox}
+\end{figure}
+\DV \ takes a correct approach to the problem: treating the polynomial  arriving at a system of equations for the polynomial's coefficients. Note that this is a system of equation with an unknown number of variables (since the degree of the polynomial is not known) which makes the question harder. It does several calculation mistakes on the way, but incidentally reaches a correct final answer. We should point out that if the hint is removed, the model does not seem to find a successful approach to the problem.
+
+\end{comment}
+\begin{comment}
+\subsubsection{Common sense reasoning}
+
+Many math questions require common sense to solve, not just memorized formulas or rules. Common sense is the ability to use logic, experience, and general knowledge to make reasonable judgments and decisions in various situations. For example, common sense can help us to estimate answers, check for reasonableness, identify relevant information, avoid fallacies, and apply appropriate strategies. Using common sense can also help us to avoid careless errors, such as misreading the question, confusing units, or ignoring negative signs. Therefore, developing and applying common sense is an important skill for solving math problems effectively and efficiently.
+
+We argue that \DV \ can often leverage its knowledge in common sense in mathematical questions where ChatGPT can not. Note however that the derivation by {\DV} is wrong.
+
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+A group of 4 cars departs from city A, and drive at constant speed towards city B. It took them 1 hour to arrive at city B. If it was a group of 8 cars instead, how many hours would it take for them to arrive at city B? Assuming same traffic condition and same driving speed.}\\
+
+{\bf \DV:} \\
+{\scriptsize
+There are a couple of ways to approach this question, but one possible method is to use the concept of rate, which is the ratio of distance to time. If we assume that the distance between city A and city B is the same for both groups of cars, and that they drive at the same constant speed, then we can write the following equation:\\
+
+$\mathrm{rate} = \mathrm{distance} / \mathrm{time}$\\
+
+We can also use a variable to represent the unknown time for the group of 8 cars, such as $t$. Then, we can write another equation using the same rate for both groups:\\
+
+$\mathrm{rate} = \mathrm{distance} / t$\\
+
+Since the rate is the same for both groups, we can equate the two expressions and solve for $t$:\\
+
+$\mathrm{distance} / \mathrm{time} = \mathrm{distance} / t$\\
+$\mathrm{time} \times t = \mathrm{distance} \times \mathrm{distance}$\\
+$t = \mathrm{time} \times \mathrm{distance} / \mathrm{distance}$\\
+$t = \mathrm{time}$\\
+
+This means that the time for the group of 8 cars is the same as the time for the group of 4 cars, which is 1 hour. Therefore, it would take the group of 8 cars 1 hour to arrive at city B as well. This makes sense, because the number of cars does not affect the speed or the distance, as long as they drive at the same constant rate and face the same traffic condition.
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+If the group of 4 cars took 1 hour to arrive at city B, and the group of 8 cars will be driving at the same speed, it will take them twice as long to arrive at city B as it took the group of 4 cars. Therefore, it will take the group of 8 cars 2 hours to arrive at city B.
+}
+
+\end{AIbox}
+\end{figure}
+
+
+\end{comment}
+ \subsubsection{Mathematical modeling}
+We give two examples that combine knowledge in physics combined with some common-sense assumptions.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+I have an egg made of pure gold with 10 cm radius, I want to carry it home. How many plastic bags do I need to hold it?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+- The volume of the egg is $V = (4/3)\pi r^3$, where $r$ is the radius. Plugging in $r = 10 \mathrm{cm}$, we get $V = 4188.79 \mathrm{cm}^3$.
+- The density of pure gold is $\rho = 19.3 \mathrm{g}/\mathrm{cm}^3$, so the mass of the egg is $m = \rho V$. Plugging in the values, we get m = 80834.65 g, or about 80.8 kg.\\
+- The tensile strength of a typical plastic bag is $\sigma$ = 20 MPa, or $20 \mathrm{N}/\mathrm{mm}^2$, which means it can withstand a force of 20 N per square millimeter of cross-sectional area before breaking. The thickness of a typical plastic bag is $t$ = 0.01 mm, or 0.001 cm, so the cross-sectional area of a plastic bag is $A = wt$, where $w$ is the width. Assuming that the plastic bag is rectangular and has a width of 30 cm, we get $A = 0.3 \mathrm{cm}^2$.\\
+- The force exerted by the weight of the egg is $F = mg$, where $g$ is the acceleration due to gravity. Assuming that $g = 9.8 \mathrm{m}/\mathrm{s}^2$, we get $F = 791.62 N$.\\
+- The number of plastic bags needed to hold the egg is $n = F/(\sigma A)$, where $\sigma A$ is the maximum force that one plastic bag can withstand. Plugging in the values, we get $n = 791.62/(20 \times 10^6 \times 0.3) = 0.00132$, or about $0.001$ bags.\\
+However, this answer is not very realistic, because it implies that a fraction of a plastic bag can hold the egg, and that the plastic bag can stretch infinitely without losing strength. A more practical answer would take into account some factors such as: The shape and size of the plastic bag, and how well it can fit the egg without leaving too much empty space or creating too much stress at the corners or edges. The elasticity and durability of the plastic bag, and how much it can stretch or deform before breaking or tearing. The safety factor, or the ratio of the actual strength to the required strength, that is needed to account for possible variations in the quality of the plastic bag, the distribution of the weight of the egg, the impact of external forces, and the margin of error. The convenience and comfort of carrying the egg, and how many plastic bags can be easily handled without slipping, dropping, or hurting the hands.\\
+Depending on these factors, the number of plastic bags needed to hold the egg could vary significantly, but a reasonable estimate might be somewhere between 10 and 20 bags, assuming that each bag can hold about 5 to 10 kg of weight, and that a safety factor of 2 to 4 is applied.
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+To build a mathematical model to solve this problem, we first need to determine the volume of the egg. We can do this using the formula for the volume of a sphere, which is:
+$V = (4/3) * \pi * r^3$
+where $V$ is the volume of the sphere, $\pi$ is approximately 3.14, and $r$ is the radius of the sphere.
+Plugging in the values from the problem, we get:
+$V = (4/3) * 3.14 * (10\mathrm{cm})^3 = 4.19 \mathrm{cm}^3$.
+Next, we need to determine the volume of a single plastic bag that you will use to hold the egg. Let's assume that each bag has a volume of 1 liter, or 1000 $\mathrm{cm}^3$.
+Now, we can divide the volume of the egg by the volume of a single bag to determine how many bags we will need:
+Number of bags = $V(\mathrm{egg}) / V(\mathrm{bag})$ = 4.19 $\mathrm{cm}^3$ / 1000 $\mathrm{cm}^3$ = 0.00419 bags
+Since we cannot use a fraction of a bag, we will need to round up to the nearest whole number, so we will need at least 1 plastic bag to hold the egg.
+}
+\end{AIbox}
+\end{figure}
+Note that ChatGPT fails to account for the weight factor and bases its answer solely on volume calculations. While volume is the most common concern when determining the number of bags needed in day to day life, it is not relevant to this question. \DV, in contrast, correctly addresses the crux of this question by creating a physical model of the object's weight and estimating the maximum weight a plastic bag could hold. The final answer is still wrong, however, due to calculation mistakes.
+
+Our second question relies on the understanding of concepts of heat conductance and radiation.
+\vspace{-3mm}
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+How fast does an iron ball whose radius is 1 meter need to move, in order to get to a distance of 1km from the sun before melting?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+There are a few different ways to approach this question, but one possible method is to use the following assumptions and simplifications:\\
+- The iron ball is spherical, homogeneous, and has a density of $7.8 \mathrm{g}/\mathrm{cm}^3$ and a melting point of 1538 °C.\\
+- The iron ball starts from the Earth's orbit, which has a mean distance of 149.6 million km from the sun and a mean orbital speed of 29.8 km/s.\\
+- The iron ball follows a straight-line trajectory towards the sun, ignoring the effects of gravity, drag, radiation, and other celestial bodies.\\
+- The iron ball heats up due to the solar radiation, which has an average intensity of $1361 \mathrm{W}/\mathrm{m}^2$ at the Earth's orbit and follows an inverse square law with distance.\\
+- The iron ball has a specific heat capacity of 0.45 J/g°C and a latent heat of fusion of 247 J/g.\\
+- The iron ball does not lose heat by conduction, convection, or radiation, and its temperature is uniform throughout.\\
+Using these assumptions, we can calculate the time it takes for the iron ball to reach the sun and the temperature it reaches at different distances. We can also compare the temperature with the melting point and find the distance at which the iron ball melts.\\
+The time it takes for the iron ball to reach the sun is given by: $t = d / v$ where d is the distance from the sun and $v$ is the speed of the iron ball. Assuming the iron ball starts from the Earth's orbit, we have: $t = 149.6 \mathrm{\ million\ km} / v$. The temperature of the iron ball at a given distance is given by: $T = T_0 + Q / mc$ where $T_0$ is the initial temperature, $Q$ is the heat absorbed by the iron ball, $m$ is the mass of the iron ball, and $c$ is the specific heat capacity of iron. Assuming the iron ball starts at 15 °C, we have:
+$$T = 15^\circ C + Q / (4/3 * \pi \times 1^3 \times 7.8 \times 10^6 \times 0.45)$$
+The heat absorbed by the iron ball at time $t$ is given by: $Q(t) = P(t) A$ where $P(t)$ is the power of the solar radiation at time $t$ and $A$ is the cross-sectional area of the iron ball. Assuming the iron ball has a radius of 1 m, we have $A = \pi * 1^2$.\\
+The power of the solar radiation at time t is given by:
+$P(t) = I(t) * A * (1 - a)$
+where $I(t)$ is the intensity of the solar radiation at time $t$ and $a$ is the albedo of the iron ball, which is the fraction of the radiation that is reflected. Assuming the iron ball has an albedo of 0.1, we have:
+$P(t) = I(t) * \pi * 1^2 * 0.9$.
+The intensity of the solar radiation at time t is given by:
+$$I(t) = I_0 * (r_0 / r(t))^2$$
+where $I_0$ is the intensity of the solar radiation at the Earth's orbit, $r_0$ is the distance of the Earth's orbit from the sun, and $r(t)$ is the distance of the iron ball from the sun at time t. Assuming $I_0 = 1361  \mathrm{W}/\mathrm{m}^2$ and $r_0 = 149.6 \mathrm{\ million\ km}$, we have:
+$$I(t) = 1361 \mathrm{W}/\mathrm{m}^2 * (149.6 \mathrm{\ million\ km} / (149.6 \mathrm{\ million\ km} - v * t))^2$$
+Taking integral over $0$ to $t$, we can find the total heat absorbed by the iron ball at time $t$:
+$$Q = \int_0^t Q(t) dt = \int_0^t P(t) * A dt.$$
+%$$Q = \int_0^t I(t) * \pi * 1^2 * 0.9 dt.$$
+%$$Q = 0.9 * \pi * I_0 * r_0^2 * \int_0^t (1 / (r_0 - v * t)^2) dt.$$
+%$$Q = 0.9 * \pi * I_0 * r_0^2 * (v / (r_0 - v * t) - v / r_0). $$
+%$$Q = 0.9 * \pi * I_0 * r0 * v * (1 - r_0 / (r_0 - v * t)).$$
+%Substituting the values of $I_0$, $r_0$, and $v$, we get:
+% Q = 0.9 * \pi * 1361 W/m^2 * 149.6 million km * v * (1 - 149.6 million km / (149.6 million km - v * t))
+% Now we can plug in the values of Q, m, and c into the equation for T and get:
+% T = 15 °C + 0.9 * pi * 1361 W/m^2 * 149.6 million km * v * (1 - 149.6 million km / (149.6 million km - v * t)) / (4/3 * pi * 1^3 * 7.8 * 10^6 * 0.45)
+% To find the time and speed required to reach this distance, we can use the equation for t and solve for v: t = (r0 - d) / v, v = (r0 - d) / t
+% Using d = 1 km, we get:v = (149.6 million km - 1 km) / t
+% To find the value of t that corresponds to the melting point of iron, we can set T = 1538 °C and solve for t:
+% 1538 °C = 15 °C + 0.9 * pi * 1361 W/m^2 * 149.6 million km * v * (1 - 149.6 million km / (149.6 million km - v * t)) / (4/3 * pi * 1^3 * 7.8 * 10^6 * 0.45)
+...
+}\\
+{\bf ChatGPT:} \\
+{\scriptsize
+We can start by using the equation for kinetic energy to determine the speed of the iron ball. Kinetic energy is given by the equation: $\mathrm{KE} = 1/2 * m * v^2$ where $\mathrm{KE}$ is the kinetic energy, $m$ is the mass of the iron ball, and $v$ is its velocity. Since we want the iron ball to be able to travel 1 km closer to the Sun without melting, we can assume that its kinetic energy will be equal to the amount of heat energy required to raise the temperature of the iron ball by its melting point.
+Next, we will use the formula for heat energy which is $Q=mc\Delta T$ where Q is heat energy, m is the mass, c is the specific heat of the substance and $\Delta T$ is the temperature change.
+We can then equate the two equations to find the velocity required.
+$1/2 * m * v^2 = mc \Delta T$
+Solving for $v$, $v = \sqrt{2mc\Delta T} / m$
+...
+}
+\end{AIbox}
+%\caption{}
+\end{figure}
+
+\subsection{Generating math problems with \DV}
+%Creating new math problems is a very important sign of understanding math, because it shows that one can apply the concepts, rules, and methods of math to novel situations, and that one can communicate them clearly and precisely. Creating new math problems also requires creativity, logic, and critical thinking, which are essential skills for any domain of knowledge.
+
+Next, we use \DV to generate new math problems based on existing ones under some natural language constraints, according to the following categories:
+\begin{enumerate}
+\item Content modification: A problem that has the same structure and logic as the original one, but with different names, objects, or values.
+\item Difficulty enhancement: Modifying a problem in a way that it becomes more challenging than the original one, for example by adding more steps or constraints or increasing the complexity.
+\end{enumerate}
+We provide one example for each type.
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+Mrs. Gable’s third grade class is on a field trip to the beach. For lunch, Mrs. Gable brought 20 lunches for the 20 students in her class. She included a pack of animal crackers in each lunch bag for dessert. Each pack of animal crackers contained 10 animal crackers. If 2 students did not eat their animal crackers, how many animal crackers were eaten in total among Mrs. Gable’s students?\\
+Can you modify the content in the problem to create a new one, and state the problem in a way that looks very different from the original one?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+Mr. Lee took his fourth grade class to the zoo. He prepared 20 sandwiches for the 20 kids in his class. He also added a bag of pretzels to each sandwich for a snack. Each bag of pretzels had 10 pretzels inside. If 2 kids did not eat their pretzels, how many pretzels were consumed by Mr. Lee’s students altogether?
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+Mrs. Gable’s third grade class is on a field trip to the beach. They are having a picnic and she has brought 20 packs of animal crackers for the students to share. Each pack contains 10 animal crackers. If 2 students do not want to eat their animal crackers, how many animal crackers are left for the other 18 students to eat?
+}
+\end{AIbox}
+\end{figure}
+
+
+%Even for this simple example, we can see that ChatGPT did not understand ``were eaten in total" in the problem statement, and modified the problems to ``left for the student to eat", which is incorrect. ChatGPT also did not modify the objects in the Math problem that are unrelated to the solution. On the other hand, {\DV} shows an excellent understanding of the problem, isolating all the objects and their relations, and create an accurate modification.
+
+%We now move to increasing the difficulty of the Math problem:
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+Natasha has 3 times as much money as Carla, and Carla has twice as much money as Cosima. If Natasha has \$60, and the three decide to buy goods worth the total amount they have and sell the goods at 7/5 of the buying price, how much profit would they make?\\
+Can you generate a more difficult question built on top of this one by adding a sentence in the middle that includes the number 100?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+Natasha has 3 times as much money as Carla, and Carla has twice as much money as Cosima. Natasha has \$60. However, they can only buy goods from a store that offers a 20\% discount on purchases of \$100 or more. If they buy as many goods as possible with their budget and sell the goods at 7/5 of the original price (before the discount), how much profit would they make?
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+Natasha has 3 times as much money as Carla, and Carla has twice as much money as Cosima. If Natasha has \$60, and the three decide to pool their money together to buy goods that cost \$100, and then sell the goods at 7/5 of the buying price, how much profit would they make if they split the profits equally among themselves?
+}
+\end{AIbox}
+\end{figure}
+%The question posed by \DV \ was much better than the one by ChatGPT, and required a deeper understanding of the mathematical problem and its difficulty level. ChatGPT simply added another sentence that made the problem easier, since it eliminated the need to calculate the total amount of money that the students pooled. However, \DV \ introduced a new element of complexity by adding a discount factor and specifying that the students wanted to maximize the number of goods they could buy. 
+
+\subsection{Mitigating calculation errors via external code execution}
+As we have seen above, a main reason for the model's failure to solve mathematical questions can be attributed to calculation errors. The following example is a proof of concept showing that, instead of carrying out a certain calculation, the model can be prompted to produce a segment of code which performs the it. By combining the model with an external component that executes code (concatenating the result to the prompt after execution), we speculate that many of the errors can be mitigated, however, we did not conduct a systematic evaluation of this approach.
+\begin{comment}
+In this section, we demonstrate how \DV \ can exploit its remarkable coding ability to overcome some of its limitations. One such limitation (which we discuss in more detail later) is calculation error. We show that \DV \ can avoid and solve a mathematical problem that requires a large number of calculations, by writing code to execute the calculation.
+
+\subsubsection{{\DV} is prone to calcuation mistakes if solving directly}
+Here, we give {\DV} a simple counting and probability problem from high school mathematics (shown in the prompt). If we ask {\DV} to solve it without writing a program, {\DV} correctly identifies the problem as solving an equation. {\DV} successfully writes down and solves the equation to obtain the probability of rolling $1$ on each die, and then remarkably breaks down the event of rolling a total of $7$ into $6$ disjoint events. It even correctly recognizes that $(1,6)$ and $(6,1)$ are two distinct events. It performs almost all the essential steps flawlessly until at the very last, innocently looking step of summing and simplifying fractionals. 
+
+We hypothesize that {\DV} makes such errors because it lacks a robust mechanism for performing arithmetic operations and simplifying fractions, which are usually taught and practiced by humans at a much earlier stage of mathematical education. By prompting {\DV} to use the Sympy library, we essentially delegate these tasks to a reliable and efficient software tool, which allows {\DV} to focus on the higher-level aspects of the problem. This approach improves the accuracy and consistency of {\DV}'s solutions, and also demonstrates its ability to leverage existing resources and libraries for mathematical programming.
+
+\begin{figure}[H]
+\begin{AIbox}{\DV}
+{\bf Prompt:}\\
+{\scriptsize
+For a particular peculiar pair of  dice,  the probabilities of rolling $1, 2, 3, 4, 5,$ and $6$ on each die are in the ratio $1:2:3:4:5:6$. What is the probability of rolling a total of $7$ on the two dice?}\\
+
+{\bf \DV:}\\
+{\scriptsize
+There are several ways to approach this problem, but one possible method is to use the fact that the sum of the probabilities of all possible outcomes on each die must be 1. Therefore, if we let $p$ be the probability of rolling a 1 on each die, then the probabilities of rolling 2, 3, 4, 5, and 6 are $2p, 3p, 4p, 5p,$ and $6p$, respectively. Then we have
+$$p + 2p + 3p + 4p + 5p + 6p = 1$$
+Solving for $p$, we get $p = \frac{1}{21}$. 
+Now, to roll a total of 7 on the two dice, there are six possible combinations: (1,6), (2,5), (3,4), (4,3), (5,2), and (6,1).  The probability of each combination is the product of the probabilities of the individual dice, so we have
+$$P(1,6) = P(6,1) = p \cdot 6p = \frac{6}{21^2}$$
+$$P(2,5) = P(5,2) = 2p \cdot 5p = \frac{10}{21^2}$$
+$$P(3,4) = P(4,3) = 3p \cdot 4p = \frac{12}{21^2}$$
+Adding up these probabilities, we get the probability of rolling a total of 7 as \fcolorbox{aired}{aired}{$P(7) = 2 \cdot \frac{6}{21^2} + 2 \cdot \frac{10}{21^2} + 2 \cdot \frac{12}{21^2} = \frac{76}{21^2}$}.\\
+Simplifying, we get \fcolorbox{aired}{aired}{$P(7) = \frac{38}{441} \approx 0.0861678$}.
+}
+\end{AIbox}
+\caption{The lines of the calculation mistakes are highlighted in red.}
+\end{figure}
+
+
+
+
+
+\subsubsection{{\DV} can mitigate calculation errors by programming}\label{sec:math_appendix_prog}
+
+
+If we prompt {\DV} to write a program that imports the Sympy library, {\DV} writes a Python program that conducts symoblic manipulation all the way to the end and prints the solution in \LaTeX. {\DV} correctly writes down and solves the equation, in compliance with Python and Sympy syntax. It derives the formula for the probability of the target event, and then evaluates the final solution by calling the substitution function from Sympy. The Python program runs without errors and outputs the correct answer in \LaTeX. 
+
+\end{comment}
+\begin{figure}[H]
+\begin{AIbox}{\DV}
+{{\bf Prompt:}\vspace{-5px}
+\begin{minted}[breaklines, breaksymbol=, baselinestretch=1, fontsize=\tiny]{latex}
+# Solving Math with Coding
+## You are given the task of writing a python program to solve the following math problem:
+For a particular peculiar pair of  dice,  the probabilities of rolling 1, 2, 3, 4, 5, and 6 on each die are in the ratio $1:2:3:4:5:6$. What is the probability of rolling a total of 7 on the two dice?
+## Requirements:
+- Please begin the code with <b> and end the code with <e>.
+- Remember to simplify the final answer if possible. However, if the final answer is a matrix or a set or an interval, no need to simplify.
+- Please express the final answer in latex without any texts and enclose the final answer in \boxed{}. You can use "solution = r'\boxed{' + sympy.latex(solution) + '}'"
+- Please print the final answer using print(solution) at the end before <e>.
+### Possible Python Program:
+\end{minted}
+{\bf{\DV:}}
+\begin{minted}[breaklines, breaksymbol=, baselinestretch=1, fontsize=\tiny]{python}
+<b>
+import sympy # Import sympy for symbolic computation
+ratio = [sympy.Rational(1, 21), sympy.Rational(2, 21), sympy.Rational(3, 21), sympy.Rational(4, 21), sympy.Rational(5, 21),  sympy.Rational(6, 21)] # Define the ratio of probabilities as a list of fractions
+
+# Define a function to compute the probability of rolling a given total on two dice
+def prob_total(total):
+  # Initialize the probability as zero
+  prob = 0
+  # Loop through all possible outcomes of the first die
+  for i in range(1, 7):
+    # Check if the second die can make the total
+    if 1 <= total - i <= 6:
+      # Add the product of the probabilities of the first and second die to the total probability
+      prob += ratio[i - 1] * ratio[total - i - 1]
+  # Return the probability
+  return prob
+
+solution = prob_total(7) # Compute the probability of rolling a total of 7 on two dice
+solution = r'\boxed{' + sympy.latex(solution) + '}' # Express the solution in latex and enclose it in a box
+print(solution) # Print the solution
+<e>
+\end{minted}
+}
+\begin{comment}
+{\bf ChatGPT:}
+\begin{minted}[breaklines, breaksymbol=, fontsize=\tiny]{python}
+<b>
+import sympy
+
+# Define the probability of each number on the dice
+prob1 = 1;prob2 = 2;prob3 = 3;
+prob4 = 4;prob5 = 5;prob6 = 6;
+
+# Calculate the probability of rolling a total of 7
+prob7 = prob1 + prob6 # Probability of rolling a 1 and a 6
+prob7 += prob2 + prob5 # Probability of rolling a 2 and a 5
+prob7 += prob3 + prob4 # Probability of rolling a 3 and a 4
+
+solution = sympy.simplify(prob7) # Simplify the result if possible
+solution = r'\boxed{' + sympy.latex(solution) + '}' # Express the final answer in latex
+print(solution) # Print the result
+<e>
+\end{minted}
+{\bf Codex:}
+\begin{minted}[breaklines, breaksymbol=,  fontsize=\tiny]{python}
+import sympy
+from sympy import *
+    
+x, y = symbols('x y')
+solution = r'\boxed{' + sympy.latex(solve(x*y - 7, x)) + '}'
+print(solution)
+\end{minted}
+\end{comment}
+\end{AIbox}
+\end{figure}
+
+%Surprisingly, ChatGPT and Codex drastically fail at this task. The ChatGPT model does not seem to understand the problem in that it fails to realize probabilities need to sum to one, while the Codex model appears to be utterly clueless % \footnote{For the Codex model, we follow the convention of prompting in comments.}. YinTat: Not sure what you are saying

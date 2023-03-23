@@ -1,0 +1,144 @@
+\subsection{Performance on mathematical problem datasets} 
+\label{subsection:pm}
+
+We now conduct systematic experiments to compare the performance of {\DV}, ChatGPT and Minerva (state-of-the-art LLM for solving math questions) on two math data sets which are commonly used as benchmarks: GSM8K \cite{cobbe2021training} and MATH \cite{hendrycksmath2021}. GSM8K is an elementary school math data set that contains 8,000 questions and answers on topics such as arithmetic, fractions, geometry, and word problems. MATH is a high school math data set that contains 12,500 questions and answers on topics such as algebra, calculus, trigonometry, and probability. We also test the model on MMMLU-STEM data set, which contains around 2000 multiple choices (4 choices) questions covering high school and college STEM topics. These data sets highlight {\DV}'s ability to use the correct approach to solve high school-level math questions.
+\begin{comment}
+
+\paragraph{Could it be that \DV's advantage is simply due to better memorization capabilities?} One possible explanation for \DV's superior performance on solving mathematical questions is that \DV \ has a better memory than ChatGPT or other LLMs, and that it can recall the questions or solutions from its pre-training data. However, based on the examples, we have reasons to believe that \DV \ does not rely on memorization but on understanding and applying mathematical concepts and rules. Here are some of our reasons:
+\begin{enumerate}
+    \item In the benchmarks, we tested \DV \ by asking it to (1) write the template, (2) write down the steps first then write down the final answer. The templates are not available online, and detailed solutions for datasets such as MMMLU-STEM are also not online (only the answer is). Moreover, even when the solution is possibly online, \textbf{we often observe that \DV \ uses a different approach than the existing ones.} For example, in the $\sin(a + b)$ example, \DV \ takes several reasonable, but unnecessary steps that are not part of a standard solution.
+    \item We also crafted some mathematical questions by ourselves, carefully checking that these questions or close variants do not appear online. \DV \ still solves these questions like the standard ones. 
+\end{enumerate}
+\end{comment}
+
+\paragraph{Important Disclaimer:} As explained in the Introduction (see footnote 1 for example) our experiments were run on an early version of GPT-4. In particular all quantitative results will be different on the final version of GPT-4, although the general trends remain the same. We provide numbers here for illustration purpose only, the definitive benchmark results can be found in OpenAI's technical report \cite{gpt4}.
+
+\paragraph{Mitigating over-fitting.} A potential concern for using benchmarks to evaluate the reasoning abilities of LLMs is that they might have memorized the questions or answers for the benchmark datasets during its pre-training, as those questions are potentially part of the dataset. To reduce the likelihood of this form of overfitting, we adopt the following strategies:
+\begin{enumerate}
+    \item In the benchmarks, we tested \DV \ by asking it to (1) write a template for the solution of the problem, (2) write down the steps first then write down the final answer. The templates are not available online, and detailed solutions for datasets such as MMMLU-STEM are also not online (only the answer is). %Moreover, even when the solution is possibly online, \textbf{we often observe that \DV \ uses a different approach than the existing ones.} %For example, in the $\sin(a + b)$ example, \DV \ takes several reasonable, but unnecessary steps that are not part of a standard solution.
+    \item We pick one representative question from the data set where {\DV} solves correctly and \texttt{text-davinci-003} solves incorrectly. We alter the numbers in the question and see that {\DV} is consistently correct and \texttt{text-davinci-003} is consistently wrong. 
+    \item We also crafted several new questions, carefully checking that these questions or close variants do not appear online. It appears that {\DV} demonstrates the same performance on those questions. 
+\end{enumerate}
+%To prevent overfitting, we measure the model's accuracy by requiring it to generate a template first, as shown below:
+\begin{figure}[H]
+\begin{AIbox}{{\DV} Generating Template}\vspace{-5px}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} 
+{\bf Prompt:} Andy harvests all the tomatoes from 18 plants that have 7 tomatoes each. If he dries half the tomatoes and turns a third of the remainder into marinara sauce, how many tomatoes are left?\\
+Can you generate a template solution for the problem without numbers?\\
+
+\hl{Using symbols, the template solution could look something like this:\\
+- Let P be the number of plants and T be the number of tomatoes per plant. Then the total number of tomatoes harvested is P x T.\\
+- Let D be the number of tomatoes that are dried. Then D = (P x T) / 2.\\
+- Let M be the number of tomatoes that are turned into marinara sauce. Then M = ((P x T) - D) / 3.\\
+- Let L be the number of tomatoes that are left. Then L = (P x T) - D - M.\\
+$\cdots$}\end{alltt}}\vspace{-5px}
+\end{AIbox}
+%\caption{}
+\end{figure}
+
+
+\begin{figure}[H]
+\begin{AIbox}{{\DV} memorization test by alternating the numbers}\vspace{-5px}
+\parbox{1\textwidth}{\scriptsize\begin{alltt} 
+{\bf Prompt:} If a degree 3 polynomial satisifies p(x) = 0 for x = -3, 8, 5 and p(1) = 10, what is |p(0)|? \end{alltt}}\vspace{-5px}
+\end{AIbox}
+\caption{One way to test whether {\DV} memorizes the exact statement of the original problem is to vary the values of $x$ and $p(1)$ in the input. We randomly select three values of $x$ from the set $\{-10, -9, \cdots, -2 \} \cup \{2, 3, \cdots, 10 \}$ and one value of $p(1)$ from the set $\{-10, -9 ,\cdots, -1 \} \cup \{1, 2, \cdots, 10\}$, and use them to construct new inputs. We compare the accuracy of {\DV} and \texttt{text-davinci-003} on these inputs. The results show that {\DV} achieves an accuracy of $75.2 \%$, while \texttt{text-davinci-003} only has an accuracy of $0.2\%$. This suggests that {\DV} does not rely on memorizing the exact problem statement but on applying a general solution method. While it is possible that {\DV} memorizes the solution template, this is not necessarily a flaw, as it is also a common way of solving math problems for humans.}
+\end{figure}
+
+For the benchmark datasets, we evaluated the models on their \textit{single model} accuracy, which is the percentage of questions that they answered correctly in one try. The results are shown in the following table:
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+Model & GSM8K &  MATH  & MMMLU-STEM\\
+\midrule
+\midrule
+\texttt{text-davinci-003} & 61.3\%  & 23.5\% &54.2\% \\
+Minerva & 58.8\% & 33.6\%& 63.9\% \\
+{\DV} & 87.1\%  & 42.5\%  & 82.7\% \\
+\bottomrule
+\end{tabular}
+\caption{Accuracy of different models on math data sets}
+\label{tab:math}
+\end{table}
+
+{\DV}'s accuracy shows a modest improvement over other models, but a manual inspection of {\DV}'s answers on MATH reveals that {\DV}'s errors are largely due to arithmetic and calculation mistakes: the model exhibits large deficiency when managing large numbers or complicated expressions. In contrast, in most cases, the argument produced by ChatGPT is incoherent and leads to a calculation which is irrelevant to the solution of the problem to begin with. Figure~\ref{fig:4point3} gives one example which illustrates this difference. We further discuss the issue of calculation errors in Appendix~\ref{sec:math-a1}.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{l|c}
+\toprule
+Error type & Percentage of wrong solutions \\ 
+\midrule
+\midrule
+%\hline
+Arithmetic mistakes (including counting) & 68\% \\ 
+%\hline
+Misunderstanding the problem statement & 10\% \\ 
+%\hline
+Wrong approaches & 22\% \\
+\bottomrule
+\end{tabular}
+\caption{Manual inspection of {\DV} errors in MATH dataset on a random selection of 100 wrong answers. We can see that {\DV} uses the correct approach on the significant majority of the questions.}
+\end{table}
+
+\begin{comment}
+\paragraph{Analyzing the mistakes by {\DV} on Math data set.} Although {\DV} performs noticeably better than other LLMs on Math dataset, it still has more than $50\%$ error rate. To have a preliminary understanding of the types of errors that {\DV} makes on the Math dataset, we systematically examine how often it produces incorrect equations. We propose a simple method to identify and quantify the errors in the model's solution: We first parse the solution generated by {\DV} and extract all the equations of the form $A = B$. We then use Sympy to parse $A$ and $B$ and check their validity. We only consider the equations that satisfy the following criteria: 
+\begin{enumerate}
+\item $A$ and $B$ have the same number of variables, such as $A = (x + 1)^2, B = x^2 + 2x + 1$ (one variable) or $A = 3*4, B = 12$ (0 variables). 
+\item The variable $v$ in $A$ and $B$ does not appear in the solution with $v = \cdots$.
+\end{enumerate}
+
+The second criterion ensures that we exclude the equations that the model is trying to solve for a variable. We then report the percentage of wrong solutions containing equations that are incorrect or invalid according to Sympy. Note that our score is \textbf{a significant underestimate of the error counts}, since the model can generate solutions like ``$x = 3 \times 8$ implies $x = 25$'', which will not be detected as an error by our approach.
+\begin{table}[h]
+\centering
+\begin{tabular}{l|c}
+\hline
+Error type & Percentage of wrong solutions \\ \hline
+Numbers (0 variables) & 13.5\% \\
+Arithmetics (1 or more variables) & 20.0\% \\
+Others & 66.5\% \\ \hline
+\end{tabular}
+\caption{{\DV} errors in Math. Approximately $33.5 \%$ the questions contain errors that are directly detectable by a simple parser, indicating the potential to combine {\DV} with a simple calculator to greatly improve its performance on Math datasets.}
+\end{table}
+
+In the Appendix~\ref{sec:math_appendix}, we give more characterizations of three typical types of {\DV}'s error on Math dataset: Arithmetic errors, counting errors, and reverse reasoning errors. 
+\end{comment}
+
+%The results show that {\DV} achieved a high level of accuracy on the GSM8K data set, indicating a strong grasp of the problem structure and format. To prevent overfitting, we measure the model's accuracy by requiring it to generate a template for GSM8K first, and then fill in numbers to the template to solve the problem (see below). Most of the errors made by the model were due to calculation mistakes, which are somewhat expected since language models are not trained to perform precise arithmetic operations. For the more challenging MATH data set, {\DV} also showed a significant improvement over other models.
+ %In the following section, we demonstrate that {\DV} is capable of doing at least high-school-level mathematical reasoning. We evaluate {\DV} on math problems that comes from \textbf{Chinese College Entrance Exam}, and mannually translate them to English. The example topics cover various topics, such as algebra, geometry, and calculus. We show that {\DV} can generate correct answers and provide intermediate steps and explanations for its solutions, almost matching a high-school human solver.
+
+%In the following subsection, we test {\DV} and ChatGPT (arguably the best natural language generation model available to the public) on a range of different mathematical tasks. We demonstrate that {\DV} understands all those mathematical concepts, while ChatGPT does not. In the end, we perform a systematic test on the performance difference between {\DV} and \texttt{text-davinci-003} (similar to ChatGPT) on a different levels of mathematical reasoning data sets. 
+
+\begin{figure}[H]
+\begin{AIbox}{\DV \ vs ChatGPT}
+{\bf Prompt:} \\
+{\scriptsize
+A rain barrel collects water off the roof of a house during three hours of heavy rainfall. The height of the water in the barrel increases at the rate of $r(t) = 4t^3e^{-1.5t}$ feet per hour, where $t$ is the time in hours since the rain began. At time $t = 1$ hour, the height of the water is $0.75$ foot. What is the height of the water in the barrel at time $t = 2$ hours?
+}\\
+
+{\bf \DV:} \\
+{\scriptsize
+If we can find a function $F$ such that $F'(t) = r(t)$, then $F(2) - F(1)$ is the amount that the height of the water increases from $t = 1$ to $t = 2$.\\
+To find such a function $F$, we can use the technique of integration by parts, which says that if $u$ and $v$ are differentiable functions, then\\
+$$\int u dv = uv - \int v du$$
+Applying this to $r(t) = 4t^3e^{-1.5t}$, we can choose $u = t^3$ and $dv = 4e^{-1.5t} dt$, so that $du = 3t^2 dt$ and $v = -\frac{8}{3}e^{-1.5t}$. Then we have
+$$\int 4t^3e^{-1.5t} dt = -\frac{8}{3}t^3e^{-1.5t} - \int -\frac{8}{3}e^{-1.5t} 3t^2 dt$$
+Simplifying and applying integration by parts again, we can choose $u = t^2$ and $dv = -\frac{8}{3}e^{-1.5t} dt$, so that $du = 2t dt and v = \frac{16}{9}e^{-1.5t}$. Then we have
+$$\int 4t^3e^{-1.5t} dt = -\frac{8}{3}t^3e^{-1.5t} + \frac{16}{9}t^2e^{-1.5t} - \int \frac{16}{9}e^{-1.5t} 2t dt$$
+...
+}\\
+
+{\bf ChatGPT:} \\
+{\scriptsize
+To find the height of the water in the barrel at time $t = 2$ hours, we need to find the value of $r(2)$. We can do this by plugging $2$ in for $t$ in the expression for $r(t)$:
+$$r(2) = 4(2)^3e^{-1.5(2)} = 32e^{-3}$$
+To find the height of the water in the barrel at time $t = 2$ hours, we need to add the amount of water collected during the first hour ($0.75$ feet) to the amount of waterrorsllected during the second hour ($r(2)$ feet). So, the total height of the water in the barrel at time $t = 2$ hours is:
+$$0.75 + r(2) = 0.75 + 32e^{-3} \approx 0.91 \mathrm{ feet}$$
+Therefore, the height of the water in the barrel at time $t = 2$ hours is approximately $0.91$ feet.
+}
+\end{AIbox}
+\caption{{\DV} vs ChatGPT on AP problems. {\DV} uses a correct approach, but produces a wrong final answer due to a calculation error, whereas ChatGPT produces an incoherent argument.}
+\label{fig:4point3}
+\end{figure}
