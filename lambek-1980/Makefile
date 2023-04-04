@@ -1,8 +1,16 @@
-all: lambek-1980-ccc-pal-eu.tex lambek-main.tex
-	pdflatex lambek-1980-ccc-pal-eu.tex
-	pdflatex lambek-1980-ccc-pal-eu.tex
-	pdflatex lambek-1980-ccc-pal-eu.tex
-
+all:
+	pdflatex lambek-1980-pal.tex
+	pdflatex lambek-1980-pal.tex
+	pdflatex lambek-1980-pal.tex
+	pdflatex lambek-1980-cmr.tex
+	pdflatex lambek-1980-cmr.tex
+	pdflatex lambek-1980-cmr.tex
+	pdflatex lambek-1980-ch.tex
+	pdflatex lambek-1980-ch.tex
+	pdflatex lambek-1980-ch.tex
+	pdflatex lambek-1980-lucida.tex
+	pdflatex lambek-1980-lucida.tex
+	pdflatex lambek-1980-lucida.tex
 
 clean:
 	rm -rf *.out *.log *.aux *sync*
