@@ -15,7 +15,7 @@ all:
 	cp lambek-1980-cmr.pdf "/Users/psu/Library/CloudStorage/Dropbox/GoodReader/Math and Physics/More Math/Cons & Logic/Lambek - From λ-Calculus to Cartesian Closed Categories (1980,cmr).pdf"
 	cp lambek-1980-ch.pdf "/Users/psu/Library/CloudStorage/Dropbox/GoodReader/Math and Physics/More Math/Cons & Logic/Lambek - From λ-Calculus to Cartesian Closed Categories (1980,ch).pdf"
 	cp lambek-1980-lucida.pdf "/Users/psu/Library/CloudStorage/Dropbox/GoodReader/Math and Physics/More Math/Cons & Logic/Lambek - From λ-Calculus to Cartesian Closed Categories (1980,luc).pdf"
-	
+
 clean:
 	rm -rf *.out *.log *.aux *sync*
 
