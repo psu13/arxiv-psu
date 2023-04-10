@@ -5,9 +5,9 @@ all:
 	pdflatex lambek-1980-cmr.tex
 	pdflatex lambek-1980-cmr.tex
 	pdflatex lambek-1980-cmr.tex
-	pdflatex lambek-1980-ch.tex
-	pdflatex lambek-1980-ch.tex
-	pdflatex lambek-1980-ch.tex
+	lualatex lambek-1980-ch.tex
+	lualatex lambek-1980-ch.tex
+	lualatex lambek-1980-ch.tex
 	pdflatex lambek-1980-lucida.tex
 	pdflatex lambek-1980-lucida.tex
 	pdflatex lambek-1980-lucida.tex
