@@ -33,7 +33,7 @@
 \DeclareOption{sharealike}{\sharealiketrue}
 \ProcessOptions\relax
 
-\LoadClass[letterpaper,11pt,twoside]{article}
+\LoadClass[letterpaper,12pt,twoside]{article}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%   On US letter paper the margins (left-top-right-bottom) are       %%
@@ -67,7 +67,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%			Pagestyle and titlepage      		    %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\pagestyle{myheadings}
+\pagestyle{plain}
 \renewcommand\pagestyle[1]{}             % ignore further \pagestyles
 
 \renewcommand\maketitle{\par
@@ -199,7 +199,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \RequirePackage{hyperref} % add hyperlinks
-\RequirePackage{mathptmx} % Pick Times Roman as a base font
+\RequirePackage{mathpazo} % Pick Times Roman as a base font
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%			Remember page numbers      		    %%%%
