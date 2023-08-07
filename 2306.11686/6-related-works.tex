@@ -1,0 +1,40 @@
+\section{Related Works}
+\label{sec:related-works}
+
+\subsection{GPU Execution of CPU Programs}
+Several prior works have explored the execution of host programs on GPUs, including \citet{DBLP:conf/asplos/SilbersteinFKW13}, who proposed direct access to the host's file system from GPU code and implemented an RPC protocol to manage data transfers between the CPU and GPU.
+\citet{DBLP:conf/date/DamschenRVP15} investigated transparent acceleration of binary applications using heterogeneous computing resources, without the need for manual porting or developer-provided hints.
+Meanwhile, \citet{dblp:conf/cgo/MatsumuraZWEM20} proposed an automated stencil framework that can automatically transform and optimize stencil patterns in a given C source code, and generate corresponding CUDA code.
+These works mainly focused on identifying and/or generating parts of the host program to run on GPUs.
+
+\citet{DBLP:conf/ipps/MikushinLZB14} introduced a parallelization framework that detects parallelism and generates target code for both X86 CPUs and NVIDIA GPUs.
+To support functions that can not be natively executed on GPUs, they replaced function calls in LLVM with an interface that ultimately results in the host executing the requested function using a foreign function interface (FFI).
+However, our approach differs in two ways.
+First, instead of relying on FFI, our compiler transformation generates the host wrapper, which restores the call site on the host.
+Second, in their framework, GPU addresses are used directly on the host, which leads to segmentation faults when the host tries to access an address.
+A signal handler for segmentation faults maps the GPU memory pages into CPU tables and copies input data.
+However, this memory management subsystem does not work if the memory buffer is on the stack, such as when a local variable is used in host RPCs.
+\citet{DBLP:conf/pldi/JablinPJJBA11} proposed a system for managing and optimizing CPU-GPU communication that is fully automatic.
+Their system includes a run-time library and a set of compiler transformations that work together to manage and optimize communication between the CPU and GPU.
+Unlike other approaches, this system does not rely on strength of static compile-time analyses or on programmer-supplied annotations.
+Our pointer argument analysis shares a similar design to their work.
+
+\citet{DBLP:conf/llvmhpc/TianHPCD22} were the first to attempt to run the entire host program on a GPU.
+They proposed using OpenMP target offloading to leverage the portability of compiling and running host applications on a GPU.
+However, their approach requires application developers to provide the wrapper function on both the host and device side, either manually or through scripts.
+They also do not support variadic functions, and their paper shows severe performance regression due to single-team execution limitations.
+
+% The following is copied from previous paper. Need to refine it.
+\subsection{OpenMP Target Offloading}
+
+In recent years, researchers have explored compiler and runtime optimization for OpenMP since OpenMP 4.0 introduced target offloading.
+Bertolli et al. presented two works \cite{DBLP:conf/sc/BertolliAEOSJCS14,DBLP:conf/sc/BertolliABJECSS15} that enabled OpenMP offloading to GPUs in LLVM.
+Flang, the PGI Fortran front-end, also supports OpenMP offloading via the LLVM OpenMP runtime~\cite{OzenAtzeniWolfeEtAlOMPGPUoffloadingFlang2018}. 
+\citet{DBLP:conf/sc/AntaoBJBERMJOSC16} introduced front-end-based optimizations for Nvidia GPUs that can reduce register usage and avoid idle threads.
+\citet{DBLP:conf/iwomp/DoerfertDF19} presented the TRegion interface, which supports more kernels to execute in SPMD mode.
+\citet{DBLP:conf/lcpc/TianDC20} introduced runtime support for concurrent execution of OpenMP target tasks.
+\citet{DBLP:conf/icppw/YviquelPFVLRCCD22} presented a framework for using the OpenMP programming model in distributed memory environments.
+It provides a way to program clusters of shared memory machines with a hybrid approach that combines OpenMP directives and MPI communication.
+\citet{DBLP:conf/cgo/HuberCGTDDCD22} presented OpenMP-aware program analyses and optimizations that allow efficient execution of CPU-centric parallelism on GPUs.
+\citet{DBLP:conf/cc/OzenW22} introduced a fully descriptive model and demonstrate its benefits with an implementation of the \lstinline{loop} directive on NVIDIA GPUs.
+\citet{DBLP:conf/ipps/DoerfertPHTDCG22} presented a co-design methodology for optimizing applications using an OpenMP GPU runtime with near-zero overhead, on top of which our device side host RPC support and partial \texttt{libc} implementation were built.

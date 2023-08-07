@@ -1,0 +1,328 @@
+
+\section{Evaluation}
+\label{sec:evaluation}
+
+%\subsection{System Configuration}
+
+To evaluate the performance of our approach, we used a system comprising an NVIDIA A100 Tensor Core GPU (40GB) with AMD EPYC 7532 processors (32 cores and hyper-threading disabled) and 256 GB DDR4 RAM.
+We performed all experiments using CUDA 11.8.0 and compiled all benchmarks using the \lstinline{-O3} optimization flag.
+Our prototype version is based on LLVM trunk (\raisebox{-1.5pt}{\faIcon[regular]{git}} \lstinline{50f1476a}).
+
+\subsection{Allocator Performance}
+
+We believe an application should pick an allocator based on their specific needs.
+Some of the evaluated SPEC OMP benchmarks concurrently allocate many memory regions at the beginning of a parallel, and deallocate them at the end of the parallel region again.
+To best support this scheme we introduced the balanced allocator described in \Cref{sec:allocators}.
+%In addition to the specialization for these balanced allocations it tracks the allocated objects and allows us to identify underlying objects at runtime if needed.
+In \Cref{fig:malloc} shows how it performs on a synthetic benchmark in which all threads in all teams allocate memory at the beginning of the kernel, use it briefly, and then deallocate it again.
+This design is an exaggeration of the SPEC OMP benchmarks to stress test  allocators.
+On our test platform the domain specific balanced allocator is between $3.3\times$ (1 thread, 1 team) and $30\times$ (32 threads, 256 teams) faster than the default NVIDIA provided \lstinline|malloc|.
+
+\begin{figure}[hbt]
+    \centering
+    \resizebox{.9\linewidth}{!}{
+      \input{plots/malloc} 
+    }
+    \vspace{-3mm}
+    \caption{
+    Comparison of the performance between the NVIDIA-provided \lstinline{malloc} and our domain-specific balanced allocator with 32 thread slots and 16 team slots (refer to ~\Cref{sec:allocators}).
+    The benchmark is an exaggeration of the allocation scheme in some SPEC OMP benchmarks, where memory is allocated and deallocated at the beginning and end of a parallel region with all threads.
+    }
+    \Description{
+    Comparison of the performance between the NVIDIA-provided \lstinline{malloc} and our domain-specific balanced allocator with 32 thread slots and 16 team slots (refer to ~\Cref{sec:allocators}).
+    The benchmark is an exaggeration of the allocation scheme in some SPEC OMP benchmarks, where memory is allocated and deallocated at the beginning and end of a parallel region with all threads.
+    }
+    \label{fig:malloc}
+\vspace{-3mm}
+\end{figure}
+
+\subsection{RPC Performance}
+
+
+To measure the overhead of an RPC call, we conducted a profiling experiment where we called the \lstinline{fprintf} function 1000 times with the following arguments: \lstinline{fprintf(stderr, "fread reads: %s.\n", buffer)}. 
+In this example, \lstinline|buffer| points to a 128 byte array that has to be copied back and forth as the read/write behavior of \lstinline|fprintf| arguments is unknown (without inspecting the format string).
+The average device time spend per RPC was 975 microseconds.
+The distribution of this time spend is visualized in \Cref{fig:rpc}.
+From left to right, the following stages are traversed on the device (top part):
+\begin{inparaenum}[1)]
+\item $0.1$\% of the overall time is spent on initializing the RPC argument information (\lstinline{RPCArgInfo} in \Cref{fig:rpc_gen_device}).
+\item $9.1\%$ of the time is on identifying the underlying objects of the three pointer arguments, which includes copying the format string and \lstinline{buffer} to an RPC buffer where the host can access them (managed memory, as described in \Cref{sec:background}). 
+\item The device thread spends $89$\% of the time waiting for the host to act on the request and acknowledge that it has been performed.
+\item $1.8\%$ of the time is spent copying the data from the RPC buffer back to the \lstinline{buffer}.
+\end{inparaenum}
+On the host, the time is spent like this, again from left to right:
+\begin{inparaenum}[1)]
+\item $2$\% of the overall time is spent on copying the RPC information (\lstinline{RPCInfo} in \Cref{fig:rpc_gen_host}) to the host.
+\item $3.5$\% of the time is spent invoking the host wrapper, which in turn calls the actual \lstinline{fprintf} function and sets up the return value.
+\item $5.4$ of the time is spent on copying \lstinline{RPCInfo} object back to the device and notifying completion.
+This notification is done by setting an integer value to 0 that is in managed memory and is also accessible to the device.
+\item The remaining $89.1$\% of the time is the gap between when the host notifies completion and when the device receives the notification.
+This gap occurs because threads in a GPU kernel that is already running are not guaranteed to see the updates to memory done by the CPU or other devices in a specific order and within a specific time interval \cite{DBLP:conf/hipc/PotluriGRNVI17,DBLP:conf/hpdc/DaoudWS16}.
+\end{inparaenum}
+
+\begin{figure}[tb]
+\lstset{basicstyle=\footnotesize\lst@ifdisplaystyle\small\linespread{0.94}\fi\ttfamily,
+        }
+    \centering
+    \resizebox{.9\linewidth}{!}{
+      \input{plots/rpc} 
+    }
+    \vspace{-3mm}
+    \caption{Visualization of the time (avg. total 975 microseconds) spend in different staging while resolving a \lstinline|fprintf| RPC.}
+    \Description{Visualization of the time (avg. total 975 microseconds) spend in different staging while resolving a \lstinline|fprintf| RPC.}
+    \label{fig:rpc}
+\vspace{-4mm}
+\end{figure}
+
+
+% \subsection{Benchmarks}
+
+% Our approach was evaluated using two sets of benchmarks.
+% The first set comprised four proxy applications: XSBench, RSBench, AMGmk, and PageRank.
+% XSBench and RSBench have both OpenMP CPU and OpenMP target offloading versions, while AMGmk and PageRank only have OpenMP CPU parallelism.
+% The corresponding OpenMP target offloading versions for AMGmk and PageRank were obtained from HeCBench~\cite{zjin-lcf/HeCBench}, a GitHub repository that contains benchmarks written with various programming languages and frameworks for heterogeneous computing.
+% The second set consisted of three C benchmarks (\lstinline{358.botsalgn}, \lstinline{359.botsspar}, and \lstinline{372.smithwa}) from the SPEC OMP 2012 suite~\cite{DBLP:conf/iwomp/MullerBBFHHJMPRSWWK12}, which are highly optimized for CPU execution but not well-suited for efficient GPU execution due to their programming style.
+% Here is a brief introduction to each benchmark.
+
+% \textbf{XSBench}~\cite{XS_Tramm_2014} and \textbf{RSBench}~\cite{DBLP:conf/easc/TrammSFJ14} are two proxy applications for the Open Monte Carlo (OpenMC) project~\cite{romano2013openmc}
+% Both proxies compute the continuous energy macroscopic neutron cross-section lookup when studying neutron transport, and both are available in multiple programming languages and frameworks.
+% While XSBench extracts one of the main kernels in OpenMC, which is memory-bound, RSBench provides a compute-bound alternative implementation.
+
+% \textbf{AMGmk} is a geometric multigrid solver for the Poisson equation in three dimensions. It has a lot of coarse-grained parallelism.
+
+% \textbf{PageRank} is used to evaluate the performance of graph algorithms, and in particular, the PageRank algorithm used by Google.
+% It involves a lot of fine-grained parallelism.
+
+% \textbf{\lstinline{358.botsalgn}} involves a pairwise alignment of DNA sequences and is characterized by a large number of small loops with little data reuse, which makes it difficult to parallelize efficiently on GPUs.
+
+% \textbf{\lstinline{359.botsspar}} involves a sparse matrix-vector multiplication and is characterized by indirect memory accesses and irregular data access patterns, which make it difficult to parallelize efficiently on GPUs.
+
+% \textbf{\lstinline{372.smithwa}} involves the Smith-Waterman algorithm for sequence alignment and is characterized by a lot of nested loops with indirect memory accesses, which makes it difficult to parallelize efficiently on GPUs.
+
+\subsection{Parallel Region Modeling}
+
+In the following we compare the performance obtained via \emph{GPU First} compilation of CPU code against manual offload versions of various parallel regions to determine if the proposed methodology is suitable to guide porting efforts.
+
+\begin{figure*}[htb]
+\input{plots/config}
+\begin{minipage}[t]{.45\linewidth}\centering%
+    \input{plots/xsbench.tex}
+    \subcaption{
+      Performance of the compute kernel of XSBench relative to the CPU version.
+    }
+    \label{fig:xbench}%
+\end{minipage}%
+\hfill%
+\begin{minipage}[t]{.45\linewidth}\centering%
+    \input{plots/rsbench.tex}
+    \subcaption{
+      Performance of the compute kernel of RSBench relative to the CPU version.
+    }
+    \label{fig:rsbench}%
+\end{minipage}
+    \vspace*{-3mm}
+
+\caption{Performance of different GPU versions of the OpenMC proxy applications XSBench and RSBench compared to their respective CPU counterpart.}
+\Description{Performance of different GPU versions of the OpenMC proxy applications XSBench and RSBench compared to their respective CPU counterpart.}
+\vspace*{-3mm}
+\label{fig:xsrsbench}
+    
+\end{figure*}
+
+% \begin{figure*}[hbt]
+% \begin{tabular}{c|ccc|ccc}
+% \hline
+% \multirow{2}{*}{Benchmark} & \multicolumn{3}{c|}{Offloading} & \multicolumn{3}{c}{\emph{GPU First}} \\ \cline{2-7} 
+%                            & Registers  & Teams   & Threads  & Registers  & Teams  & Threads \\ \hline
+% XSBench (event/history)    & 91/-       & 3200/-  & 128/-    & 83/93      & 1024   & 640     \\
+% RSBench (event/history)    & 160/-      & 3200/-  & 128/-    & 161/167    & 1024   & 384     \\
+% Interleaved                & 32         & 16      & 256      & 78         & 16     & 256     \\
+% Hypterm                    & 63/72      & 3200    & 256      & 128        & 3200   & 256     \\
+% AMGmk                      & 32         & 489     & 256      & 52         & 489    & 256     \\
+% Page-Rank                  & 29/32      & 79      & 256      & 58/48      & 79     & 256     \\ \hline
+% \end{tabular}
+% \label{fig:execution-statistics}
+% \caption{Comparison of kernel information for the offloading and \emph{GPU first} versions of each benchmark.
+% The table includes register usage, number of teams, and number of threads per team for each benchmark.
+% Note that if a benchmark has multiple parallel regions, and only one set of data is presented, the kernel information is the same for all regions.}
+% \vspace*{-3mm}
+% \end{figure*}
+
+\subsubsection{XSBench and RSBench}
+
+The two OpenMC proxy applications XSBench~\cite{XS_Tramm_2014} (v20) and RSBench~\cite{DBLP:conf/easc/TrammSFJ14} (v13) are implemented in different parallel programming models, including OpenMP threading for the CPU, and OpenMP offload for the GPU.
+In the former, two alternative methods are available to perform the cross-section lookup as part of the neutron transport simulation: event-based lookup and history-based lookup.
+In the offloading version history-based mode was not implemented but we can test it out with the \emph{GPU First} methodology using the CPU implementation.
+The results for both benchmarks and two different input sizes are shown in \Cref{fig:xbench} and \Cref{fig:rsbench}, respectively.
+For the small input size, history mode is actually outperforming the event mode on the GPU.
+However, with the large input size event mode has caught up (RSBench), or even surpassed (XSBench), history mode.
+These results validate the choice of event-based mode for the offloading implementation.
+The second insight from the evaluation can be derived by comparing the event-based results obtained via the manually offloaded version and the \emph{GPU First} version.
+For the small input the \emph{GPU First} versions are likely to benefit from cache re-use as the data initialization is also performed on the GPU.
+However, with the large input the two results are a close match.
+Thus, performance predictions obtained via \emph{GPU First} and the original CPU-only version would have provided accurate guidance for a potential manual port to the GPU.
+
+\subsubsection{HeCBench: Interleaved}
+
+The HeCBench~\cite{zjin-lcf/HeCBench} ``interleaved'' micro benchmark originated from \citet{cook2012cuda} and shows how different memory access patterns behave on the CPU and GPU.
+We timed the parallel region with interleaved memory accesses (array-of-struct inputs) as well as the one with non-interleaved accesses (struct-of-array inputs) on the CPU and GPU.
+The results, expressed as speedups and slowdowns of the GPU version, are shown in \Cref{fig:interleaved}.
+While the \emph{GPU First} version shows the same tendency as the manually offloading version, we needed to explicitly match the number of teams to perfectly match the result with our automatically offloaded parallel regions.
+%For the remaining micro benchmarks we will only show the results with matching team counts.
+
+
+\begin{figure}[htbp]
+\input{plots/config}
+
+\begin{minipage}[t]{\linewidth}\centering%
+    \resizebox{.9\linewidth}{!}{
+    \input{plots/legend_micro_bench}
+}
+\end{minipage}
+\vspace{-2mm}
+
+\begin{minipage}[t]{\linewidth}\centering%
+    \resizebox{.9\linewidth}{!}{
+      \input{plots/interleaved} 
+    }
+    \subcaption{Relative performance of the two parallel regions in the interleaved benchmark (from HeCBench) when executed on the GPU instead of the CPU. The first (non-interleaved) uses a struct-of-array layout while the second (interleaved) uses an array-of-struct layout.}
+    \label{fig:interleaved}
+\end{minipage}
+\vspace{3mm}
+
+\begin{minipage}[t]{\linewidth}\centering%
+    \resizebox{.9\linewidth}{!}{
+      \input{plots/hypeterm} 
+    }
+    \subcaption{Relative performance of the three parallel regions (PR1, PR2, PR3) in the hypterm micro benchmark (from HeCBench) when executed on the GPU instead of the CPU.}
+    \label{fig:hypeterm}
+\end{minipage}
+\vspace{3mm}
+
+\begin{minipage}[t]{\linewidth}\centering%
+    \resizebox{.9\linewidth}{!}{
+      \input{plots/mixed} 
+    }
+    \subcaption{Relative performance results for the timed parallel regions in the AMGmk and page-rank micro benchmark (from HeCBench) when executed on the GPU instead of the CPU.}
+    \label{fig:mixed}
+\end{minipage}
+
+\vspace{-2mm}
+\caption{
+Comparison of micro benchmarks performance results for a parallel region compiled with \emph{GPU First} to the GPU, and the manually offloaded counterpart, relative to the corresponding CPU parallel region.
+The matching teams column for \emph{GPU First} uses the same number of teams as the manually offloaded version.
+The legend at the top of the figure is shared among all plots.
+% Micro benchmark results that compare the performance of a parallel region compiled with \emph{GPU First} to the GPU, and the manually offloaded counterpart, relative to the respective CPU parallel region.
+% The \emph{GPU First} matching teams column uses the same number of teams as the corresponding manually offloaded version.
+% The legend at the top is shared among all plots.
+}
+\Description{
+Comparison of micro benchmarks performance results for a parallel region compiled with \emph{GPU First} to the GPU, and the manually offloaded counterpart, relative to the corresponding CPU parallel region.
+The matching teams column for \emph{GPU First} uses the same number of teams as the manually offloaded version.
+The legend at the top of the figure is shared among all plots.
+% Micro benchmark results that compare the performance of a parallel region compiled with \emph{GPU First} to the GPU, and the manually offloaded counterpart, relative to the respective CPU parallel region.
+% The \emph{GPU First} matching teams column uses the same number of teams as the corresponding manually offloaded version.
+% The legend at the top is shared among all plots.
+}
+\label{fig:AAA}
+    
+\end{figure}
+
+\subsubsection{HeCBench: Hypterm}
+
+The HeCBench ``hypterm'' micro benchmark is a complex stencil operation that originated from the ExpCNS Compressible Navier-Stokes mini-application~\cite{ExaCT} and was extracted by \citet{DBLP:conf/ppopp/RawatRSPRS18}.
+The GPU version in in HeCBench contains three kernels which we transformed into three parallel regions for the CPU.
+The results of the GPU version and the \emph{GPU First} version relative to the CPU are shown in \Cref{fig:hypeterm}.
+While the original GPU version is slightly slower, the overall performance behavior matches the \emph{GPU First} prediction.
+
+
+\subsubsection{HeCBench: AMGmk, Page-Rank, }
+
+\Cref{fig:mixed} shows the results obtained for the AMGmk, page-rank benchmarks.
+The first measures only the relax kernel of the original AMGmk proxy application~\cite{CORAL}.
+The second is an implementation of the page-rank algorithm for graphs in which the propagation step is measured.
+
+\begin{figure}
+
+\begin{minipage}[t]{\linewidth}\centering%
+    \resizebox{.7\linewidth}{!}{
+    \input{plots/legend_spec}
+}
+\end{minipage}
+\vspace{-4mm}
+
+\begin{minipage}[t]{\linewidth}\centering%
+    \resizebox{.9\linewidth}{!}{
+      \input{plots/358} 
+    }
+\vspace{-2mm}
+    \subcaption{358.botsalgn. The x axis is the number of input sequences.
+    This benchmark distributes sequences across multiple threads through an outer \lstinline{parallel} region, where each thread spawns several OpenMP tasks to execute the pair alignment algorithm.}
+    \label{fig:spec-358}
+\end{minipage}
+\begin{minipage}[t]{\linewidth}\centering%
+    \resizebox{.9\linewidth}{!}{
+      \input{plots/359} 
+    }
+\vspace{-3mm}
+\subcaption{359.botsspar uses one thread creates tasks while the other threads in the parallel region execute them.
+The x axis is the size of matrix and submatrix used in the benchmark.}
+\label{fig:spec-359}
+\end{minipage}
+\begin{minipage}[t]{.9\linewidth}\centering%
+    \resizebox{\linewidth}{!}{
+      \input{plots/372} 
+    }
+\vspace{-5mm}
+\subcaption{372.smithwa. The x axis is the sequence length.
+The workload is manually distributed among multiple threads and threads communicate with each other using a producer-consumer model via shared variables followed by barriers.}
+\label{fig:spec-372}
+\end{minipage}
+
+\vspace{-2mm}
+\caption{
+Relative performance results for the end-to-end execution and timed parallel regions in the three SPEC OMP 2012 benchmarks when executed on the GPU instead of the CPU.
+The legend at the top is shared among all plots.}
+\Description{
+Relative performance results for the end-to-end execution and timed parallel regions in the three SPEC OMP 2012 benchmarks when executed on the GPU instead of the CPU.
+The legend at the top is shared among all plots.}
+\label{fig:spec}
+\end{figure}
+
+\subsubsection{SPEC OMP: 358.botsalgn and 359.botsspar}
+These are two task-based benchmarks~\cite{DBLP:conf/icpp/DuranTFMA09} from the SPEC OMP 2012 suite~\cite{DBLP:conf/iwomp/MullerBBFHHJMPRSWWK12}.
+The former performs sequence alignment while the latter is a sparse LU decomposition.
+They are parallelized with different OpenMP tasking strategies.
+\Cref{fig:spec-358,fig:spec-359} shows the performance of \emph{GPU First} relative to the CPU.
+Since LLVM/OpenMP does not support tasking on GPUs, tasks are executed immediately by the encountering thread.
+This limitation severely affects the GPU performance of these benchmarks.
+
+In the case of \texttt{358.botsalgn}, sequences are distributed across multiple threads through an outer \lstinline{parallel} region.
+Each thread spawns several tasks to that perform the alignment.
+Since the number of sequences is smaller than the number of CPU cores, threads not involved in the work sharing can execute the spawned tasks concurrently.
+However, on the GPU only a small number of threads (equal to the number of sequences) are executing concurrently.
+%Moreover, GPU threads are slower than CPU threads, which results in the observed slowdown.
+
+Similarly, in \lstinline{359.botsspar}, one thread creates tasks while the other threads in the parallel region execute them.
+This pattern of execution is equivalent to serial execution in our approach.
+To enable parallelism for this benchmark, we rewrote the task regions by removing the \lstinline{task} construct and adding a \lstinline{parallel for} construct on the outer parallel region.
+The results shown in \Cref{fig:spec-359} represent the threaded parallelism version of the benchmark.
+The observed slowdown can be attributed to the lack of sufficient sequences to fully exploit the massive parallelism that GPUs offer, similar to the issue observed in benchmark \texttt{358.botsalgn}.
+Nevertheless, our \emph{GPU First} scheme allows application developers to explore different parallelism on GPUs without much burden.
+
+It is important to note that the lack of tasking support is not a limitation of our proposed scheme, but rather a limitation of the current LLVM/OpenMP implementation for GPUs.
+If tasking is properly supported on the GPU, and there are a sufficient number of sequences, the massive parallelism of a GPU has the potential to make up for the performance difference between a CPU and a GPU thread.
+While this means advancements in GPU tasking support could in the future improve performance of these codes on the GPU, the current results clearly indicate that a GPU port would require a different parallelization strategy.
+
+\subsubsection{SPEC OMP: 372.smithwa}
+\texttt{372.smithwa} implements the Smith-Waterman algorithm for sequence alignment and is characterized by a large number of nested loops with indirect memory accesses.
+In this benchmark, the workload is first distributed to multiple threads, which maps well to the GPU.
+However, the threads communicate with each other using a producer-consumer model via shared variables followed by barriers.
+This form of communication is conceptually inefficient on GPUs.
+\Cref{fig:spec-372} shows the performance of the \emph{GPU First} approach relative to the CPU.
+As the input size is increased the relative performance is at first stable, indicating good scalability on the GPU.
+However, when the sequence length hits 26 we can observe exponentially growing slowdown compared to the CPU execution.
+Consequently, this benchmark is another example of an algorithm that is inefficient on the GPU, requiring a rewrite as part of the porting effort.
+It is worth to note that without the balanced allocator the performance is dominated by the massively parallel allocations and deallocations at the beginning and end of the parallel region, respectively.
+%Additionally, this benchmark allocates many memory regions at the beginning and in the middle of the parallel region, and frees them at the end.
+%Although we provide a balanced allocator that is faster than the one provided by NVIDIA, massive dynamic heap allocation in parallel regions is generally inefficient on GPUs.
