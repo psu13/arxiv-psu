@@ -448,7 +448,7 @@
      \let\@oddhead\@empty
      \let\@evenhead\@empty
      \def\@oddfoot{\footnotesize\itshape
-       Draft of \today \\PLEASE CITE THE PUBLISHED VERSION IF AVAILABLE!}%
+       Draft of 19 Apr 2018 \\PLEASE CITE THE PUBLISHED VERSION IF AVAILABLE!}%
      \let\@evenfoot\@oddfoot}
 \def\@seccntDot{.}
 \def\@seccntformat#1{\csname the#1\endcsname\@seccntDot\hskip 0.5em}
