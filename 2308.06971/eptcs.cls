@@ -33,7 +33,7 @@
 \DeclareOption{sharealike}{\sharealiketrue}
 \ProcessOptions\relax
 
-\LoadClass[letterpaper,11pt,twoside]{article}
+\LoadClass[letterpaper,12pt,twoside]{article}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%   On US letter paper the margins (left-top-right-bottom) are       %%
@@ -67,7 +67,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%			Pagestyle and titlepage      		    %%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\pagestyle{myheadings}
+\pagestyle{plain}
+
 \renewcommand\pagestyle[1]{}             % ignore further \pagestyles
 
 \renewcommand\maketitle{\par
@@ -114,12 +115,12 @@
 \def\@maketitle{%                       adapted from article.cls
   \newpage
 \noindent
-\raisebox{-22.8cm}[0pt][0pt]{\footnotesize
+\raisebox{-22.0cm}[0pt][0pt]{\footnotesize
 \begin{tabular}{@{}l}
 \publicationstatus
 \end{tabular}}
 \hfill\vspace{-1em}
-\raisebox{-22.8cm}[0pt][0pt]{\footnotesize
+\raisebox{-22.0cm}[0pt][0pt]{\footnotesize
 \makebox[0pt][r]{
 \begin{tabular}{l@{}}
 \ifpublicdomain
