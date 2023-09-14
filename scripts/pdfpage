@@ -1,0 +1,39 @@
+
+rootName=`basename "$1" .tex`
+pdfName="$rootName.pdf"
+page=$2
+
+open -a "TeXShop" "$1"
+
+exec osascript << EOD
+set bin to "/opt/homebrew/bin/" --path to cliclick parent
+
+tell application "TeXShop"
+	activate
+end tell
+
+tell application "System Events"
+	tell process "TeXShop"
+		click menu item "$rootName.pdf" of menu "Window" of menu bar 1
+	end tell
+end tell
+
+tell application "TeXShop"
+	delay 0.1
+	set {x, y, z, u} to (bounds of window 1)
+	set w to (z - x)
+	set h to (u - y)
+	set (bounds of window 1) to {40, 35, w + 40, h + 35}
+	delay 0.1
+end tell
+
+do shell script bin & "cliclick dc:380,75"
+
+tell application "System Events"
+	tell process "TeXShop"
+		keystroke "$page"
+		key code 36
+	end tell
+end tell
+
+EOD
