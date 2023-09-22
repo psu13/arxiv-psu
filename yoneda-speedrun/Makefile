@@ -1,20 +1,20 @@
 all: 
-	pdflatex yoneda-speedrun.tex
-	pdflatex yoneda-speedrun.tex
-	pdflatex yoneda-speedrun.tex
+	pdflatex --synctex=1 yoneda-speedrun.tex
+	pdflatex --synctex=1 yoneda-speedrun.tex
+	pdflatex --synctex=1 yoneda-speedrun.tex
 
-	pdflatex yoneda-speedrun-pal.tex
-	pdflatex yoneda-speedrun-pal.tex
-	pdflatex yoneda-speedrun-pal.tex
+	pdflatex --synctex=1 yoneda-speedrun-pal.tex
+	pdflatex --synctex=1 yoneda-speedrun-pal.tex
+	pdflatex --synctex=1 yoneda-speedrun-pal.tex
 
 
-	pdflatex yoneda-speedrun-pal-eu.tex
-	pdflatex yoneda-speedrun-pal-eu.tex
-	pdflatex yoneda-speedrun-pal-eu.tex
+	pdflatex --synctex=1 yoneda-speedrun-pal-eu.tex
+	pdflatex --synctex=1 yoneda-speedrun-pal-eu.tex
+	pdflatex --synctex=1 yoneda-speedrun-pal-eu.tex
 
-	pdflatex yoneda-speedrun-lucida.tex
-	pdflatex yoneda-speedrun-lucida.tex
-	pdflatex yoneda-speedrun-lucida.tex
+	pdflatex --synctex=1 yoneda-speedrun-lucida.tex
+	pdflatex --synctex=1 yoneda-speedrun-lucida.tex
+	pdflatex --synctex=1 yoneda-speedrun-lucida.tex
 
 	cp yoneda-speedrun.pdf "/Users/psu/Desktop/Google/Reader/Math and Physics/More Math/Cats/yoneda-speedrun.pdf"
 	
