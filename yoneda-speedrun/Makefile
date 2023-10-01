@@ -1,4 +1,4 @@
-DISK=/Users/psu/Library/Mobile Documents/3L68KQB4HG~com~readdle~CommonDocuments/Documents/Math and Physics/More Math/Cats
+DISK=/Users/psu/Google/Reader/Math and Physics/More Math/Cats
 
 all: 
 	pdflatex --synctex=1 yoneda-speedrun.tex
