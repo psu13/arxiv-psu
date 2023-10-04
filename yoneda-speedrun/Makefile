@@ -18,8 +18,14 @@ all:
 	pdflatex --synctex=1 yoneda-speedrun-lucida.tex
 	pdflatex --synctex=1 yoneda-speedrun-lucida.tex
 
+	pdflatex --synctex=1 yoneda-speedrun-ch-eu.tex
+	pdflatex --synctex=1 yoneda-speedrun-ch-eu.tex
+	pdflatex --synctex=1 yoneda-speedrun-ch-eu.tex
+
 	cp yoneda-speedrun.pdf "$(DISK)/yoneda-speedrun.pdf"
-	
+
+	cp yoneda-speedrun-ch-eu.pdf "$(DISK)/yoneda-speedrun-ch-eu.pdf"
+
 	cp yoneda-speedrun-pal.pdf "$(DISK)/yoneda-speedrun-pal.pdf"
 	
 	cp yoneda-speedrun-pal-eu.pdf "$(DISK)/yoneda-speedrun-pal-eu.pdf"
