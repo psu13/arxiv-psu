@@ -306,13 +306,13 @@
                 \twocolumn
               \fi}
 \newcommand\chapter{\if@openright\cleardoublepage\else\clearpage\fi
-                  \thispagestyle{fancy}
+                  \thispagestyle{plain}
                     \global\@topnum\z@
                     \@afterindentfalse
                     \secdef\@chapter\@schapter}
 \def\@chapter[#1]#2{\ifnum \c@secnumdepth >\m@ne
                        \if@mainmatter
-                         \pagestyle{fancy}
+                         \pagestyle{plain}
                          \lhead{\@chapapp\space\thechapter. #1}\rhead{\thepage}
                          \cfoot{}
                          \refstepcounter{chapter}%
@@ -349,7 +349,7 @@
     \vskip 20\p@
   }}
 \def\@schapter#1{
-                   \pagestyle{fancy}
+                   \pagestyle{plain}
                          \lhead{#1}\rhead{\thepage}
                           \cfoot{}
                          %\refstepcounter{chapter}%
