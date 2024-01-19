@@ -1,0 +1,677 @@
+\chapter{Sampling Algorithms}
+\label{chapter:sampling}
+
+\abstract{
+Nearly all of the data structures and algorithms we reviewed in the previous chapters are designed
+specifically for either nearest neighbor search or maximum cosine similarity search.
+MIPS is typically an afterthought. It is often cast as NN or MCS through a rank-preserving
+transformation and subsequently solved using one of these algorithms. That is so because
+inner product is not a proper metric, making MIPS different from the other vector retrieval variants.
+In this chapter, we review algorithms that are specifically designed for MIPS
+and that connect MIPS to the machinery underlying multi-arm bandits.
+}
+
+\section{Intuition}
+\label{section:sampling:intuition}
+
+That inner product is different can be a curse and a blessing.
+We have already discussed that curse at length, but in this chapter,
+we will finally learn something positive. And that is the fact that inner product
+is a linear function of data points and can be easily decomposed into its parts,
+thereby opening a unique path to solving MIPS.
+
+The overarching idea in what we refer to as \emph{sampling algorithms} is to avoid
+computing inner products. Instead, we either directly approximate the \emph{likelihood}
+of a data point being the solution to MIPS (or, equivalently, its rank),
+or estimate its inner product with a query (i.e., its score).
+As we will see shortly, in both instances, we rely heavily on the linearity of inner product
+to estimate probabilities and derive bounds.
+
+Approximating the ranks or scores of data points uses some form of sampling:
+we either sample data points according to a distribution defined by inner products,
+or sample a dimension to compute partial inner products with and eliminate sub-optimal
+data points iteratively. In the former, the more frequently a data point is sampled,
+the more likely it is to be the solution to MIPS. In the latter, the more dimensions
+we sample, the closer we get to computing full inner products.
+Generally, then, the more samples we draw, the more accurate our solution to MIPS becomes.
+
+\begin{svgraybox}
+An interesting property of using sampling to solve MIPS is that,
+regardless of \emph{what} we are approximating, we can decide when to stop!
+That is, if we are given a time budget, we draw as many samples as our
+time budget allows and return our best guess of the solutions based on
+the information we have collected up to that point. The number of samples,
+in other words, serves as a knob that trades off accuracy for speed.
+\end{svgraybox}
+
+The remainder of this chapter describes these algorithms in much greater detail.
+Importantly, we will see how linearity makes the approximation-through-sampling
+feasible and efficient.
+
+\section{Approximating the Ranks}
+We are interested in finding the top-$k$ data points
+with the largest inner product with a query $q \in \mathbb{R}^d$,
+from a collection $\mathcal{X} \subset \mathbb{R}^d$ of $m$ points.
+Suppose that we had an efficient way of sampling a data point from $\mathcal{X}$
+where the point $u \in \mathcal{X}$ has probability proportional
+to $\langle q, u \rangle$ of being selected.
+
+If we drew a sufficiently large number of samples, the data point with the largest
+inner product with $q$ would be selected most frequently. The data point with the second
+largest inner product would similarly be selected with the second highest frequency, and so on.
+So, if we counted the number of times each data point has been sampled,
+the resulting histogram would be a good approximation to the rank of each data point
+with respect to inner product with $q$.
+
+That is the gist of the sampling algorithm we examine in this section.
+But while the idea is rather straightforward, making it work requires addressing
+a few critical gaps. The biggest challenge is drawing samples according to
+the distribution of inner products without actually computing any of the
+inner products! That is because, if we needed to compute $\langle q, u \rangle$
+for all $u \in \mathcal{X}$, then we could simply sort data points accordingly
+and return the top-$k$; no need for sampling and the rest.
+
+The key to tackling that challenge is the linearity of inner product.
+Following a few simple derivations using Bayes' theorem,
+we can break up the sampling procedure into two steps, each using marginal distributions
+only~\citep{Lorenzen2021wedgeSampling,ballard2015diamondSampling,cohen1997wedgeSampling,pmlr-v89-ding19a}. Importantly, one of these marginal distributions can be computed offline
+as part of indexing. That is the result we will review next.
+
+\subsection{Non-negative Data and Queries}
+We wish to draw a data point with probability that is proportional to its inner
+product with a query: $\probability[u \;|\; q] \propto \langle q, u \rangle$.
+For now, we assume that $u, q \succeq 0$ for all $u \in \mathcal{X}$ and queries $q$.
+
+Let us decompose this probability along each dimension as follows:
+\begin{equation}
+    \probability[u \;|\; q] = \sum_{t = 1}^d \probability[t \;|\; q] \probability[u \;|\; t, q],
+\end{equation}
+where the first term in the sum is the probability of sampling a dimension $t \in [d]$
+and the second term is the likelihood of sampling $u$ given a particular dimension.
+We can model each of these terms as follows:
+\begin{equation}
+    \label{equation:sampling:wedge:prob_dimension}
+    \probability[t \;|\; q] \propto \sum_{u \in \mathcal{X}} q_t u_t = q_t \sum_{u \in \mathcal{X}} u_t,
+\end{equation}
+and,
+\begin{equation}
+    \label{equation:sampling:wedge:prob_data_point}
+    \probability[u \;|\; t, q] = \frac{\probability[u \land t \;|\; q]}{\probability[t \;|\; q]}
+    \propto \frac{q_t u_t}{q_t \sum_{v \in \mathcal{X}} v_t} = \frac{u_t}{\sum_{v \in \mathcal{X}} v_t}.
+\end{equation}
+In the above, we have assumed that $\sum_{v \in \mathcal{X}} v_t \neq 0$; if that sum is $0$
+we can simply discard the $t$-th dimension.
+
+What we have done above allows us to draw a sample according to $\probability[u \;|\; q]$
+by, instead, drawing a dimension $t$ according to $\probability[t \;|\; q]$ first,
+then drawing a data point $u$ according to $\probability[u \;|\; t, q]$.
+
+Sampling from these multinomial distribution requires constructing the distributions themselves.
+Luckily, $\probability[u \;|\; t, q]$ is independent of $q$.
+Its distribution can therefore be computed offline: we create $d$ tables,
+where the $t$-th table has $m$ rows recording the probability of each data point
+being selected given dimension $t$ using Equation~(\ref{equation:sampling:wedge:prob_data_point}).
+We can then use the alias method~\citep{Walker1977theAliasMethod} to draw samples
+from these distributions using $\mathcal{O}(1)$ operations.
+
+The distribution over dimensions given a query, $\probability[t \;|\; q]$,
+must be computed online using Equation~(\ref{equation:sampling:wedge:prob_dimension}),
+which requires $\mathcal{O}(d)$ operations, assuming we compute $\sum_{u \in \mathcal{X}} u_t$
+offline for each $t$ and store them in our index. Again, using the alias method,
+we can subsequently draw samples with $\mathcal{O}(1)$ operations.
+
+The procedure described above provides us with an efficient mechanism to
+perform the desired sampling. If we were to draw $S$ samples, that could be done
+in $\mathcal{O}(d + S)$, where $\mathcal{O}(d)$ term is needed to construct the
+multinomial distribution that defines $\probability[t \;|\; q]$.
+
+As we draw samples, we maintain a histogram over the $m$ data points, counting
+the number of times each point has been sampled. In the end, we can identify the
+top-$k^\prime$ (for $k^\prime \geq k$) points based on these counts, compute their
+inner products with the query, and return the top-$k$ points as the final solution set.
+All these operations together have time complexity
+$\mathcal{O}(d + S + m \log k^\prime + k^\prime d)$, with $S$ typically being
+the dominant term.
+
+\subsection{The General Case}
+When the data points or queries may be negative, the algorithm described in the
+previous section will not work as is. To extend the sampling framework to general,
+real vectors, we must make a few minor adjustments.
+
+First, we must ensure that the marginal distributions are valid.
+That is easy to do: In Equations~(\ref{equation:sampling:wedge:prob_dimension})
+and~(\ref{equation:sampling:wedge:prob_data_point}), we replace each term
+with its absolute value. So, $\probability[t \;|\; q]$ becomes proportional to
+$\sum_{u \in \mathcal{X}} \lvert q_t u_t \rvert$, and 
+$\probability[u \;|\; t, q] \propto \lvert u_t \rvert / \sum_{v \in \mathcal{X}} \lvert v_t \rvert$.
+
+We then use the resulting distributions to sample data points as before,
+but every time a data point $u$ is sampled, instead of incrementing its count in the
+histogram by one, we add $\textsc{Sign}(q_t u_t)$ to its entry. As the following lemma
+shows, in expectation, the final count is proportional to $\langle q, u \rangle$.
+
+\begin{lemma}
+    \label{lemma:sampling:wedge:expected-value}
+    Define the random variable $Z$ as $0$ if data point $u \in \mathcal{X}$
+    is not sampled and $\textsc{Sign}(q_t u_t)$ if it is for a query $q \in \mathbb{R}^d$
+    and a sampled dimension $t$.
+    Then $\ev[Z] = \langle q, u \rangle / \sum_{t = 1}^d \sum_{v \in \mathcal{X}} \lvert q_t v_t \rvert$.
+\end{lemma}
+\begin{proof}
+    \begin{align*}
+        \ev[Z \;|\; t] &= \textsc{Sign}(q_t u_t) \probability[u \;|\; t]
+        = \textsc{Sign}(q_t u_t) \frac{\lvert u_t \rvert}{\sum_{v \in \mathcal{X}} \lvert v_t \rvert} \\
+        &= \textsc{Sign}(q_t u_t) \frac{\lvert q_t u_t \rvert}{\sum_{v \in \mathcal{X}} \lvert q_t v_t \rvert}
+        = \frac{q_t u_t}{\sum_{v \in \mathcal{X}} \lvert q_t v_t \rvert}.
+    \end{align*}
+    Taking expectation over the dimension $t$ yields:
+    \begin{align*}
+        \ev[Z] &= \ev\Big[\ev[Z \;|\; t]\Big] = \sum_{t = 1}^d \frac{q_t u_t}{\sum_{v \in \mathcal{X}} \lvert q_t v_t \rvert} \probability[t \;|\; q] \\
+        &= \sum_{t = 1}^d \frac{q_t u_t}{\sum_{v \in \mathcal{X}} \lvert q_t v_t \rvert}
+            \frac{\sum_{v \in \mathcal{X}} \lvert q_t v_t \rvert}{\sum_{l=1}^d \sum_{v \in \mathcal{X}} \lvert q_l v_l \rvert} \\
+        &= \frac{\langle q, u \rangle}{\sum_{t = 1}^d \sum_{v \in \mathcal{X}} \lvert q_t v_t \rvert}.
+    \end{align*}
+\end{proof}
+
+\subsection{Sample Complexity}
+We have formalized an efficient way to sample data points according to the distribution
+of inner products, and subsequently collect the most frequently-sampled points.
+But how many samples must we draw in order to accurately identify the top-$k$ solution set?
+\cite{pmlr-v89-ding19a} give an answer in the form of the following theorem for top-$1$ MIPS.
+
+Before stating the result, it would be helpful to introduce a few shorthands.
+Let $N = \sum_{t = 1}^d \sum_{v \in \mathcal{X}} \lvert q_t v_t \rvert$ be a normalizing factor.
+For a vector $u \in \mathcal{X}$, denote by $\Delta_u$ the scaled gap between the
+maximum inner product and the inner product of $u$ and $q$:
+$\Delta_u = \langle q, u^\ast - u \rangle / N$.
+
+If $S$ is the number of samples to be drawn, for a vector $u$, denote by $Z_{u,i}$ 
+a random variable that is $0$ if $u$ was not sampled in round $i$,
+and otherwise $\textsc{Sign}(q_t u_t)$ if $t$ is the sampled dimension.
+Once the sampling has concluded, the final value for point $u$ is simply $Z_u = \sum_i Z_{u,i}$.
+Note that, from Lemma~\ref{lemma:sampling:wedge:expected-value}, we have that
+$\ev[Z_{u,i}] = \langle q, u \rangle / N$.
+
+Given the notation above, let us also introduce the following helpful lemma.
+
+\begin{lemma}
+    Let $C_u = \sum_{t = 1}^d \lvert q_t u_t \rvert$ for a data point $u$. Then
+    for a pair of distinct vectors $u, v \in \mathcal{X}$:
+    \begin{equation*}
+        \ev\Big[\big(Z_{u,i} - Z_{v,i} \big)^2\Big] = \frac{C_u + C_v}{N},
+    \end{equation*}
+    and,
+    \begin{equation*}
+        \var\Big[Z_u - Z_v\Big] = S \Big[ \frac{C_u + C_v}{N} - \frac{\langle q, u - v\rangle^2}{N^2} \Big].
+    \end{equation*}
+\end{lemma}
+\begin{proof}
+    The proof is similar to the proof of Lemma~\ref{lemma:sampling:wedge:expected-value}.
+\end{proof}
+
+\begin{theorem}
+    \label{theorem:sampling:wedge:num-samples}
+    Suppose $u^\ast$ is the exact solution to MIPS over $m$ points in $\mathcal{X}$ for query $q$.
+    Define
+    $\sigma_u^2 = \var\Big[Z_{u^\ast} - Z_u\Big]$ and
+    let $\Delta = \min_{u \in \mathcal{X}} \Delta_u$.
+    For $\delta \in (0, 1)$, if we drew $S$ samples such that:
+    \begin{equation*}
+        S \geq \max_{u \neq u^\ast}
+        \frac{(1 + \Delta_u)^2}{\sigma^2_u h(\frac{\Delta_u (1 + \Delta_u)}{\sigma^2_u})}
+        \log \frac{m}{\delta},
+    \end{equation*}
+    where $h(x) = (1 + x)\log(1 + x) - x$, then
+    \begin{equation*}
+        \probability[Z_{u^\ast} > Z_u \quad \forall \; u \neq u^\ast] \geq 1 - \delta.
+    \end{equation*}
+\end{theorem}
+
+Before proving the theorem above, let us make a quick observation.
+Clearly $\sigma^2_u \leq \mathcal{O}(d \Delta_u)$ and $(1 + \Delta_u) \approx 1$.
+Because $h(\cdot)$ is monotone increasing in its argument ($\frac{\partial h}{\partial x} > 0$),
+we can write:
+\begin{align*}
+    \sigma^2_u h(\frac{\Delta_u (1 + \Delta_u)}{\sigma^2_u}) &=
+        \big( \sigma^2_u + \Delta_u(1 + \Delta_u) \big) \log \big( 1 + \frac{\Delta_u (1 + \Delta_u)}{\sigma^2_u} \big) - \Delta_u(1 + \Delta_u) \\
+    &\approx \frac{\Delta_u^2 (1 + \Delta_u)^2}{\sigma^2_u} \geq \frac{\Delta}{d} (1 + \Delta)^2
+    = \mathcal{O}(\frac{\Delta}{d}).
+\end{align*}
+Plugging this into Theorem~\ref{theorem:sampling:wedge:num-samples} gives us
+$S \leq \mathcal{O}(\frac{d}{\Delta} \log \frac{m}{\delta})$.
+
+\begin{svgraybox}
+    Theorem~\ref{theorem:sampling:wedge:num-samples} tells us that, if we draw
+    $\mathcal{O}(\frac{d}{\Delta} \log \frac{m}{\delta})$ samples, we can identify the top-$1$
+    solution to MIPS with high probability. Observe that, $\Delta$ is a measure of the
+    difficulty of the query: When inner products are close to each other, $\Delta$
+    becomes smaller, implying that a larger number of samples would be needed to correctly
+    identify the exact solution.
+\end{svgraybox}
+
+\begin{proof}[Proof of Theorem~\ref{theorem:sampling:wedge:num-samples}]
+    Consider the probability that the registered value of a data point $u$
+    is greater than or equal to the registered value of the solution $u^\ast$
+    once sampling has concluded. That is, $\probability[Z_u \geq Z_{u^\ast}]$.
+    Let us rewrite that quantity as follows:
+    \begin{align*}
+        \probability\Big[Z_u \geq Z_{u^\ast} \Big] &= 
+            \probability \Big[\sum_i Z_{u,i} - Z_{{u^\ast},i} \geq 0 \Big] \\
+        &= \probability\Big[ \sum_{i=1}^S \underbrace{Z_{u,i} - Z_{{u^\ast},i} + \Delta_u}_{Y_{u,i}} \geq \underbrace{S\Delta_u}_{y_u} \Big].
+    \end{align*}
+    Notice that $\ev[Y_{u,i}] = 0$ and that $Y_{u,i}$'s are independent.
+    Furthermore, $Y_{u,i} \leq 1 + \Delta_u$. Letting $Y_u = \sum_i Y_{u,i}$,
+    we can apply Bennett's inequality to bound the probability above:
+    \begin{align*}
+        \probability[ Y_u \geq y_u] &\leq \exp\Bigg(
+            -\frac{S \sigma^2_u}{(1 + \Delta_u)^2}
+            h\Big( \frac{(1 + \Delta_u) (S \Delta_u)}{S \sigma^2_u} \Big)
+        \Bigg).
+    \end{align*}
+    Setting the right-hand-side to $\frac{\delta}{m}$, we arrive at:
+    \begin{align*}
+        \exp&\Bigg(
+            -\frac{S \sigma^2_u}{(1 + \Delta_u)^2}
+            h\Big( \frac{(1 + \Delta_u) \Delta_u}{\sigma^2_u} \Big)
+        \Bigg) \leq \frac{\delta}{m} \\
+        &\implies
+        S (1 + \Delta_u)^{-2} \sigma^2_u h\Big( \frac{\Delta_u(1 + \Delta_u)}{\sigma^2_u} \Big)
+        \geq \log \frac{m}{\delta}.
+    \end{align*}
+    It is easy to see that for $x > 0$, $h(x) > 0$. Observing that $\Delta_u(1 + \Delta_u)/\sigma^2_u$
+    is positive, that implies that $h(\Delta_u(1 + \Delta_u) / \sigma^2_u) > 0$,
+    and therefore we can re-arrange the expression above as follows:
+    \begin{equation}
+        \label{equation:sampling:proof:num-samples}
+        S \geq \frac{(1+ \Delta_u)^2}{\sigma^2_u h\Big( \frac{\Delta_u (1 + \Delta_u)}{\sigma^2_u} \Big)} \log \frac{m}{\delta}.
+    \end{equation}
+
+    We have thus far shown that when $S$ satisfies the
+    inequality in~(\ref{equation:sampling:proof:num-samples}),
+    then $\probability[Y_u \geq y_u] \leq \frac{\delta}{m}$.
+    Going back to the claim, we derive the following bound using the result above:
+    \begin{align*}
+        \probability[ &Z_{u^\ast} > Z_u \quad \forall u \in \mathcal{X}] \\
+        &= 1 - \probability[ \exists \; u \in \mathcal{X} \; \mathit{s.t.} \quad Z_{u^\ast} \leq Z_u] \\
+        &\geq 1 - m \frac{\delta}{m} = 1 - \delta,
+    \end{align*}
+    where we have used the union bound to obtain the inequality.
+\end{proof}
+
+\section{Approximating the Scores}
+The method we have just presented avoids the computation of inner products altogether
+but estimates the \emph{rank} of each data point with respect to a query using a sampling procedure.
+In this section, we introduce another sampling method that approximates the \emph{inner product}
+of every data point instead.
+
+Let us motivate our next algorithm with a rather contrived example.
+Suppose that our data points and queries are in $\mathbb{R}^2$, with the first
+coordinate of vectors drawing values from $\mathcal{N}(0, \sigma_1^2)$
+and the second coordinate from $\mathcal{N}(0, \sigma_2^2)$.
+If we were to compute the inner product of $q$ with every vector $u \in \mathcal{X}$,
+we would need to perform two multiplications and a sum: $u_1q_1 + u_2q_2$.
+That gives us the exact ``score'' of every point with respect to $q$.
+But if $\sigma_1^2 \gg \sigma_2^2$, then by computing $q_1u_1$ for all $u \in \mathcal{X}$,
+it is very likely that we have a good approximation to the 
+final inner product. So we may use the partial inner product as a high-confidence
+estimate of the full inner product.
+
+That is the core idea in this section. For each data point,
+we sample a few dimensions without replacement,
+and compute its partial inner product with the query along the chosen dimensions.
+Based on the scores so far, we can eliminate data points whose full inner product
+is projected, with high confidence, to be too small to make it to the top-$k$ set.
+We then repeat the procedure by sampling
+more dimensions for the remaining data points, until we reach a stopping criterion.
+
+The process above saves us time by shrinking the set of data points
+and computing only partial inner products in each round. But we must decide
+how we should sample dimensions and how we should determine which data points to discard.
+The objective is to minimize the number of samples needed to identify the solution set.
+These are the questions that~\cite{Liu2019banditMIPS} answered in their work,
+which we will review next. We note that, even though~\cite{Liu2019banditMIPS}
+use the Bandit language~\citep{lattimore2020BanditAlgorithms} to
+describe their algorithm, we find it makes for a 
+clearer presentation if we avoided the Bandit terminology.
+
+\subsection{The BoundedME Algorithm}
+
+\begin{algorithm}[!t]
+\SetAlgoLined
+{\bf Input: }{Query point $q \in \mathbb{R}^d$; $k \geq 1$ for top-$k$ retrieval;
+confidence parameters $\epsilon, \delta \in (0, 1)$; and data points $\mathcal{X} \subset \mathbb{R}^d$}\\
+\KwResult{$(1-\delta)$-confident $\epsilon$-approximate top-$k$ set
+to MIPS with respect to $q$.}
+
+\begin{algorithmic}[1]
+
+\STATE $i \leftarrow 1$
+\STATE $\mathcal{X}_i \leftarrow \mathcal{X}$ \Comment*[l]{\footnotesize Initialize the solution set to $\mathcal{X}$.}
+\STATE $\epsilon_i \leftarrow \frac{\epsilon}{4}$ and $\delta_i \leftarrow \frac{\delta}{2}$
+
+\STATE $A_u \leftarrow 0 \quad \forall \; u \in \mathcal{X}_i$ \Comment*[l]{\footnotesize $A$ is a score accumulator.}
+
+\STATE $t_0 \leftarrow 0$
+
+\WHILE{$\lvert \mathcal{X}_i \rvert > k$}
+    \STATE $t_i \leftarrow h\Bigg( \frac{2}{\epsilon_i^2} \log \Big(
+        \frac{2(\lvert \mathcal{X}_i \rvert - k)}{\delta_i (\lfloor \frac{\lvert \mathcal{X}_i \rvert - k}{2} \rfloor + 1)}
+    \Big) \Bigg)$ \label{algorithm:sampling:boundedme:num-samples}
+
+    \FOR{$u \in \mathcal{X}_i$}
+        \STATE Let $\mathcal{J}$ be $(t_i - t_{i - 1})$ dimensions sampled without replacement
+        \label{algorithm:sampling:boundedme:sampled-dimensions}
+        \STATE $A_u \leftarrow A_u + \sum_{j \in \mathcal{J}} u_j q_j$ \Comment*[l]{\footnotesize Compute partial inner product.}\label{algorithm:sampling:boundedme:partial-ip}
+    \ENDFOR
+
+    \STATE Let $\alpha$ be the $\lceil \frac{\lvert \mathcal{X}_i \rvert - k}{2} \rceil$-th score in $A$
+    \STATE $\mathcal{X}_{i + 1} \leftarrow \{ u \in \mathcal{X}_i \; \mathit{ s.t. } \; A_u > \alpha \}$
+    \STATE $\epsilon_{i + 1} \leftarrow \frac{3}{4} \epsilon_i$,
+    $\delta_{i + 1} \leftarrow \frac{\delta_i}{2}$, and $i \leftarrow i + 1$
+\ENDWHILE
+
+\RETURN $X_i$
+\end{algorithmic}
+\caption{The BoundedME algorithm for MIPS.}
+\label{algorithm:sampling:boundedme}
+\end{algorithm}
+
+The top-$k$ retrieval algorithm developed by~\cite{Liu2019banditMIPS} is presented in
+Algorithm~\ref{algorithm:sampling:boundedme}. It is important to note that,
+for the algorithm to be correct---as we will explain later---each partial inner product
+must be bounded. In other words, for query $q$, any data point $u \in \mathcal{X}$,
+and any dimension $t$, we must have that $q_t u_t \in [a, b]$ for some fixed interval.
+This is not a restrictive assumption, however: $q$ can always be normalized without
+affecting the solution to MIPS, and data points $u$ can be scaled into the hypercube.
+In their work,~\cite{Liu2019banditMIPS} assume that partial inner products are 
+in the unit interval.
+
+This iterative algorithm begins with
+the full collection of data points and removes almost half of the data points
+in each iteration. It terminates as soon as the total number of data points left
+is at most $k$.
+
+In each iteration of the algorithm, it accumulates partial inner products
+for all remaining data point along a set of sampled dimensions. Once a dimension
+has been sampled, it is removed from consideration in all future
+iterations---hence, sampling \emph{without} replacement.
+
+The number of dimensions to sample is adaptive and changes from iteration to iteration.
+It is determined using the quantity on Line~\ref{algorithm:sampling:boundedme:num-samples}
+of the algorithm, where the function $h(\cdot)$ is defined as follows:
+\begin{equation}
+    \label{equation:sampling:boundedme:h}
+    h(x) = \min \Big\{ \frac{1 + x}{1 + x/d}, \frac{x + x/d}{1 + x/d} \Big\}.
+\end{equation}
+
+At the end of iteration $i$ with the remaining data points in $\mathcal{X}_i$, the algorithm finds the
+$\lceil \frac{\lvert \mathcal{X}_i \rvert - k}{2} \rceil$-th (i.e., close to the median)
+partial inner product accumulated so far, and discards data points whose
+score is less than that threshold. It then updates the confidence parameters
+$\epsilon$ and $\delta$, and proceeds to the next iteration.
+
+It is rather obvious that, the total number of dimensions along which
+the algorithm computes partial inner products for any given data point
+can never exceed $d$. That is simply because once
+Line~\ref{algorithm:sampling:boundedme:partial-ip} is executed,
+the dimensions in the set $\mathcal{J}$ defined on
+Line~\ref{algorithm:sampling:boundedme:sampled-dimensions}
+are never considered for sampling
+in future iterations. As a result, in the worst case, the algorithm computes
+full inner products in $\mathcal{O}(md)$ operations.
+
+As for the time complexity of Algorithm~\ref{algorithm:sampling:boundedme},
+it can be shown that it requires $\mathcal{O}(\frac{m \sqrt{d}}{\epsilon} \sqrt{\log(1/\delta)})$
+operations. That is simply due to the fact that in each iteration,
+the number of data points is cut in half, combined with the inequality
+$h(x) \leq \mathcal{O}(\sqrt{dx})$ for $x > 0$.
+
+\begin{theorem}
+    \label{theorem:sampling:boundedme:complexity}
+    The time complexity of Algorithm~\ref{algorithm:sampling:boundedme}
+    is $\mathcal{O}(\frac{m \sqrt{d}}{\epsilon} \sqrt{\log(1/\delta)})$.
+\end{theorem}
+
+\begin{svgraybox}
+    Theorem~\ref{theorem:sampling:boundedme:complexity} says that the time complexity
+    of Algorithm~\ref{algorithm:sampling:boundedme} is linear in the number of data points
+    $m$, but sub-linear in the number of dimensions $d$. That is a fundamentally different
+    behavior than all the other algorithms we have presented thus far throughout the preceding
+    chapters.
+\end{svgraybox}
+
+\begin{proof}[Proof of Theorem~\ref{theorem:sampling:boundedme:complexity}]
+    Let us first show the following claim: $h(x) \leq \mathcal{O}(\sqrt{dx})$ for $x > 0$.
+    To prove that, observe that $h(x)$ is the minimum of two positive values $a$ and $b$.
+    As such, $h(x) \leq \sqrt{ab}$. Substituting $a$ and $b$ with the right expressions
+    from Equation~(\ref{equation:sampling:boundedme:h}):
+    \begin{align*}
+        h(x) &\leq \sqrt{\frac{1 + x}{1 + x/d} \frac{x + x/d}{1 + x/d}}
+        = \frac{1}{1 + x/d} \sqrt{x(1 + x)(1 + 1/d)} \\
+        &= \frac{\mathcal{O}(x)}{1 + x/d}
+        = \mathcal{O}(\frac{dx}{d + x}) \leq \mathcal{O}(\sqrt{dx}).
+    \end{align*}
+
+    Note that, in the $i$-th iteration there are at most $m/2^i$ data points to examine.
+    Moreover, for each data point that is eliminated in round $i$, we will have computed
+    at most $t_i$ partial inner products (see Line~\ref{algorithm:sampling:boundedme:num-samples}
+    of Algorithm~\ref{algorithm:sampling:boundedme}).
+    Using these facts, we can calculate the time complexity as follows:
+    \begin{align*}
+        \sum_{i = 1}^{\log m} \frac{m}{2^i} h(t_i) \leq 
+        \sum_{i = 1}^{\log m} \frac{m}{2^i} \sqrt{d t_i} \leq
+        \mathcal{O}\Big(\frac{m \sqrt{d}}{\epsilon} \sqrt{\log\frac{1}{\delta}} \Big).
+    \end{align*}
+\end{proof}
+
+\subsection{Proof of Correctness}
+Our goal in this section is to prove that Algorithm~\ref{algorithm:sampling:boundedme}
+is correct, in the sense that it returns the $\epsilon$-approximate solution to $k$-MIPS
+with probability at least $1 - \delta$:
+
+\begin{theorem}
+    \label{theorem:sampling:boundedme:correctness}
+    Algorithm~\ref{algorithm:sampling:boundedme} is guaranteed to return the $\epsilon$-approximate
+    solution to $k$-MIPS with probability at least $1 - \delta$.
+\end{theorem}
+
+The proof of Theorem~\ref{theorem:sampling:boundedme:correctness} requires the
+concentration inequality due to~\cite{remi2015concentrationInequality}, repeated below
+for completeness.
+
+\begin{lemma}
+    \label{lemma:sampling:concentration-inequality-sampling-wo-replacement}
+    Let $\mathcal{J} \subset [0, 1]$ be a finite set of size $d$
+    with mean $\mu$. Let $\{J_1, J_2, \ldots, J_n\}$ be $n < d$
+    samples from $\mathcal{J}$ without replacement. Then for any $n \leq d$
+    and any $\delta \in [0, 1]$ it holds:
+    \begin{equation*}
+        \probability\Big[
+            \frac{1}{n} \sum_{t = 1}^n J_t - \mu \leq 
+            \sqrt{\frac{\rho_n}{2n} \log \frac{1}{\delta}}
+        \Big] \geq 1 - \delta,
+    \end{equation*}
+    where $\rho_n$ is defined as follows:
+    \begin{equation*}
+        \rho_n = \min \Big\{ 1 - \frac{n - 1}{d}, (1 - \frac{n}{d})(1 + \frac{1}{n}) \Big\}.
+    \end{equation*}
+\end{lemma}
+
+The lemma above guarantees that, with probability at least $1 - \delta$,
+the empirical mean of the samples does not exceed the mean of the universe
+by a specific amount that depends on $\delta$. 
+We now wish to adapt that result to derive a similar guarantee where the difference
+between means is bounded by an arbitrary parameter $\epsilon$.
+That is stated in the following lemma.
+
+\begin{lemma}
+    \label{lemma:sampling:boundedme:concentration}
+    Let $\mathcal{J} \subset [0, 1]$ be a finite set of size $d$
+    with mean $\mu$. Let $\{J_1, J_2, \ldots, J_n\}$ be $n < d$
+    samples from $\mathcal{J}$ without replacement.
+    Then for any $\epsilon, \delta \in (0, 1)$, if we have that:
+    \begin{equation*}
+        n \geq \min \Big\{ \frac{1 + x}{1 + x/d}, \frac{x + x/d}{1 + x/d} \Big\},
+    \end{equation*}
+    where $x = \log(1/\delta)/2\epsilon^2$, then the following holds:
+    \begin{equation*}
+        \probability\Big[
+            \frac{1}{n} \sum_{t = 1}^n J_t - \mu \leq \epsilon
+        \Big] \geq 1 - \delta.
+    \end{equation*}
+\end{lemma}
+\begin{proof}
+    By Lemma~\ref{lemma:sampling:concentration-inequality-sampling-wo-replacement}
+    we can see that:
+    \begin{equation*}
+        \probability\Big[ \frac{1}{n} \sum_{t = 1}^n J_t - \mu \leq \epsilon \Big] \geq 1 - \delta,
+    \end{equation*}
+    so long as:
+    \begin{equation*}
+        \sqrt{\frac{\rho_n}{2n} \log \frac{1}{\delta}} \leq \epsilon \implies
+        \frac{n}{\rho_n} \geq \frac{1}{2\epsilon^2} \log\frac{1}{\delta}.
+    \end{equation*}
+
+    There are two cases to consider. First, if $\rho_n = 1 - (n-1)/d$, then:
+    \begin{align*}
+        \frac{n}{\rho_n} \geq \underbrace{\frac{1}{2\epsilon^2} \log\frac{1}{\delta}}_x
+        &\implies
+        \frac{n}{1 - \frac{n - 1}{d}} \geq x \\
+        &\implies n \geq \frac{x + x/d}{1 + x/d}.
+    \end{align*}
+    In the second case, $\rho_n = (1 - n/d)(1 + 1/n)$, which gives:
+    \begin{align*}
+        \frac{n}{\rho_n} \geq \underbrace{\frac{1}{2\epsilon^2} \log\frac{1}{\delta}}_x
+        &\implies
+        \frac{n}{(1 - \frac{n}{d})(1 + \frac{1}{n})} \geq x \\
+        &\implies n \geq \Big[ 1 + \frac{1}{n} - \frac{n + 1}{d} \Big] x \\
+        &\implies n^2 \geq nx + x - \frac{n^2}{d}x - \frac{n}{d}x \\
+        &\implies (1 + \frac{x}{d}) n^2 - (x - \frac{x}{d})n - x \geq 0.
+    \end{align*}
+    To make the closed-form solution more
+    manageable,~\cite{Liu2019banditMIPS} relax the problem above and solve $n$ in the following
+    problem instead. Note that, any solution to the problem below is a valid solution
+    to the problem above.
+    \begin{align*}
+        (1 + \frac{x}{d}) n^2 - (x - \frac{x}{d})n - x - 1\geq 0
+        &\implies \Big[ (1 + \frac{x}{d}) n - x - 1 \Big][n + 1] \geq 0 \\
+        &\implies n \geq \frac{1 + x}{1 + x/d}.
+    \end{align*}
+
+    By combining the two cases, we obtain:
+    \begin{equation*}
+        n \geq \min \{ \frac{1 + x}{1 + x/d}, \frac{x + x/d}{1 + x/d} \}.
+    \end{equation*}
+\end{proof}
+
+\begin{svgraybox}
+    Lemma~\ref{lemma:sampling:boundedme:concentration} gives us the minimum number of
+    dimensions we must sample so that the partial inner product of a vector with a query
+    is at most $\epsilon$ away from the full inner product, with probability at least
+    $1 - \delta$.
+\end{svgraybox}
+
+Armed with this result, we can now proceed to proving the main theorem.
+
+\begin{proof}[Proof of Theorem~\ref{theorem:sampling:boundedme:correctness}]
+    Denote by $\zeta_i$ the $k$-th largest \emph{full} inner product among
+    the set of data points $\mathcal{X}_i$ in iteration $i$. If we showed that,
+    for two consecutive iterations, the difference between
+    $\zeta_i$ and $\zeta_{i + 1}$ does not exceed $\epsilon_i$ with probability
+    at least $1 - \delta_i$, that is:
+    \begin{equation}
+        \label{equation:sampling:boundedme:correctness:proof}
+        \probability\Big[ \zeta_i - \zeta_{i + 1} \leq \epsilon_i \Big] \geq 1 - \delta_i,
+    \end{equation}
+    then the theorem immediately follows:
+    \begin{equation*}
+        \probability\Big[ \zeta_1 - \zeta_{\log m} \leq \epsilon \Big] \geq 1 - \delta,
+    \end{equation*}
+    because:
+    \begin{equation*}
+        \sum_{i = 1}^{\log m} \delta_i = \sum_{i = 1}^{\log m} \frac{\delta}{2^i} \leq \sum_{i = 1}^{\infty} \frac{\delta}{2^i} = \delta,
+    \end{equation*}
+    and,
+    \begin{equation*}
+        \sum_{i = 1}^{\log m} \epsilon_i = \sum_{i = 1}^{\log m} \frac{\epsilon}{4} \big(\frac{3}{4}\big)^{i - 1}
+        \leq \sum_{i = 1}^{\infty} \frac{\epsilon}{4} \big(\frac{3}{4}\big)^{i - 1} = \epsilon.
+    \end{equation*}
+    So we focus on proving Equation~(\ref{equation:sampling:boundedme:correctness:proof}).
+
+    Suppose we are in the $i$-th iteration. Collect in $\mathcal{Z}_{\epsilon_i}$
+    every data point in $u \in \mathcal{X}_i$ such that $\zeta_i - \langle q, u \rangle \leq \epsilon_i$.
+    That is: $\mathcal{Z}_{\epsilon_i} = \{ u \in \mathcal{X}_i \;|\; \zeta_i - \langle q, u \rangle \leq \epsilon_i \}$. If at least $k$ elements of $\mathcal{Z}_{\epsilon_i}$ end up in $\mathcal{X}_{i + 1}$,
+    the event $\zeta_i - \zeta_{i + 1} \leq \epsilon_i$ succeeds. So, that event fails
+    if there are more than $\lfloor \frac{\lvert \mathcal{X}_i \rvert - k}{2} \rfloor$
+    data points in $\mathcal{X}_i \setminus \mathcal{Z}_{\epsilon_i}$ with partial inner products
+    that are greater than partial inner products of the data points in $\mathcal{Z}_{\epsilon_i}$.
+    Denote the number of such data points by $\beta$.
+
+    What is the probability that a data point $u$ in $\mathcal{X}_i \setminus \mathcal{Z}_{\epsilon_i}$
+    has a higher partial inner product than any data point in $\mathcal{Z}_{\epsilon_i}$?
+    Assuming that $u^\ast$ is the data point that achieves $\zeta_i$, we can write:
+    \begin{align*}
+        \probability\big[ A_u \geq A_v \quad \forall \; v \in \mathcal{Z}_{\epsilon_i} \big]
+        &\leq \probability\big[ A_u \geq A_{u^\ast} \big] \\
+        &\leq \probability\big[
+            A_u \geq \langle q, u \rangle + \frac{\epsilon_i}{2} \;\lor\;
+            A_{u^\ast} \leq \zeta_i - \frac{\epsilon_i}{2}
+        \big] \\
+        &\leq \probability\big[
+            A_u \geq \langle q, u \rangle + \frac{\epsilon_i}{2} \big]
+        + \probability\big[
+            A_{u^\ast} \leq \zeta_i - \frac{\epsilon_i}{2}
+        \big].
+    \end{align*}
+    We can apply Lemma~\ref{lemma:sampling:boundedme:concentration} to obtain that,
+    if the number of sampled dimensions is equal to the quantity on
+    Line~\ref{algorithm:sampling:boundedme:num-samples} of
+    Algorithm~\ref{algorithm:sampling:boundedme}, then the probability above
+    would be bounded by:
+    \begin{equation*}
+        \frac{\lfloor \frac{\lvert \mathcal{X}_i \rvert - k}{2} \rfloor + 1}{\lvert \mathcal{X}_i \rvert - k} \delta_i.
+    \end{equation*}
+
+    Using this result along with Markov's inequality, we can bound the probability that
+    $\beta$ is strictly greater than $\lfloor \frac{\lvert \mathcal{X}_i \rvert - k}{2} \rfloor$
+    as follows:
+    \begin{align*}
+        \probability\Big[ \beta \geq \frac{\lvert \mathcal{X}_i \rvert - k}{2} + 1 \Big]
+        &\leq \frac{\ev[\beta]}{\frac{\lvert \mathcal{X}_i \rvert - k}{2} + 1} \\
+        &\leq \frac{ (\lvert \mathcal{X}_i \rvert - k) \frac{\lfloor \frac{\lvert \mathcal{X}_i \rvert - k}{2} \rfloor + 1}{\lvert \mathcal{X}_i \rvert - k} \delta_i }{\frac{\lvert \mathcal{X}_i \rvert - k}{2} + 1} \\
+        &= \delta_i.
+    \end{align*}
+    That completes the proof of Equation~(\ref{equation:sampling:boundedme:correctness:proof})
+    and, therefore, the theorem.
+\end{proof}
+
+\section{Closing Remarks}
+The algorithms in this chapter were unique in two ways.
+First, they directly took on the challenging problem of MIPS.
+This is in contrast to earlier chapters where MIPS was only an afterthought.
+Second, there is little to no pre-processing involved in the preparation of
+the index, which itself is small in size.
+That is unlike trees, hash buckets, graphs, and clustering
+that require a generally heavy index that itself is computationally-intensive
+to build.
+
+The approach itself is rather unique as well. It is particularly interesting
+because the trade-off between efficiency and accuracy can be adjusted during retrieval.
+That is not the case with trees, LSH, or graphs, where the construction of the index
+itself heavily influences that balance. With sampling methods, it is at least
+theoretically possible to adapt the retrieval strategy to the hardness of the query
+distribution. That question remains unexplored.
+
+Another area that would benefit from further research is the sampling strategy itself.
+In particular, in the BoundedME algorithm, the dimensions that are sampled next
+are drawn randomly. While that simplifies analysis---which follows the analysis of
+popular Bandit algorithms---it is not hard to argue that the strategy is sub-optimal.
+After all, unlike the Bandit setup, where reward distributions are unknown and
+samples from the reward distributions are revealed only gradually,
+here we have direct access to all data points \emph{a priori}.
+Whether and how adapting the sampling strategy to the underlying data or query distribution
+may improve the error bounds or the accuracy or efficiency of the algorithm in practice
+remains to be studied.
+
+\bibliographystyle{abbrvnat}
+\bibliography{biblio}

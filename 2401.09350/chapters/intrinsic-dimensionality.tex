@@ -1,0 +1,288 @@
+\chapter{Intrinsic Dimensionality}
+\label{chapter:intrinsic-dimensionality}
+
+\abstract{
+We have seen that high dimensionality poses difficulties for vector retrieval.
+Yet, judging by the progression from hand-crafted feature vectors to sophisticated
+embeddings of data, we detect a clear trend towards higher dimensional representations of data.
+How worried should we be about this ever increasing dimensionality? This chapter
+explores that question. Its key message is that, even though data points may appear
+to belong to a high-dimensional space, they actually lie on or near a low-dimensional
+manifold and, as such, have a low \emph{intrinsic} dimensionality. This chapter
+then formalizes the notion of intrinsic dimensionality and presents a mathematical
+framework that will be useful in analyses in future chapters.
+}
+
+\section{High-Dimensional Data and Low-Dimensional Manifolds}
+
+We talked a lot about the difficulties of answering $\epsilon$-approximate top-$k$
+questions in high dimensions. We said, in certain situations,
+the question itself becomes meaningless and
+retrieval falls apart. For MIPS, in particular,
+we argued in Theorem~\ref{theorem:instability:orthogonality-random-vectors}
+that points become nearly orthogonal almost surely
+as the number of dimensions increases. But how concerned should we
+be, especially given the ever-increasing dimensionality of
+vector representations of data? Do our data points really
+live in such extremely high-dimensional spaces? Are all the dimensions
+necessary to preserving the structure of our data or do our data points
+have an intrinsically smaller dimensionality?
+
+The answer to these questions is sometimes obvious.
+If a set of points in $\mathbb{R}^d$ lie strictly in a flat subspace 
+$\mathbb{R}^{d_\circ}$ with $d_\circ < d$, then one can simply drop
+the ``unused'' dimensions---perhaps after a rotation.
+This could happen if a pair of coordinates are correlated, for instance.
+No matter what query vector we are performing retrieval
+for or what distance function we use, the top-$k$ set does not change
+whether the unused dimensions are taken into account or the vectors
+corrected to lie in $\mathbb{R}^{d_\circ}$.
+
+Other times the answer is intuitive but not so obvious.
+When a text document is represented as a sparse vector,
+all the document's information is contained entirely in the vector's
+non-zero coordinates. The coordinates that are $0$ do not contribute
+to the representation of the document in any way.
+In a sense then, the intrinsic dimensionality of a collection
+of such sparse vectors is in the order of the number of non-zero
+coordinates, rather than the nominal dimensionality of the space
+the points lie in.
+
+\begin{svgraybox}
+It appears then that there are instances where a collection of points
+have a superficially large number of dimensions, $d$, but that, in fact,
+the points lie in a lower-dimensional space with dimensionality $d_\circ$.
+We call $d_\circ$ the \emph{intrinsic dimensionality} of the point set.
+\end{svgraybox}
+
+This situation, where the intrinsic dimensionality of data is lower than
+that of the space, arises more commonly than one imagines.
+In fact, so common is this phenomenon that in statistical learning theory,
+there are special classes of algorithms~\citep{ma2012manifold}
+designed for data collections that lie on
+or near a low-dimensional submanifold of $\mathbb{R}^d$
+despite their apparent arbitrarily high-dimensional representations.
+
+In the context of vector retrieval, too, the concept of
+intrinsic dimensionality often plays an important role.
+Knowing that data points have a low intrinsic dimensionality means
+we may be able to reduce dimensionality without (substantially) losing
+the geometric structure of the data, including interpoint distances.
+But more importantly, we can design algorithms specifically for
+data with low intrinsic dimensionality, as we will see in later chapters.
+In our analysis of many of these algorithms, too, we often resort
+to this property to derive meaningful bounds and make assertions about
+their performance.
+
+Doing so, however, requires that we formalize the notion of intrinsic dimensionality.
+We often do not have a characterization of the submanifold itself,
+so we need an alternate way of characterizing the low-dimensional
+structure of our data points. In the remainder of this chapter,
+we present two common (and related) definitions of intrinsic dimensionality
+that will be useful in subsequent chapters.
+
+\section{Doubling Measure and Expansion Rate}
+\label{section:intrinsic-dimensionality:doubling-measure}
+
+\cite{karger2002growth-restricted-metrics} characterize intrinsic dimensionality
+as the growth or \emph{expansion} rate of a point set. To understand what that means
+intuitively, place yourself somewhere in the data collection, draw a ball around
+yourself, and count how many data points are in that ball. Now expand the radius
+of this ball by a factor $2$, and count again. The count of data points in a
+``growth-restricted'' point set should increase \emph{smoothly}, rather than suddenly,
+as we make this ball larger.
+
+\begin{svgraybox}
+In other words, data points ``come into view,'' as~\cite{karger2002growth-restricted-metrics}
+put it, at a constant rate as we expand our view, regardless of where we are located.
+We will not encounter massive holes in the space where there are no data points,
+followed abruptly by a region where a large number of vectors are concentrated.
+\end{svgraybox}
+
+The formal definition is not far from the intuitive description above.
+In fact, expansion rate as defined by~\cite{karger2002growth-restricted-metrics}
+is an instance of the following more general definition of a \emph{doubling measure},
+where the measure $\mu$ is the counting measure over a collection of points $\mathcal{X}$.
+
+\begin{definition}
+    \label{definition:doubling-measure}
+    A distribution $\mu$ on $\mathbb{R}^d$ is a \emph{doubling measure} if there is a constant $d_\circ$
+    such that, for any $r > 0$ and $x \in \mathbb{R}^d$, $\mu(B(x, 2r)) \leq 2^{d_\circ} \mu(B(x, r))$.
+    The constant $d_\circ$ is said to be the \emph{expansion rate} of the distribution.
+\end{definition}
+
+One can think of the expansion rate $d_\circ$ as a dimension of sorts.
+In fact, as we will see later, several
+works~\citep{dasgupta2015rptrees,karger2002growth-restricted-metrics,covertrees}
+use this notion of intrinsic dimensionality to design algorithms for
+top-$k$ retrieval or utilize it to derive performance guarantees for
+vector collections that are drawn from a doubling measure.
+That is the main reason we review this definition of intrinsic dimensionality
+in this chapter.
+
+While the expansion rate is a reasonable way of describing the structure of a set of
+points, it is unfortunately not a stable indicator. It can suddenly blow up,
+for example, by the addition of a single point to the set. As a concrete example,
+consider the set of integers between $\lvert r \rvert$ and $\lvert 2r \rvert$
+for any arbitrary value of $r$: $\mathcal{X} = \{ u \in \mathbb{Z} \;|\; r < \lvert u \rvert < 2r \}$.
+The expansion rate of the resulting set is constant because no matter
+which point we choose as the center of our ball, and regardless of our choice
+of radius, doubling the radius brings points into view at a constant rate.
+
+What happens if we added the origin to the set, so that our set becomes $\{ 0 \} \cup \mathcal{X}$?
+If we chose $0$ as the center of the ball, and set its radius to $r$,
+we have a single point in the resulting ball. The moment we double $r$,
+the resulting ball will contain the entire set! In other words, the expansion rate
+of the updated set is $\log m$ (where $m = \lvert \mathcal{X} \rvert$).
+
+It is easy to argue that a subset of a set with bounded expansion rate
+does not necessarily have a bounded expansion rate itself.
+This unstable behavior is less than ideal, which is why a more robust notion
+of intrinsic dimensionality has been developed.
+We will introduce that next.
+
+\section{Doubling Dimension}
+\label{section:intrinsic-dimensionality:doubling-dimension}
+
+Another idea to formalize intrinsic dimensionality that has worked well
+in algorithmic design and anlysis is the \emph{doubling dimension}. It was introduced
+by~\cite{gupta2003doublingDimension} but is closely related to the
+Assouad dimension~\citep{Assouad1983}. It is defined as follows.
+
+\begin{definition}
+    \label{definition:doubling-dimension}
+    A set $\mathcal{X} \subset \mathbb{R}^d$ is said to have doubling dimension $d_\circ$ if
+    $B(\cdot, 2r) \cap \mathcal{X}$, the intersection of any ball of radius $2r$ with the set,
+    can be covered by at most $2^{d_\circ}$ balls of radius $r$.
+\end{definition}
+
+The base $2$ in the definition above can be replaced with any other
+constant $k$: The doubling dimension of $\mathcal{X}$ is $d_\circ$ if
+the intersection of any ball of radius $r$ with the set
+can be covered by $\mathcal{O}(k^{d_\circ})$ balls of radius $r/k$.
+Furthermore, the definition can be easily extended to any metric space,
+not just $\mathbb{R}^d$ with the Euclidean norm.
+
+The doubling dimension is a different notion from the expansion rate as defined in
+Definition~\ref{definition:doubling-measure}. The two, however, are in some sense related,
+as the following lemma shows.
+
+\begin{lemma}
+    \label{lemma:intrinsic-dimensionality:doubling-relationship}
+    The doubling dimension, $d_\circ$ of any finite metric $(X, \delta)$
+    is bounded above by its expansion rate, $d_\circ^{\textsc{kr}}$ times $4$:
+    $d_\circ \leq 4 d_\circ^{\textsc{kr}}$.
+\end{lemma}
+\begin{proof}
+    Fix a ball $B(u, 2r)$ and let $S$ be its $r$-net. That is,
+    $S \subset X$, the distance
+    between any two points in $S$ is at least $r$, and
+    $\mathcal{X} \subseteq \bigcup_{u \in S} B(u, r)$. We have that:
+    \begin{equation*}
+        B(u, 2r) \subset \bigcup_{v \in S} B(v, r) \subset B(u, 4r).
+    \end{equation*}
+    By definition of the expansion rate, for every $v \in S$:
+    \begin{equation*}
+        \big\lvert B(u, 4r) \big\rvert \leq \big\lvert B(v, 8r) \big\rvert
+        \leq 2^{4 d_\circ^{\textsc{kr}}} \big\lvert B(v, \frac{r}{2}) \big\rvert.
+    \end{equation*}
+    Because the balls $B(v, r/2)$ for all $v \in S$ are disjoint, it follows that
+    $\lvert S \rvert \leq 2^{4 d_\circ^{\textsc{kr}}}$, so that
+    $2^{4 d_\circ^{\textsc{kr}}}$ many balls of radius $r$ cover $B(u, 2r)$.
+    That concludes the proof.
+\end{proof}
+
+\begin{svgraybox}
+The doubling dimension and expansion rate both quantify the intrinsic dimensionality of a point set.
+But Lemma~\ref{lemma:intrinsic-dimensionality:doubling-relationship}
+shows that, the class of doubling metrics (i.e., metric spaces with a constant doubling dimension)
+contains the class of metrics with a bounded expansion rate.
+\end{svgraybox}
+
+The converse of the above lemma is not true. In other words,
+there are sets that have a bounded doubling dimension, but whose
+expansion rate is unbounded. The set,
+$\mathcal{X} = \{ 0 \} \cup \{ u \in \mathbb{Z} \;|\; r < \lvert u \rvert < 2r \}$,
+from the previous section is one example where this happens.
+From our discussion above, its expansion rate is $\log \lvert \mathcal{X} \rvert$.
+It is easy to see that the doubling dimension of this set, however, is constant.
+
+\subsection{Properties of the Doubling Dimension}
+
+It is helpful to go over a few concrete examples of point sets with bounded
+doubling dimension in order to understand a few properties of this definition of
+intrinsic dimensionality.
+We will start with a simple example: a line segment in $\mathbb{R}^d$ with the Euclidean
+norm.
+
+If the set
+$\mathcal{X}$ is a line segment, then its intersection with a ball of radius $r$
+is itself a line segment. Clearly, the intersection set can be covered with two
+balls of radius $r/2$. Therefore, the doubling dimension $d_\circ$ of $\mathcal{X}$
+is $1$.
+
+We can extend that result to any affine set in $\mathbb{R}^d$ to obtain the following
+property:
+
+\begin{lemma}
+    \label{lemma:intrinsic-dimensionality:k-dimensional-flat}
+    A $k$-dimensional flat in $\mathbb{R}^d$ has doubling dimension $\mathcal{O}(k)$.
+\end{lemma}
+\begin{proof}
+    The intersection of a ball in $\mathbb{R}^d$ and a $k$-dimensional flat is a ball in
+    $\mathbb{R}^k$.
+    It is a well-known result that the size of an $\epsilon$-net of a 
+    unit ball in $\mathbb{R}^k$ is at most $(C/\epsilon)^k$ for some small
+    constant $C$. As such, a ball of radius $r$ can be covered with $2^{\mathcal{O}(k)}$
+    balls of radius $r/2$, implying the claim.
+\end{proof}
+
+The lemma above tells us that the doubling dimension of a set in the Euclidean space
+is at most some constant factor larger than the natural dimension of the space;
+note that this was not the case for the expansion rate.
+Another important property that speaks to the stability of the doubling dimension
+is the following, which is trivially true:
+
+\begin{lemma}
+    Any subset of a set with doubling dimension $d_\circ$ itself has doubling dimension $d_\circ$.
+\end{lemma}
+
+The doubling dimension is also robust under the addition of points to the set,
+as the following result shows.
+
+\begin{lemma}
+    \label{lemma:intrinsic-dimensionality:union}
+    Suppose sets $\mathcal{X}_i$ for $i \in [n]$ each have doubling dimension $d_\circ$.
+    Then their union has doubling dimension at most $d_\circ + \log n$.
+\end{lemma}
+\begin{proof}
+    For any ball $B$ of radius $r$, $B \cap \mathcal{X}_i$ can be covered with
+    $2^{d_\circ}$ balls of half the radius. As such, at most $n2^{d_\circ}$ balls
+    of radius $r/2$ are needed to cover the union. The doubling dimension of the union
+    is therefore $d_\circ + \log n$.
+\end{proof}
+
+One consequence of the previous two lemmas is the following statement concerning sparse
+vectors:
+
+\begin{lemma}
+    \label{lemma:intrinsic-dimensionality:sparse}
+    Suppose that $\mathcal{X} \subset \mathbb{R}^d$ is a collection of sparse vectors,
+    each having at most $n$ non-zero coordinates. Then the doubling dimension of $\mathcal{X}$
+    is at most $Ck + k \log d$ for some constant $C$.
+\end{lemma}
+\begin{proof}
+    $\mathcal{X}$ is the union of $\binom{d}{n} \leq d^n$ $n$-dimensional flats.
+    Each of these flats has doubling dimension $Ck$ for some universal constant $C$,
+    by Lemma~\ref{lemma:intrinsic-dimensionality:k-dimensional-flat}.
+    By the application of Lemma~\ref{lemma:intrinsic-dimensionality:union},
+    we get that the doubling dimension of $\mathcal{X}$ is at most $Cn + n \log d$.
+\end{proof}
+
+\begin{svgraybox}
+    Lemma~\ref{lemma:intrinsic-dimensionality:sparse} states that collections of
+    sparse vectors in the Euclidean space are naturally described by the doubling dimension. 
+\end{svgraybox}
+
+\bibliographystyle{abbrvnat}
+\bibliography{biblio}
