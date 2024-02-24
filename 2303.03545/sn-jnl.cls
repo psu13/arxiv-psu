@@ -207,84 +207,8 @@
 \def\@textsubscript#1{%
   {\m@th\ensuremath{_{\mbox{\fontsize\sf@size\z@#1}}}}}%
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%% Layout Settings %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%
-%%\RequirePackage{geometry}%
-%
-\newlength\columnhsize%
-%
-%% Regular Pages (for Opening page - redefined)
-%
-\if@iicol%
-%
-%% for double column used sn-medium design trim and page size %%
-%
-\setlength\paperwidth{193mm}%
-\setlength\paperheight{260mm}%
-%
-\setlength\textwidth{160mm}%
-\setlength\textheight{216mm}%
-%
-\setlength\headheight{12pt}%
-\setlength\headsep{5.15mm}%
-%
-\setlength\columnsep{8mm}%
-\setlength\columnhsize{76mm}%
-%
-\setlength\maxdepth{0pt}%
-\setlength\footnotesep{7\p@}%
-\setlength{\skip\footins}{18\p@ \@plus 6\p@ \@minus 3\p@}%
-%
-\RequirePackage[%
-    reversemp,
-    paperwidth=193mm,
-    paperheight=260mm,
-    top={19.29mm},
-    headheight={12pt},
-    headsep={5.15mm},
-    text={160mm,216mm},
-    marginparsep=5mm,
-    marginparwidth=12mm,
-    bindingoffset=6mm,
-    footskip=10.13mm,twocolumn]{geometry}%
-%
-\renewcommand\footnoterule{%
-  \kern3\p@%
-  \hrule \@height.2mm \@width\columnwidth%
-  \kern5.5\p@}%
-%
-\else%
-%% For single column used smallcond design trim and page size %%
-\RequirePackage[%
-    reversemp,
-    paperwidth=155mm,
-    paperheight=235mm,
-    top={19.5mm},
-    headheight={5.5pt},
-    headsep={5.6mm},
-    text={119mm,194.25mm},
-    marginparsep=5mm,
-    marginparwidth=12mm,
-    bindingoffset=6mm,
-    footskip=10mm]{geometry}
-%
-    \setlength\maxdepth{0pt}%
-    \setlength\columnsep{5mm}%
-    \setlength{\marginparsep}{5mm}%
-    \setlength{\marginparwidth}{12mm}%
-    \setlength\footnotesep{5.75\p@}%
-    \setlength{\skip\footins}{8\p@ \@plus 4\p@ \@minus 0\p@}%
-%
-\renewcommand\footnoterule{%
-  \kern3\p@%
-  \ifodd\c@page%
-     \hrule \@height.2mm \@width\textwidth%
-  \else%
-     \hrule \@height.2mm \@width37mm
-  \fi%
-  \kern5.5\p@}%
-%
-\fi%
+\usepackage[papersize={6.0in, 10.0in}, left=.5in, right=.5in, top=.6in, bottom=.9in]{geometry}
+
 %
 %
 \setlength\parindent{1.5em}%
