@@ -357,7 +357,7 @@
 \renewcommand\refname{References}%
 \renewcommand\figurename{Fig.}% defined as per springer style 
 \renewcommand\tablename{Table}%
-\renewcommand\appendixname{Supplementary Materials}%
+\renewcommand\appendixname{\!\!}%
 \renewcommand\abstractname{Abstract}%
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%% Article Front Matter %%%%%%%%%%%%%%%%%%%%%%%%%%%
