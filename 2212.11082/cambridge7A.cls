@@ -574,7 +574,7 @@
 %\ifAJW@largesty
 %  \AJW@measure 30pc
 %\else
-   \AJW@measure 26pc
+   \AJW@measure 4.6in
 %\fi
 \textwidth\AJW@measure
 \ifAJW@landscape
