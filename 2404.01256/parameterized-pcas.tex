@@ -1,0 +1,539 @@
+\section{Parameterized partial combinatory algebras}
+\label{sec:parameterized-part-comb}
+
+We seek a topos in which a Miller sequence is an epimorphism from the natural numbers to the Dedekind reals. Some sort of realizability model seems appropriate, although it cannot be an ordinary realizability topos, as those validate the axiom of countable choice.
+%
+\Cref{def:sequence-computable} specifies that $n \in \NN$ realizes $x \in [0,1]$ when it does so \emph{parameterically} in oracles representing $a : \NN \to [0,1]$. Therefore, in the present section we develop a general notion of parameterized computational models.
+
+Let us take a moment to introduce notation that is commonly used in realizability theory. We already wrote $f : A \parto B$ to indicate a \defemph{partial map}, which is a map $f : A' \to B$ defined on a subset $A' \subseteq B$. For $x \in A$ we write $\defined{f(x)}$ when $f(x)$ is defined, i.e., when $x \in A'$. More generally, we write $\defined{e}$ when the expression~$e$ is well-defined, and hence so are all of its subexpressions. If $e_1$ and $e_2$ are two possibly undefined expressions, then $e_1 \kleq e_2$ means that if one is defined then so is the other and they are equal. In contrast, $e_1 = e_2$ asserts that both sides are defined and equal.
+
+In realizability theory logical statements are witnessed by \emph{realizers}, which may be numbers, $\lambda$-terms, sequences or other data. A realizer is meant to represent computational evidence of a statement.
+For instance, a realizer for $\some{x} \phi(x)$ encodes a specific $a$ for which $\phi(a)$ holds as well as a realizer for $\phi(a)$, and a realizer for $\phi \to \psi$ encodes a procedure for converting realizers for $\phi$ into realizers for $\psi$. In~\cref{sec:heyt-prealg-struct} we shall make these ideas precise.
+
+In Stephen Kleene's original realizability interpretation of Heyting arithmetic~\cite{KleeneSC:intint} the realizers were numbers, whereas in a typical modern framework they are elements of a structure first defined by Solomon Feferman~\cite{feferman75}:
+
+\begin{definition}
+  \label{def:pca}%
+  A \defemph{partial combinatory algebra (pca)} is given by a \defemph{carrier set} $\AA$, and a partial \defemph{application} operation ${\app} : \AA \times \AA \parto \AA$, such that there exist \defemph{basic combinators} $\combK, \combS \in \AA$ satisfying, for all $\R{a}, \R{b}, \R{c} \in \AA$,
+  %
+  \begin{align*}
+    &\defined{(\combK \app \R{a})}, &
+    (\combK \app \R{a}) \app \R{b} &= \R{a}, \\
+    &\defined{((\combS \app \R{a}) \app \R{b})}, &
+    ((\combS \app \R{a}) \app \R{b}) \app \R{c} &\kleq (\R{a} \app \R{c}) \app (\R{b} \app \R{c}).
+  \end{align*}
+\end{definition}
+
+\noindent
+To make notation more economical, we write application $\R{a} \app \R{b}$ as juxtaposition $\R{a} \, \R{b}$ and associate it to the left, $\R{a} \, \R{b} \, \R{c} = (\R{a} \, \R{b}) \, \R{c}$.
+
+A non-trivial pca has much richer structure as it may seem at first sight.
+%
+For instance, we may encode in it the natural numbers and partial computable functions, as we shall for parameterized pcas in \cref{sec:progr-with-ppcas}.
+
+\begin{example}
+  \label{ex:pca-K-1}%
+  The so-called Kleene's first algebra is the pca with the carrier set $\KK_1 \defeq \NN$ and application $m \cdot n \defeq \pr{m}(n)$, where $\pr{m}$ is the $m$-th partial computable map.
+  %
+  For any oracle $\alpha \in \Cantor$ the relativized version $\KK[\alpha]_1$ has the same carrier set and application $m \cdot n \defeq \pr[\alpha]{m}(n)$.
+\end{example}
+
+We refer to~\cite{oosten08:_realiz} for further examples of pcas and press on to the definition of parameterized pcas.
+
+\begin{definition}
+  \label{def:ppca}%
+  A \defemph{parameterized partial combinatory algebra (ppca)} is given by
+  %
+  \begin{itemize}
+  \item a \defemph{carrier set} $\AA$, whose elements are called \defemph{realizers},
+  \item a non-empty \defemph{parameter set} $\PP$, whose elements are called \defemph{parameters},
+  \item a partial \defemph{application} operation ${\app} : \PP \times \AA \times \AA \parto \AA$,
+  \end{itemize}
+  %
+  such that there exist \defemph{basic combinators} $\combK, \combS \in \AA$, satisfying, for all $p, q \in \PP$ and $\R{a}, \R{b}, \R{c} \in \AA$,
+  %
+  \begin{align*}
+    &\combK \app[p] \R{a} = \combK \app[q] \R{a},
+    &
+    \combK \app[p] \R{a} \app[p] \R{b} &= \R{a},
+    \\
+    &\combS \app[p] \R{a} = \combS \app[q] \R{a},
+    &
+    \combS \app[p] \R{a} \app[p] \R{b} \app[p] \R{c} &\kleq (\R{a} \app[p] \R{c}) \app[p] (\R{b} \app[p] \R{c}),
+    \\
+    &\combS \app[p] \R{a} \app[p] \R{b} = \combS \app[q] \R{a} \app[q] \R{b}.
+  \end{align*}
+  %
+\end{definition}
+
+The equations in the left column imply $\defined{(\combK \app[p] \R{a})}$ and $\defined{(\combS \app[p] \R{a} \app[p] \R{b})}$ for all $p \in \PP$ and $\R{a}, \R{b} \in \AA$.
+%
+For better readability we continued to write application as juxtaposition and let it associate to the left,
+but we still need a better way of displaying the parameters, which we do by writing $p \at e$ to specify
+that all applications in expression~$e$ should use parameter~$p$. We assign~$\at$ a lower precedence than to application so that $p \at e_1 \app e_2 = p \at (e_1 \app e_2)$. For example, the above equations can be written as
+%
+\begin{align*}
+  &p \at \combK \, \R{a} = q \at \combK \, \R{a},
+  &p \at \combK \, \R{a} \, \R{b} &= \R{a},
+  \\
+  &p \at \combS \, \R{a} = q \at \combS \, \R{a},
+  &p \at \combS \, \R{a} \, \R{b} \, \R{c} &\kleq p \at (\R{a} \, \R{c}) \, (\R{b} \, \R{c}),
+  \\
+  &p \at \combS \, \R{a} \, \R{b} = q \at \combS \, \R{a} \, \R{b}.
+\end{align*}
+%
+We sometimes write parentheses around $p \at e$ to improve readability, especially in equations.
+A formal account of notation $p \at e$ is given in \cref{sec:comb-compl-ppcas}.
+
+
+When no confusion may arise, we take the liberty of referring to a ppca $(\AA, \PP, {\cdot})$ just by the pair $(\AA, \PP)$.
+
+\begin{example}
+  An ordinary pca may be construed as a ppca whose parameter set is a singleton.
+\end{example}
+
+\begin{example}
+  \label{ex:oracle-ppca}
+  %
+  The following is our main motivating example.
+  %
+  Recall from \cref{sec:oracle-comp-maps} that $\pr[\alpha]{m}$ stands for the partial $\alpha$-computable map coded by~$m$.
+  %
+  Let the carrier of the ppca be $\KK \defeq \NN$,
+  the parameter set any non-empty set of oracles $\PP \subseteq \Cantor$,
+  and application $m \app[\alpha] n \defeq \pr[\alpha]{m}(n)$.
+
+  The combinator~$\combK$ is the code of a machine which accepts input~$n$ and outputs the code of a machine that always outputs~$n$. Such a machine does not consult the oracle, and neither does the machine that always outputs~$n$, hence $\combK \app[\alpha] n = \combK \app[\beta] n$ for all $n \in \NN$.
+
+  To obtain~$\combS$, we apply the relativized smn theorem~\cite[Sect.~III.1.5]{soare87:_recur_enumer_sets_degrees} to first get a computable map $f : \NN \times \NN \to \NN$ such that
+  %
+  \begin{equation*}
+    \pr[\alpha]{f(k, m)}(n) \simeq \pr[\alpha]{\pr[\alpha]{k}(n)}(\pr[\alpha]{m}(n)).
+  \end{equation*}
+  %
+  We apply the theorem again to get a computable $g : \NN \to \NN$ such that
+  %
+  $\pr[\alpha]{g(k)}(m) = f(k, m)$, and let $\combS \in \NN$ be such that $\pr[\alpha]{\combS} = g$.
+  %
+  For all $\alpha \in \PP$ and $k, m \in \NN$ we have
+  %
+  \begin{equation*}
+    \combS \app[\alpha] k =
+    \pr[\alpha]{\combS}(k) =
+    g(k)
+  \end{equation*}
+  %
+  and
+  %
+  \begin{equation*}
+    \combS \app[\alpha] k \app[\alpha] m =
+    \pr[\alpha]{\pr[\alpha]{\combS}(k)}(m) =
+    \pr[\alpha]{g(k)}(m) =
+    f(k, m).
+  \end{equation*}
+  %
+  Being computable, $g$ and $f$ do not depend on the oracle, therefore
+  $\combS \app[\alpha] k = \combS \app[\beta] k$
+  and
+  $\combS \app[\alpha] k \app[\alpha] m = \combS \app[\beta] k \app[\beta] m$ for all $\beta \in \PP$.
+  Finally, the defining equation for~$f$ guarantees that
+  $\combS \app[\alpha] k \app[\alpha] m \app[\alpha] n \simeq
+   (k \app[\alpha] n) \app[\alpha] (m \app[\alpha] n)$.
+\end{example}
+
+
+\begin{example}
+  \label{ex:general-oracle-ppca}%
+  %
+  The previous example generalizes to Jaap van Oosten's construction~\cite[Thm~1.7.5]{oosten08:_realiz} which from any pca $(\AA, {\cdot})$ and a partial map $\xi : \AA \parto \AA$ constructs a new pca $(\AA^\xi, {\app[\xi]})$ with~$\xi$ acting as an oracle.
+  The carrier set is unchanged $\AA^\xi \defeq \AA$, while application~$\app[\xi]$ represents a dialogue between a computation in~$\AA$ and the oracle~$\xi$.
+  %
+  When the construction is applied to $\KK_1$ and $\alpha \in \Cantor$, we obtain a pca that is (isomorphic to)
+  the relativized pca $\KK[\alpha]_1$ from \cref{ex:pca-K-1}.
+
+  As it turns out, the construction is uniform in~$\xi$, in the sense that $\combK_\xi, \combS_\xi \in \AA^\xi$ do not depend on~$\xi$, and neither do $\combK_\xi \app[\xi] \R{a}$, $\combS_\xi \app[\xi] \R{a}$, and $\combS_\xi \app[\xi] \R{a} \app[\xi] \R{b}$.
+  %
+  The conditions for having a ppca are thus met: the carrier set is $\AA$ and the parameter set is any non-empty
+  subset $\PP \subseteq \AA \parto \AA$.
+\end{example}
+
+% Andrew Swan says every ppca is of the above form.
+
+
+\subsection{Combinatory completeness of ppcas}
+\label{sec:comb-compl-ppcas}
+
+Partial combinatory algebras have the so-called property of \emph{combinatory completeness}.
+We formulate an analogous notion for parameterized pcas.
+
+The set of~\defemph{expressions in variables $x_1, \ldots, x_n$} over a ppca $(\AA, \PP)$ is defined inductively:
+any variable $x_i$ is an expression, any constant $\R{a} \in \AA$ is an expression, and a formal application $e_1 \cdot e_2$ is an expression if~$e_1$ and~$e_2$ are.
+%
+We continue to write application as juxtaposition and associate it to the left.
+%
+An expression~$e$ in no variables is \defemph{closed}. For any $p \in \PP$ and a closed expression~$e$,
+define $p \at e$ recursively by
+%
+\begin{align*}
+  p \at \R{a} &\defeq \R{a} &&\text{if $\R{a} \in \AA$,}
+  \\
+  (p \at e_1 \app e_2) &\defeq (p \at e_1) \app[p] (p \at e_2)
+  &&\text{if $e_1$ and $e_2$ are closed expressions.}
+\end{align*}
+%
+Note that $p \at e$ may be undefined.
+
+For a variable $x$ and an expression $e$, let the \defemph{abstraction} $\abstr{x} e$ be the expression defined inductively as
+%
+\begin{align*}
+  \abstr{x} y &\defeq \combK \, y & &\text{if $y$ is a variable distinct from $x$} \\
+  \abstr{x} x &\defeq \combS \, \combK \, \combK \\
+  \abstr{x} \R{a} &\defeq \combK \, a & &\text{for a constant $\R{a} \in \AA$} \\
+  \abstr{x} e_1 e_2 &\defeq \combS \, (\abstr{x} e_1) \, (\abstr{x} e_2).
+\end{align*}
+%
+We write $e[\R{a}_1/x_1, \ldots, \R{a}_n/x_n]$ for $e$ with $\R{a}_i$'s substituted for~$x_i$'s. We abbreviate the substitution $[\R{a}_1/x_1, \ldots, \R{a}_n/x_n]$ as $[\vec{\R{a}}/\vec{x}]$, which allows us to write $e[\vec{\R{a}}/\vec{x}]$. To be precise, substitution is defined as follows:
+%
+\begin{align*}
+  x_i [\vec{\R{a}}/\vec{x}] &\defeq \R{a}_i \\
+  y [\vec{\R{a}}/\vec{x}] &\defeq y &&\text{if $y \not\in \set{x_1, \ldots, x_n}$} \\
+  \R{b} [\vec{\R{a}}/\vec{x}] &\defeq \R{b} &&\text{if $\R{b} \in \AA$} \\
+  (e_1 \, e_2) [\vec{\R{a}}/\vec{x}] &\defeq (e_1[\vec{\R{a}}/\vec{x}]) \, (e_2[\vec{\R{a}}/\vec{x}]).
+\end{align*}
+
+\begin{lemma}
+  \label{lem:abstr-subst-commute}%
+  If $y \not\in \set{x_1, \ldots, x_n}$ then $(\abstr{y} e)[\vec{\R{a}}/\vec{x}] = \abstr{y} (e[\vec{\R{a}}/\vec{x}])$.
+\end{lemma}
+
+\begin{proof}
+  A straightforward induction on the structure of~$e$.
+\end{proof}
+
+
+\begin{lemma}
+  \label{lem:abstr-p-defined}
+  For any expression~$e$ in variables $x_1, \ldots, x_n, y$, the value $p \at (\abstr{y} e)[\vec{\R{a}}/\vec{x}]$ is defined for all $p \in \PP$ and $\R{a}_1, \ldots, \R{a}_n \in \AA$.
+\end{lemma}
+
+\begin{proof}
+  We proceed by induction on the structure of~$e$:
+  % 
+  \begin{itemize}
+  \item if $e = x_i$ then $p \at (\abstr{y} e)[\vec{\R{a}}/\vec{x}] = \combK \app[p] \R{a}_i$, which is defined,
+  \item if $e = y$ then $p \at (\abstr{y} e)[\vec{\R{a}}/\vec{x}] = \combS \app[p] \combK \app[p] \combK$, which is defined,
+  \item if $e = \R{a}$ for $\R{a} \in \AA$ then $p \at (\abstr{y} e)[\vec{\R{a}}/\vec{x}] = \combK \app[p] \R{a}$, which is defined,
+  \item if $e = e_1 \app e_2$ then
+    % 
+    $
+    p \at (\abstr{y} e)[\vec{\R{a}}/\vec{x}] =
+    \combS \app[p] ((\abstr{y} e_1)[\vec{\R{a}}/\vec{x}]) \app[p] ((\abstr{y} e_2)[\vec{\R{a}}/\vec{x}])
+    $,
+    % 
+    which is defined because by induction hypotheses both arguments of~$\combS$ are defined.
+    \qedhere
+  \end{itemize}
+\end{proof}
+
+\begin{lemma}
+  \label{lem:abstr-compute}%
+  %
+  For any expression $e$ in variables $x_1, \ldots, x_n, y$, parameter $p \in \PP$, and $\R{a}_1, \ldots, \R{a}_n, \R{b} \in \AA$, 
+  % 
+  \begin{equation*}
+    p \at ((\abstr{y} e) \, \R{b})[\vec{\R{a}}/\vec{x}] \kleq p \at e[\vec{\R{a}}/\vec{x}, \R{b}/y].
+  \end{equation*}
+\end{lemma}
+
+\begin{proof}
+  We proceed by induction on the structure of~$e$. If $e = x_i$ then
+%
+\begin{equation*}
+  p \at ((\abstr{y} x_i) \, \R{b})[\vec{\R{a}}/\vec{x}] \kleq
+  p \at \combK \, \R{a}_i \, \, \R{b} =
+  p \at \R{a}_i =
+  p \at x_i[\vec{\R{a}}/\vec{x}, \R{b}/y].
+\end{equation*}
+%
+If $e = y$ then
+%
+\begin{equation*}
+  p \at ((\abstr{y} y) \, \R{b})[\vec{\R{a}}/\vec{x}] \kleq
+  p \at \combS \, \combK \, \combK \, \R{b} =
+  p \at \R{b} =
+  p \at y[\vec{\R{a}}/\vec{x}, \R{b}/y].
+\end{equation*}
+%
+If $e = \R{a} \in \AA$ then
+%
+\begin{equation*}
+  p \at ((\abstr{y} \R{a}) \, \R{b})[\vec{\R{a}}/\vec{x}] \kleq
+  p \at \combK \, \R{a} \, \, \R{b} =
+  p \at \R{a} =
+  p \at \R{a}[\vec{\R{a}}/\vec{x}, \R{b}/y].
+\end{equation*}
+%
+Finally, if $e = e_1 \, e_2$ then
+%
+\begin{align*}
+  p \at ((\abstr{y} e_1 \, e_2) \, \R{b})[\vec{\R{a}}/\vec{x}]
+  &\kleq
+  p \at \combS \, ((\abstr{y} e_1)[\vec{\R{a}}/\vec{x}]) \, ((\abstr{y} e_2)[\vec{\R{a}}/\vec{x}]) \, \R{b} \\
+  &\kleq
+  p \at ((\abstr{y} e_1)[\vec{\R{a}}/\vec{x}] \, \R{b}) \, ((\abstr{y} e_2)[\vec{\R{a}}/\vec{x}] \, \R{b}) \\
+  &\kleq
+  p \at (e_1[\vec{\R{a}}/\vec{x},\R{b}/y]) \, (e_2[\vec{\R{a}}/\vec{x},\R{b}/y]) \\
+  &\kleq
+  p \at (e_1 \, e_2)[\vec{\R{a}}/\vec{x},\R{b}/y].
+\end{align*}
+%
+The passage from the first to the second row is secured by \cref{lem:abstr-p-defined}, and from the third to the fourth by the induction hypotheses.
+\end{proof}
+
+Let us give a name to those expressions that are independent of the parameter.
+
+\begin{definition}
+  \label{def:uniform}%
+  A closed expression~$e$ is \defemph{uniform} when $p \at e = q \at e$ for all $p, q \in \PP$.
+  When this is the case, there is a unique $\ucode{e} \in \AA$ such that $p \at e = \ucode{e}$ for all $p \in \PP$.
+\end{definition}
+
+\Cref{def:ppca} postulates that $\combK \, \R{a}$ and $\combS \, \R{a} \, \R{b}$ are uniform for all $\R{a}, \R{b} \in \AA$. In subsequent calculations we shall frequently use the fact that $p \at \ucode{e} = p \at e$ when~$e$ is uniform.
+
+\begin{lemma}
+  \label{lem:abstr-uniform}%
+  A closed abstraction $\abstr{x} e$ is uniform.
+\end{lemma}
+
+\begin{proof}
+  We proceed by induction on the structure of~$e$.
+  If $e$ is the variable $x$ then $\abstr{x} e = \combS \, \combK \, \combK$, which is uniform.
+  If $e$ is a constant $\R{a} \in \AA$ then $\abstr{x} e = \combK \, \R{a}$, which is uniform.
+  If $e = e_1 \, e_2$ then $\abstr{x} e = \combS \, (\abstr{x} e_1) \, (\abstr{x} e_2)$, which is uniform by induction hypotheses.
+\end{proof}
+
+
+\begin{theorem}[Combinatory completeness]
+  For any expression~$e$ over a ppca $(\AA, \PP)$ in variables~$x_1, \ldots, x_n, x_{n+1}$, there is $e^{*} \in \AA$ such that, for all $p \in \PP$ and $\R{a}_1, \ldots, \R{a}_{n+1} \in \AA$, the expression $e^{*} \, \R{a}_1 \cdots \R{a}_n$ is uniform and
+  \begin{equation*}
+    (p \at e^{*} \, \R{a}_1 \cdots \R{a}_{n+1})
+    \kleq
+    (p \at e[\R{a}_1/x_1, \ldots, \R{a}_{n+1}/x_{n+1}]).
+  \end{equation*}
+\end{theorem}
+
+\begin{proof}
+  The usual proof for ordinary partial combinatory algebras can be mimicked.
+  %
+  Let $e_{n+1} \defeq \abstr{x_{n+1}} e$ and $e_k = \abstr{x_k} e_{k+1}$ for $k = 1, \ldots, n$.
+  By \cref{lem:abstr-uniform}, $e_1$ is uniform, so $e^{*} \defeq \ucode{e_1}$ is well defined,
+  and we claim it is the element we are looking for.
+  %
+  Given $p \in \PP$ and $\R{a}_1, \ldots, \R{a}_{n+1} \in \AA$, \cref{lem:abstr-compute,lem:abstr-subst-commute} imply
+  %
+  \begin{align*}
+    p \at e_1 \, \R{a}_1 \cdots \R{a}_n
+    &\kleq p \at (e_2[\R{a}_1/x_1]) \, \R{a}_2 \cdots \R{a}_n \\
+    &\kleq p \at (e_3[\R{a}_1/x_1, \R{a}_2/x_2]) \, \R{a}_3 \cdots \R{a}_n \\
+    &\qquad \vdots \\
+    &\kleq p \at (\abstr{x_{n+1}} e)[\R{a}_1/x_1, \ldots, \R{a}_n/x_n] \\
+    &\kleq p \at \abstr{x_{n+1}} (e [\R{a}_1/x_1, \ldots, \R{a}_n/x_n]).
+  \end{align*}
+  %
+  The last row is defined by \cref{lem:abstr-p-defined} and uniform by \cref{lem:abstr-uniform},
+  therefore so is the first one.
+  Finally, \cref{lem:abstr-compute} implies
+  %
+  \begin{equation*}
+    p \at e_1 \, \R{a}_1 \cdots \R{a}_{n+1}
+    \kleq 
+    p \at e[\R{a}_1/x_1, \ldots, \R{a}_{n+1}/x_{n+1}]. \qedhere
+  \end{equation*}
+\end{proof}
+
+\subsection{Programming with ppcas}
+\label{sec:progr-with-ppcas}
+
+Combinatory completeness can be used to write complex programs in any ppca, just like in ordinary partial combinatory algebras. For example, $\comb{id} \defeq \ucode{\abstr{x} x} = \ucode{\comb{s} \, \comb{k} \, \comb{k}}$ realizes the identity map.
+%
+More interesting are pairing, projections, booleans and the conditional:
+%
+\begin{align*}
+  \combPair &\defeq \ucode{\abstr{x y z}{z\, x\, y}},
+  &
+  \combIf &\defeq \ucode{\abstr{x} x},
+  \\
+  \combFst &\defeq \ucode{\abstr{z}{z \, (\abstr{x\,y} x)}},
+  &
+  \combTrue &\defeq \ucode{\abstr{x\,y} x},
+  \\
+  \combSnd &\defeq \ucode{\abstr{z}{z \, (\abstr{x\,y} y)}},
+  &
+  \combFalse &\defeq \ucode{\abstr{x\,y} y}.
+\end{align*}
+%
+These are all uniform by \cref{lem:abstr-uniform}. They satisfy the expected equations parameter-wise, for all $p \in \PP$ and $\R{a}, \R{b} \in \AA$:
+%
+\begin{align*}
+  (p \at \combFst \, (\combPair \, \R{a} \, \R{b})) &= \R{a}, &
+  (p \at \combIf \, \combTrue \, \R{a} \, \R{b}) &= \R{a}, \\
+  (p \at \combSnd \, (\combPair \, \R{a} \, \R{b})) &= \R{b}, &
+  (p \at \combIf \, \combFalse \, \R{a} \, \R{b}) &= \R{b}.
+\end{align*}
+
+Natural numbers are encoded as \defemph{Curry numerals}:
+%
+\begin{align*}
+  \numeral{0} &\defeq \ucode{\combS\, \combK\, \combK},
+  &
+  \numeral{n+1} &\defeq \ucode{\combPair \, \combFalse \, \numeral{n}}
+\end{align*}
+%
+Successor, predecessor and zero-testing are defined as
+%
+\begin{align}
+  \comb{succ} &\defeq \ucode{\abstr{x}{\combPair \, \combFalse \,x}}, \label{eq:comb-succ} \\ 
+  \comb{iszero} &\defeq \ucode{\combFst}, \notag\\
+  \comb{pred} &\defeq
+  \ucode{\abstr{x}{\combIf\, (\comb{iszero}\, x)\, \numeral{0}\, (\combSnd\, x)}}. \notag
+\end{align}
+%
+These are again uniform and satisfy the expected equations.
+
+To get recursive definitions going, we define the fixed-point combinators~$\comb{Y}$ and~$\comb{Z}$:
+%
+%
+\begin{align*}
+  \R{W} &\defeq \ucode{\abstr{x \, y} y \, (x \, x \, y)},
+  &
+  \comb{Y} &\defeq \ucode{\R{W} \, \R{W}},
+  \\
+  \R{X} &\defeq \ucode{\abstr{x\, y\, z} y \, (x \, x \, y) \, z},
+  &
+  \comb{Z} &\defeq \ucode{\R{X} \, \R{X}}.
+\end{align*}
+%
+Then for all $p \in \PP$ and $\R{f}, \R{a} \in \AA$, $\comb{Z} \, \R{f}$ is uniform,
+%
+\begin{equation*}
+  p \at \comb{Y} \, \R{f} \kleq p \at \R{f} \, (\comb{Y} \, \R{f})
+  \qquad\text{and}\qquad
+  p \at \comb{Z} \, \R{f} \, \R{a} \kleq p \at \R{f} \, (\comb{Z} \, \R{f}) \, \R{a}.
+\end{equation*}
+%
+% Verification that Y and Z work:
+%
+% p | Y f ≃
+% p | W W f ≃
+% p | f (W W f) ≃
+% p | f (Y f)
+%
+% p | Z f a ≃
+% p | X X f a ≃
+% p | f (X X f) a ≃
+% p | f (Z f a) a.
+%
+For instance, by repeatedly using \cref{lem:abstr-compute} we compute
+%
+\begin{equation*}
+  p \at \comb{Z} \, \R{f} \, \R{a} \kleq
+  p \at \R{X} \, \R{X} \, \R{f} \, \R{a} \kleq
+  p \at \R{f} \, (\R{X} \, \R{X} \, \R{f}) \, \R{a} \kleq
+  p \at \R{f} \, (\comb{Z} \, \R{f}) \, \R{a}.
+\end{equation*}
+%
+With $\comb{Y}$ in hand primitive recursion on natural numbers is realized as
+%
+\begin{equation*}
+  \comb{primrec} \defeq
+  \ucode{\abstr{x \, \R{f} \, m} ((\comb{Z} \, \R{R}) \, x \, \R{f} \, m \, \comb{id})}
+\end{equation*}
+%
+where
+%
+\begin{equation*}
+  \R{R} \defeq \ucode{
+      \abstr{r \, x \, \R{f} \, m}
+      \comb{if} \, (\comb{iszero} \, m) \,
+          (\combK \, x) \,
+          (\abstr{y} \R{f} \, (\comb{pred} \, m) \, (r \, x \, \R{f} \, (\comb{pred} \, m) \, \comb{id}))
+  }.
+\end{equation*}
+%
+It satisfies, for all $p \in \PP$, $\R{a}, \R{f} \in \AA$ and $n \in \NN$,
+%
+\begin{align*}
+  (p \at \comb{primrec} \, \R{a} \, \R{f} \, \numeral{0}) &= \R{a},
+  &
+  (p \at \comb{primrec} \, \R{a} \, \R{f} \, \numeral{n + 1}) &\kleq
+  \R{f} \, \numeral{n} \, (\comb{primrec} \, \R{a} \, \R{f} \, \numeral{n}).
+\end{align*}
+
+% Verification that primrec works:
+%
+% primec a f 0
+% = (Z R) a f 0 id
+% = R (Z R) a f 0 id
+% = if (iszero 0) (k a) (...) id
+% = (if true (k a) (...)) id
+% = k a id
+% = a
+%
+% primrec a f (n+1)
+% = (Z R) a f (n+1) id
+% = R (Z R) a f (n+1) id
+% = (if (iszero (n+1)) (k a) (<y> f (pred (n+1)) ((R Z) a f (pred (n+1)) id))) id
+% = (if false (k a) (<y> f (pred (n+1)) ((R Z) a f (pred (n+1)) id))) id
+% = (<y> f (pred (n+1)) ((R Z) a f (pred (n+1)) id)) id
+% = f (pred (n+1) ((R Z) a f (pred (n+1)) id)
+% = f n ((R Z) a f n id)
+% = f n (primrec a f n)
+%
+% Note: the trailing id is there (I think) to make sure both branches of the conditional are defined
+
+\begin{example}
+  \label{ex:numers-vs-numerals}
+  It will be useful to know that in the ppca $(\KK, \PP)$ from \cref{ex:oracle-ppca} numbers can be converted to numerals and vice versa. For this purpose we construct realizers $\combNum, \combCur \in \KK$ such that for all $\alpha \in \PP$ and $n \in \NN$
+  % 
+  \begin{equation*}
+    \alpha \at \combNum \, \numeral{n} = \alpha \at n
+    \quad\text{and}\quad
+    \alpha \at \combCur \, n = \alpha \at \numeral{n}.
+  \end{equation*}
+  % 
+  To convert numerals to numbers, observe that there is $s \in \NN$, independent of~$\alpha$, such that $\pr[\alpha]{s}(n) = n + 1$, and define
+  % 
+  $\combNum \defeq \ucode{\comb{primrec} \, 0 \, s}$.
+  %
+  To implement the reverse translation, we apply
+  the relativized Kleene's recursion theorem~\cite[Sect.~III.1.6]{soare87:_recur_enumer_sets_degrees}
+  to find $r \in \NN$, independent of~$\alpha$, such that
+  % 
+  \begin{equation*}
+    \pr[\alpha]{r}(n) =
+    \begin{cases}
+      \ucode{\numeral{0}} & \text{if $n = 0$,}\\
+      \pr[\alpha]{\ucode{\comb{succ}}}(\pr[\alpha]{r}(n-1)) & \text{if $n > 0$.}
+    \end{cases}
+  \end{equation*}
+  % 
+  We may take $\combCur \defeq r$ because
+  % 
+  $\alpha \at r \, 0 = \pr[\alpha]{r}(0) = \ucode{\numeral{0}} = (\alpha \at \numeral{0})$
+  and, assuming $\alpha \at r \, n = \alpha \at \numeral{n}$ for the sake of the induction step,
+  % 
+  \begin{multline*}
+    \alpha \at r \, (n+1) =
+    \pr[\alpha]{r}(n+1) =
+    \pr[\alpha]{\ucode{\comb{succ}}}(\pr[\alpha]{r}(n)) = \\
+    \alpha \at \comb{succ} \, (r \, n) =
+    \alpha \at \comb{succ} \, \numeral{n} =
+    \alpha \at \numeral{n + 1}.
+  \end{multline*}
+\end{example}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "countable-reals"
+%%% End:
+ 

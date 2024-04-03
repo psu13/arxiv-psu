@@ -1,0 +1,877 @@
+\section{Parameterized realizability}
+\label{sec:unif-real}
+
+We next devise a notion of realizability based on ppcas that captures the uniformity of oracle computations from \cref{sec:non-diag-sequ}.
+%
+We use the tripos-to-topos construction~\cite{hyland80:_tripos}, a general technique for defining toposes. We refer the readers to~\cite[Sect.~S2.1]{oosten08:_realiz} for background material.
+%
+For the remainder of this section we fix a ppca $(\AA, \PP)$.
+
+\subsection{The parameterized realizability tripos}
+\label{sec:tripos-built-from}
+
+In the first step of the construction we shall define a contravariant functor
+%
+\begin{equation*}
+  \PredSymbol : \op{\Set} \to \Heyt,
+\end{equation*}
+%
+from sets to Heyting prealgebras, satisfying further conditions to be given later.
+%
+% AB: We pick sets because that's what we need to get a realizability topos. Maybe there's no need to create
+% confusion here. Experts know, and the rest will just wonder why we're mentioning this.
+Recall that a Heyting prealgebra $(H, {\leq})$ is a set $H$ with a reflexive transitive relation~$\leq$ with elements $\bot$, $\top$ and binary operations $\land$, $\lor$, $\limply$, satisfying the laws of intuitionistic propositional calculus.
+
+For any set~$X$, define
+%
+\begin{equation*}
+  \Pred[\AA,\PP]{X} \defeq (\pow{\AA}^X, {\leq_X}),
+\end{equation*}
+%
+where the preorder~$\leq_X$ will be defined momentarily.
+%
+When no confusion can arise, we abbreviate $\Pred[\AA,\PP]{X}$ as $\Pred{X}$.
+
+An element $\phi \in \Pred{X}$ is called a \defemph{(tripos) predicate} on~$X$.
+%
+We say that $\R{a} \in \phi(x)$ \emph{realizes} $\phi(x)$.
+%
+For a closed expression~$e$ over~$\AA$, we define $e \rz[p] \phi(x)$ by
+%
+\begin{equation*}
+  e \rz[p] \phi(x)
+  \defiff
+  \defined{(p \at e)} \land (p \at e) \in \phi(x)
+\end{equation*}
+%
+and read it as ``$e$ realizes $\phi(x)$ at $p$''.
+%
+The preoder on $\Pred{X}$ is defined as follows, for $\phi, \psi \in \Pred{X}$:
+%
+\begin{equation*}
+  \phi \leq_X \psi
+  \defiff
+    \some{\R{a} \in \AA}
+    \all{x \in X}
+    \all{\R{b} \in \phi(x)}
+    \all{p \in \PP}
+    \R{a} \, \R{b} \rz[p] \psi(x).
+\end{equation*}
+%
+We say that $a$ satisfying the above condition \emph{realizes} $\phi \leq_X \psi$.
+Reflexivity of~$\leq_X$ is realized by $\ucode{\abstr{x} x}$. For transitivity, one checks that if $\R{a}$ realizes $\phi \leq_X \psi$ and $\R{b}$ realizes $\psi \leq_X \chi$ then $\ucode{\abstr{x} \R{b} \, (\R{a} \, x)}$ realizes $\phi \leq_X \chi$.
+
+In order for $\PredSymbol$ to be a bona fide functor, we let it take a map $r : Y \to X$ to the \defemph{reindexing} map $\invim{r} : \Pred{X} \to \Pred{Y}$, which acts by precomposition $\invim{r} \phi = \phi \circ r$. This is obviously contravariant and functorial, and we shall check that $\invim{r}$ is a homomorphism below.
+
+In order to show that $\PredSymbol$ is a tripos, we must verify the following conditions:
+%
+\begin{enumerate}
+\item For every set $X$ the poset $\Pred{X}$ is a Heyting prealgebra (\cref{sec:heyt-prealg-struct}).
+\item Reindexing is a homomorphism of Heyting prealgebras (\cref{sec:monot-reind}).
+\item Universal and existential quantifiers exist for $\Pred{X}$ (\cref{sec:quantifiers}).
+\item There is a generic element (\cref{sec:generic-element}).
+\end{enumerate}
+%
+The arguments are quite similar to those for the tripos arising from an ordinary pca~\cite[Prop.~1.2.1]{oosten08:_realiz}, one only has to pay attention to the presence of parameters.
+
+\subsection{The Heyting prealgebra structure}
+\label{sec:heyt-prealg-struct}
+
+The Heyting structure on $\Pred{X}$ is as follows:
+%
+{\allowdisplaybreaks
+\begin{align*}
+  \top(x) &\defeq \AA,\\
+  \bot(x) &\defeq \emptyset,\\
+  (\phi \land \psi)(x) &\defeq \set{\R{a} \in \AA \such
+      \all{p \in \PP}
+      \combFst \, \R{a} \rz[p] \phi(x) \land
+      \combSnd \, \R{a} \rz[p] \psi(x)
+  },
+  \\
+  (\phi \lor \psi)(x) &\defeq \{\R{a} \in \AA \such
+    \all{p \in \PP}
+    \begin{aligned}[t]
+    &(p \at \combFst \, \R{a} = \ucode{\combTrue} \land \combSnd \, \R{a} \rz[p] \phi(x))
+    \lor {} \\
+    &(p \at \combFst \, \R{a} = \ucode{\combFalse} \land \combSnd \, \R{a} \rz[p] \psi(x)) \},
+    \end{aligned}
+  \\
+  (\phi \limply \psi)(x) &\defeq \set{\R{a} \in \AA \such
+    \all{p \in \PP} \all{\R{b} \in \phi(x)} \R{a} \, \R{b} \rz[p] \psi(x)}.
+\end{align*}
+}
+%
+The above is like the analogous Heyting structure for ordinary pcas, except that realizers must be uniform in~$p \in \PP$. Next, we verify that the given operations satisfy the laws of a Heyting prealgebra.
+
+\subsubsection{Falsehood and truth}
+\label{sec:falsehood-truth}
+
+Both $\bot \leq_X \phi$ and $\phi \leq_X \top$ are realized by $\combK \, \combK$.
+
+\subsubsection{Conjunction}
+\label{sec:conjunction}
+
+We need to verify that, for all $\phi, \psi, \chi \in \Pred{X}$,
+%
+\begin{equation*}
+  (\chi \leq_X \phi) \land (\chi \leq_X \psi) \iff \chi \leq_X \phi \land \psi.
+\end{equation*}
+%
+If $\R{a}$ and $\R{b}$ realize $\chi \leq_X \phi$ and $\chi \leq_X \psi$, respectively, then $\chi \leq_X \phi \land \psi$ is realized by $\R{c} \defeq \ucode{\abstr{u} \combPair \, (\R{a} \, u) \, (\R{b} \, u)}$. Indeed, for any $x \in X$, $p \in \PP$ and $\R{d} \in \chi(x)$, we have
+%
+\begin{equation*}
+  p \at \combFst \, (\R{c} \, \R{d})
+  \kleq
+  p \at \combFst \, (\combPair \, (\R{a} \, \R{d}) \, (\R{b} \, \R{d}))
+  \kleq
+  p \at \R{a} \, \R{d}.
+\end{equation*}
+%
+Because $\R{a} \, \R{d} \rz[p] \phi(x)$, it follows that $\combFst \, (\R{c} \, \R{d}) \rz[p] \phi(x)$.
+The argument for the second component is analogous.
+
+Conversely, if $\R{a}$ realizes $\chi \leq_X \phi \land \psi$ then $\R{b} \defeq \ucode{\abstr{u} \combFst \, (\R{a} \, u)}$ and $\R{c} \defeq \ucode{\abstr{v} \combSnd \, (\R{a} \, v)}$ realize $\chi \leq_X \phi$ and $\chi \leq_X \psi$, respectively. Indeed, for any $x \in X$, $p \in \PP$ and $\R{d} \in \chi(x)$, we have $\R{a} \, \R{d} \rz[p] (\phi \land \psi)(x)$ and $p \at \R{b} \, (\R{a} \, \R{d}) = p \at \combFst \, (\R{a} \, \R{d})$, hence $\R{b} \, (\R{a} \, \R{d}) \rz[p] \phi(x)$.
+The argument for $\R{c}$ and $\chi \leq_X \psi$ is analogous.
+
+\subsubsection{Disjunction}
+\label{sec:disjunction}
+
+Disjunction is characterized by
+%
+\begin{equation*}
+  (\phi \leq_X \chi) \land (\psi \leq_X \chi) \iff \phi \lor \psi \leq_X \chi.
+\end{equation*}
+%
+If $\R{a}$ and $\R{b}$ respectively realize $\phi \leq_X \chi$ and $\psi \leq_X \chi$, then $\phi \lor \psi \leq_X \chi$ is realized by
+%
+\begin{equation*}
+  \R{c} \defeq
+  \ucode{\abstr{u} \combIf \, (\combFst \, u) \, (\R{a} \, (\combSnd \, u)) \, (\R{b} \, (\combSnd \, u))}.
+\end{equation*}
+%
+Consider any $x \in X$, $p \in \PP$ and $\R{d} \in (\phi \lor \psi)(x)$.
+If $p \at \combFst \, \R{d} = \ucode{\combTrue}$ then
+%
+\begin{equation*}
+  p \at \R{c} \, \R{d}
+  \kleq
+  p \at \combIf \, (\combFst \, \R{d}) \, (\R{a} \, (\combSnd \, \R{d})) \, (\R{b} \, (\combSnd \, \R{d}))
+  \kleq
+  p \at \R{a} \, (\combSnd \, \R{d}),
+\end{equation*}
+%
+and since $\R{a} \, (\combSnd \, \R{d}) \rz[p] \chi(x)$ also $\R{c} \, \R{d} \rz[p] \chi(x)$.
+%
+If $p \at \combFst \, \R{d} = \ucode{\combFalse}$ then
+%
+\begin{equation*}
+  p \at \R{c} \, \R{d}
+  \kleq
+  p \at \combIf \, (\combFst \, \R{d}) \, (\R{a} \, (\combSnd \, \R{d})) \, (\R{b} \, (\combSnd \, \R{d}))
+  \kleq
+  p \at \R{b} \, (\combSnd \, \R{d}),
+\end{equation*}
+%
+and since $\R{b} \, (\combSnd \, \R{d}) \rz[p] \chi(x)$ also $\R{c} \, \R{d} \rz[p] \chi(x)$.
+
+Conversely, if $\R{c}$ realizes $\phi \lor \psi \leq_X \chi$ then $\phi \leq_X \chi$ and $\psi \leq_X \chi$ are respectively realized by $\R{a} \defeq \ucode{\abstr{u} \R{c} \, (\combPair \, \combTrue \, u)}$ and $\R{b} \defeq \ucode{\abstr{v} \R{c} \, (\combPair \, \combFalse \, v)}$.
+%
+Indeed, for any $x \in X$, $p \in \PP$ and $\R{d} \in \phi(x)$ we have $\combPair \, \combTrue \, \R{d} \rz[p] (\phi \lor \psi)(x)$, hence $\R{c} \, (\combPair \, \combTrue \, \R{d}) \rz[p] \chi(x)$. Now $\R{a} \, \R{d} \rz[p] \chi(x)$ holds because
+$p \at \R{a} \, \R{d} \kleq p \at \R{c} \, (\combPair \, \combTrue \, \R{d})$.
+The argument for $\R{b}$ and $\psi \leq_X \chi$ is analogous.
+
+\subsubsection{Implication}
+\label{sec:implication}
+
+Implication is characterzied by the adjunction
+%
+\begin{equation*}
+   \phi \leq_X \psi \limply \chi\iff \phi \land \psi \leq_X \chi.
+\end{equation*}
+%
+If $\R{a}$ realizes $\phi \leq_X \psi \limply \chi$ then $\R{b} \defeq \ucode{\abstr{x} \R{a} \, (\combFst \, x) \, (\combSnd \, x)}$ realizes $\phi \land \psi \leq_X \chi$. Indeed, for any $x \in X$, $p \in \PP$ and $\R{c} \in (\phi \land \psi)(x)$ we have
+%
+$
+  p \at \R{b} \, \R{c}
+  \kleq
+  p \at \R{a} \, (\combFst \, \R{c}) \, (\combSnd \, \R{c})
+$
+%
+and $\R{a} \, (\combFst \, \R{c}) \, (\combSnd \, \R{c}) \rz[p] \chi(x)$, hence $\R{b} \, \R{c} \rz[p] \chi(x)$.
+
+Conversely, if $\R{b}$ realizes $\phi \land \psi \leq_X \chi$, then $\R{a} \defeq \ucode{\abstr{u} \abstr{v} \R{b} \, (\combPair \, u \, v)}$ realizes $\phi \leq_X \psi \limply \chi$.
+To see this, we must verify for any $x \in X$, $p \in \PP$ and $\R{c} \in \phi(x)$ that $\R{a} \, \R{c} \rz[p] (\psi \limply \chi)(x)$.
+%
+Consider any $q \in \PP$ and $\R{d} \in \psi(x)$.
+%
+By \cref{lem:abstr-uniform}
+%
+\begin{equation*}
+  p \at \R{a} \, \R{c} =
+  p \at \abstr{v} \R{b} \, (\combPair \, \R{c} \, v) =
+  q \at \abstr{v} \R{b} \, (\combPair \, \R{c} \, v) =
+  q \at \R{a} \, \R{c},
+\end{equation*}
+%
+hence
+%
+$
+  q \at (\R{a} \app[p] \R{c}) \, \R{d} \kleq
+  q \at \R{a} \, \R{c} \, \R{d} \kleq
+  q \at \R{b} \, (\combPair \, \R{c} \, \R{d})
+$,
+%
+and because $\R{b} \, (\combPair \, \R{c} \, \R{d}) \rz[q] \chi(x)$, it follows that $(\R{a} \app[p] \R{c}) \, \R{d} \rz[q] \chi(x)$.
+
+\subsubsection{Negation}
+\label{sec:negation}
+
+In intuitionistic logic negation $\neg \phi$ is defined as $\phi \limply \bot$. A short calculation reveals that
+%
+\begin{align*}
+  (\neg \phi)(x) &= \set{\R{a} \in \AA \such \phi(x) = \emptyset} \\
+  (\neg\neg \phi)(x) &= \set{\R{a} \in \AA \such \phi(x) \neq \emptyset}.
+\end{align*}
+%
+
+\subsection{Reindexing preserves the Heyting structure}
+\label{sec:monot-reind}
+
+We should not forget to check that $\invim{r} : \Pred{X} \to \Pred{Y}$ induced by $r : Y \to X$ is a homomorphism of Heyting prealgebras. This is easy, one just checks directly that $\invim{r}$ commutes with the logical connectives by unfolding the definitions. For example,
+%
+\begin{equation*}
+  \R{a} \rz \invim{r}(\phi \limply \psi)(y)
+  \iff
+  \all{\R{b} \in \phi(r(y))}
+  \all{p \in \PP}
+  \R{a} \, \R{b} \rz[p] \phi(r(y))
+\end{equation*}
+%
+and
+%
+\begin{equation*}
+  \R{a} \rz (\invim{r}\phi \limply \invim{r}\psi)(y)
+  \iff
+  \all{\R{b} \in \phi(r(y))}
+  \all{p \in \PP}
+  \R{a} \, \R{b} \rz[p] \phi(r(y)),
+\end{equation*}
+%
+which are the same condition.
+
+\subsection{The quantifiers}
+\label{sec:quantifiers}
+
+Let $r : Y \to X$ be a map. The universal and existential quantifiers along~$r$ are monotone maps
+%
+\begin{equation*}
+  \exists_r, \forall_r : \Pred{Y} \to \Pred{X},
+\end{equation*}
+%
+such that, for all $\phi \in \Pred{Y}$ and $\psi \in \Pred{X}$,
+%
+\begin{equation*}
+  \exists_r \phi \leq_X \psi \iff \phi \leq_Y \invim{r} \psi
+  \qquad\text{and}\qquad
+  \psi \leq_X \forall_r \phi \iff \invim{r} \psi \leq_Y \psi.
+\end{equation*}
+%
+(The usual quantifiers correspond to $r : X \times Y \to X$ being the first projection.)
+%
+We may take the following definition of the existential quantifier:
+%
+\begin{align*}
+  (\exists_r \phi)(x) \defeq
+   \set{\R{a} \in \AA \such \some{y \in Y} r(y) = x \land \R{a} \in \phi(y)}.
+\end{align*}
+%
+If $\R{a}$ realizes $\exists_r \phi \leq_X \psi$ then it also realizes $\phi \leq_Y \invim{r} \psi$:
+%
+for any $y \in Y$, $p \in \PP$ and $\R{b} \in \phi(y)$ we have $\R{b} \in (\exists_r \phi)(r(y))$, therefore $\R{a} \, \R{b} \rz[p] \psi(r(y))$.
+%
+Conversely, if $\R{a}$ realizes $\phi \leq_Y \invim{r} \psi$ then it also realizes $\exists_r \phi \leq_X \psi$: for any $x \in X$, $p \in \PP$ and $\R{b} \in (\exists_r \phi)(x)$, we have $r(y) = x$ for some $y \in Y$ such that $\R{b} \in \phi(y)$, hence $\R{a} \, \R{b} \rz[p] \psi(r(y))$ and $\R{a} \, \R{b} \rz[p] \psi(x)$.
+
+Next, the definition of the universal quantifier is
+%
+\begin{multline*}
+  (\forall_r \phi)(x) \defeq
+   \{\R{a} \in \AA \such
+     \all{y \in Y} r(y) = x \lthen
+     \all{\R{b} \in \AA} \all{q \in \PP}
+     \R{a} \, \R{b} \rz[q] \phi(y)
+   \}.
+\end{multline*}
+%
+If~$\R{a}$ realizes $\psi \leq_X \forall_r \phi$ then $\R{b} \defeq \ucode{\abstr{x} \R{a} \, x \, \combK}$ realizes $\invim{r}\psi \leq_Y \phi$:
+%
+for any $y \in Y$, $p \in \PP$, and $\R{c} \in \psi(r(y))$, we have $\R{a} \, \R{c} \rz[p] (\forall_r \phi)(r(y))$, therefore $\R{a} \, \R{c} \, \combK \rz[p] \phi(y)$ and $p \at \R{b} \, \R{c} = p \at \R{a} \, \R{c} \, \combK$, giving the required $\R{b} \, \R{c} \rz[p] \phi(y)$.
+%
+Conversely, if $\R{b}$ realizes $\invim{r}\psi \leq_Y \phi$ then $\R{a} \defeq \ucode{\abstr{x} \abstr{d} b \, x}$ realizes $\psi \leq_X \forall_r \phi$: consider any $x \in X$, $p \in \PP$, $\R{c} \in \psi(x)$. To show $\R{a} \, \R{c} \rz[p] (\forall_r \phi)(x)$, first note that $\defined{(p \at \R{a} \, \R{c})}$. Suppose $y \in Y$ is such that $r(y) = x$, and consider any $\R{d} \in \AA$ and $q \in \PP$.
+%
+By \cref{lem:abstr-uniform}
+%
+\begin{equation*}
+  p \at \R{a} \, \R{c} =
+  p \at \abstr{\R{d}} \R{b} \, \R{c} =
+  q \at \abstr{\R{d}} \R{b} \, \R{c} =
+  q \at \R{a} \, \R{c}
+\end{equation*}
+%
+therefore
+%
+$
+  q \at (\R{a} \app[p] \R{c}) \, \R{d} \kleq
+  q \at \R{a} \, \R{c} \, \R{d} \kleq
+  q \at \R{b} \, \R{c}
+$.
+%
+From $\R{c} \in \psi(r(y))$ it follows that $\R{b} \, \R{c} \rz[q] \phi(x)$, therefore $(\R{a} \app[p] \R{c}) \, \R{d} \rz[q] \phi(x)$.
+
+The reader may have expected the following, simpler definition of the universal quantifier
+%
+\begin{equation}
+  \label{eq:alternative-forall}%
+  (\forall'_r \phi)(x) \defeq
+   \{\R{a} \in \AA \such
+     \all{y \in Y} r(y) = x \lthen
+     \R{a} \in \phi(y)
+   \},
+\end{equation}
+%
+which works, but only when~$r$ is surjective.
+%
+It is easy to check that $\forall'_r \phi \leq_X \forall_r \phi$ is realized by~$\combK$.
+% Verification that k is such a realizer:
+% Consider x ∈ X, a ∈ (∀'_r ϕ)(x) and p ∈ P.
+% Then (p | k a) is defined.
+% We verify that k a ⊩_p (∀'_r ϕ)(x):
+%  Suppose y ∈ Y, r y = x, b ∈ 𝔸, q ∈ ℙ.
+%  Then (q | k a b) = a, so it is defined.
+%  And (q | k a b) ∈ ϕ(y) because (q | k a b) = a and a ∈ ϕ(y).
+The converse $\forall_r \phi \leq \forall'_r \phi$ is realized by $\R{c} \defeq \abstr{x} x \, \combK$. Too see this, consider any $x \in X$, $\R{a} \in (\forall_r \phi)(x)$ and $p \in \PP$.
+First, $p \at \R{c} \, \R{a} \simeq p \at \R{a} \, \combK$  is defined because~$r$ is surjective.
+Second, if $y \in Y$ and $r(y) = x$ then $\R{a} \, \combK \rz[p] \phi(y)$ and $p \at \R{c} \, \R{a} = p \at \R{a} \, \combK$, therefore $\R{a} \, \combK \in \phi(y)$.
+
+It remains to verify the Beck-Chevalley condition, which states that, given a pullback in~$\Set$
+%
+\begin{equation*}
+  \xymatrix{
+    {Y} \pullbackcorner
+    \ar[r]^{r} \ar[d]_{u} 
+    &
+    {X} \ar[d]^{v}
+    \\
+    {Z} \ar[r]_{q}
+    &
+    {W}
+  }
+\end{equation*}
+%
+$\forall_r \circ \invim{u}$ and $\invim{v} \circ \forall_q$ are equivalent.
+%
+For $\phi \in \Pred{Z}$, $x \in X$
+the condition $\R{a} \in ((\forall_r \circ \invim{u}) \phi)(x)$ unfolds to
+%
+\begin{equation}
+  \label{eq:bc-1}%
+  \all{y \in Y} r(y) = x \lthen \R{a} \in \phi(u(y)),
+\end{equation}
+%
+while $\R{a} \in ((\invim{v} \circ \forall_q) \phi)(x)$ unfolds to
+%
+\begin{equation}
+  \label{eq:bc-2}%
+  \all{z \in Z} q(z) = v(x) \lthen \R{a} \in \phi(z).
+\end{equation}
+%
+Let us show that these are equivalent conditions. Suppose $\R{a}$ satisfies \eqref{eq:bc-1} and $z \in Z$ is such that $q(z) = v(x)$. Because the square is a pullback there is a unique $y \in Y$ such that $r(y) = x$ and $u(y) = z$. By \eqref{eq:bc-1} we get $\R{a} \in \phi(u(y))$ which is the same as $\R{a} \in \phi(z)$.
+%
+Conversely, if $\R{a}$ satisfies \eqref{eq:bc-2} and there is a $y \in Y$ such that $r(y) = x$, then we instantiate \eqref{eq:bc-2} with $z = u(y)$ to obtain the desired $\R{a} \in \phi(u(y))$.
+
+\subsection{The generic element}
+\label{sec:generic-element}
+
+Because $\Set$ is cartesian closed, the remaining requirement for a tripos is the existence of a generic element, see the remark following~\cite[Definition~2.12]{oosten08:_realiz}. Specifically, we seek a set $S$ and $\sigma \in \Pred{S}$ such that, for all $X$ and $\phi \in \Pred{X}$, there exists $r_\phi : X \to S$ for which $\phi$ and $\invim{r_\phi} \sigma$ are isomorphic.
+
+Once again, we just reuse the generic element for a tripos based on a pca, namely $S \defeq \pow{\AA}$ and $\sigma \defeq \id[\pow{\AA}]$. This obviously works because $\invim{\phi} \id[\pow{\AA}] = \phi$ for any $\phi \in \Pred{X}$.
+
+\subsection{Tripos logic}
+\label{sec:tripos-logic}
+
+A formula $\phi$ built from logical connectives, quantifiers, and tripos predicates
+whose free variables $x_1, \ldots, x_n$ range over the sets $X_1, \ldots, X_n$,
+determines a tripos predicate
+%
+\begin{equation*}
+  [x_1 \of X_1, \ldots, x_n \of X_n \such \phi] : X_1 \times \cdots \times X_n \to \pow{\AA},
+\end{equation*}
+%
+which we sometimes abbreviate as $[x_1, \ldots, x_n \such \phi]$ or just $[\phi]$.
+The case $n = 0$ yields and element of $\pow{\AA}$.
+
+More precisely, the logical connectives appearing in~$\phi$ are interpreted as the corresponding Heyting operations from \cref{sec:heyt-prealg-struct}.
+A universally quantified formula $\all{y \of Y} \psi$, where $\psi$ is a formula in variables $x_1, \ldots, x_n$ and $y$, is interpreted as quantification along the projection
+%
+\begin{equation*}
+  r : X_1 \times \cdots \times X_n \times Y \to X_1 \times \cdots \times X_n,
+\end{equation*}
+%
+as in \cref{sec:quantifiers}, and similarly for $\some{y \of Y} \psi$.
+
+\begin{example}
+  \label{example:tripos-forall-exists}
+  Given a tripos predicate $\psi \in \Pred{X \times Y}$ with an inhabited set~$X$, the formula
+  %
+  \begin{equation*}
+    \all{x \of X} \some{y \of Y} \psi(x,y)
+  \end{equation*}
+  %
+  has no free variables, and so determines an element of $\pow{\AA}$,
+  which we compute using \eqref{eq:alternative-forall} to be
+  %
+  \begin{align*}
+    \R{a} \in [\all{x \of X} \some{y \of Y} \psi(x,y)]
+    &\iff
+      \all{u \in X}
+      \R{a} \in [\some{y} \psi(u, y)]
+    \\
+    &\iff
+      \all{u \in X}
+      \some{v \in Y}
+      \R{a} \in \psi(u, v)
+  \end{align*}
+  %
+  Note that $\R{a}$ may not depend on~$u$ and~$v$.
+  This is a rather strong uniformity condition, stemming from the fact that realizers receive no information about the elements of underlying sets. When we pass from the tripos to the topos, the situation will be rectified by equipping sets with suitable realizability relations, see \cref{example:topos-forall-exists}.
+\end{example}
+
+We say that a formula $\phi$ in variables $x_1 \of X_1, \ldots, x_n \of X_n$ is \defemph{valid}, written as
+%
+\begin{equation*}
+  x_1 \of X_1, \ldots, x_n \of X_n \models \phi,
+\end{equation*}
+%
+when its interpretation is (equivalent to) the top predicate in $\Pred{X_1 \times \cdots \times X_n}$. This happens precisely when there is $\R{a} \in \AA$ such that $\R{a} \rz[p] [\phi](u_1, \ldots, u_n)$ for all $u_1 \in X_1, \ldots, u_n \in X_n$ and $p \in \PP$.
+
+
+\subsection{The parameterized realizability topos on a ppca}
+\label{sec:unif-real-topos}
+
+Having defined a tripos, we employ the tripos-to-topos construction~\cite[\S2.2]{oosten08:_realiz} to construct a topos from it.
+
+\begin{definition}
+  The \defemph{parameterized realizability topos} $\PRT{\AA, \PP}$ on the ppca $(\AA, \PP, {\cdot})$ is the topos arising from the tripos-to-topos construction applied to the tripos~$\PredSymbol[\AA, \PP]$.
+\end{definition}
+
+We recall how the construction works.
+%
+An object $X = (|X|, {\eq[X]})$ of the topos is a set~$|X|$ with a tripos predicate ${\eq[X]} \in \Pred{|X| \times |X|}$, called the \defemph{equality predicate}, which is a partial equivalence relation in the sense of tripos logic:
+%
+\begin{align*}
+  x \of |X|, y \of |X| &\models x \eq[X] y \limply y \eq[X] x,
+  \\
+  x \of |X|, y \of |X|, z \of |X| &\models x \eq[X] y \limply y \eq[X] z \limply x \eq[X] z.
+\end{align*}
+%
+Specifically, this means that there are $\R{a}, \R{b} \in \AA$ such that:
+%
+\begin{enumerate}
+\item for all $x, y \in |X|$, $\R{c} \in (x \eq[X] y)$, and $p \in \PP$, we have $\R{a} \, \R{c} \rz[p] y \eq[X] x$,
+\item for all $x, y, z \in |X|$, $\R{c} \in (x \eq[X] y)$, $\R{d} \in (y \eq[X] z)$, and $p \in \PP$, we have $\R{b} \, \R{c} \, \R{d} \rz[p] x \eq[X] z$.
+\end{enumerate}
+%
+Henceforth we shall refrain from such explicit unfolding of formulas into statements about realizers, and instead rely on the fact that a formula is valid in the tripos logic if it has an intuitionistic proof.
+
+The equality predicate $\eq[X]$ endows $|X|$ with a notion of equality that is witnessed by realizers.
+However, because we did not require reflexivity of~$\eq[X]$, there may be elements which are not equal to themselves.
+To manage the anomaly, we define the \defemph{existence predicate} $\Ex{X} \in \Pred{|X|}$ by
+%
+\begin{equation*}
+  \Ex{X}(x) \defeq (x \eq[X] x).
+\end{equation*}
+%
+A realizer $\R{a} \in \Ex{X}(x)$ can be thought of as witnessing the fact that $x \in X$. When $\Ex{X}(x) = \emptyset$, the element $x$ ``does not exist'' from the point of view of the topos.
+%
+We shall strategically use $\Ex{X}(x)$ to disregard such non-existent elements.\footnote{%
+It turns out that~$X$ is isomorphic to $(X', {\eq[X]})$ where $X' \defeq \set{x \in |X| \such (x \eq[X] x) \neq \emptyset}$, but insisting that $(x \eq[X] x) \neq \emptyset$ does not lead to any improvements.%
+}
+
+A morphism $F : X \to Y$ is represented by a predicate $F \in \Pred{|X| \times |Y|}$ which is a functional, i.e., one satisfying the following conditions, with $x, x' \of |X|$ and $y, y' \of |Y|$:
+%
+\begin{align*}
+  x, y &\models F(x,y) \limply \Ex{X}(x) \land \Ex{Y}(y)
+     & &\text{(strict)} \\
+  x, x', y, y' &\models F(x,y) \land x \eq[X] x' \land y \eq[Y] y' \limply F(x', y')
+     & &\text{(relational)} \\
+  x, y, y' &\models F(x, y) \land F(x, y') \limply y \eq[Y] y'
+     & &\text{(single-valued)} \\
+  x &\models \Ex{X}(x) \limply \some{y \of Y} F(x, y)
+     & &\text{(total)}
+\end{align*}
+%
+Single-valuedness and totality are familiar conditions, while the other two ensure that~$F$
+behaves with respect to existence and equality predicates. Note how the antecedent $\Ex{X}(x)$ in the totality condition allows~$F$ to ignore non-existing elements of~$X$.
+%
+Two such relations represent the same morphism if they are equivalent as tripos predicates.
+
+To actually compute~$F$, we use a realizer~$s$ for its strictness and a realizer~$t$ for its totality to define the realizer $f \defeq \ucode{\abstr{x} \combSnd (s \, (t \, x))}$, which works as follows: for any $x \in X$ and $\R{a} \in \Ex{X}(x)$ there is $y \in Y$ such that $r \, \R{a} \rz[p] \Ex{Y}(y)$ for all~$p \in \PP$,
+and because $F$ is single-valued, $y$ is unique up to $\eq[Y]$.
+
+The identity morphism on~$X$ is represented by $\eq[X]$,
+and the composition of $F : X \to Y$ and $G : Y \to Z$ by the tripos predicate
+%
+\begin{equation*}
+  (G \circ F)(x, z) \defeq \some{y \of Y} F(x, y) \land G(y, z).
+\end{equation*}
+%
+The relevant conditions may be checked by reasoning in intuitionistic logic.
+
+The terminal object in the topos is $\one \defeq (\set{\star}, {\eq[\one]})$, where $(\star \eq[\one] \star) \defeq \AA$.
+%
+The subobject classifier is the object $\Omega \defeq (\pow{\AA}, \eq[\Omega])$ whose equality predicate is logical equivalence,
+%
+$
+  (\phi \eq[\Omega] \psi) \defeq
+  (\phi \to \psi) \land (\psi \to \phi)
+$.
+%
+Truth $T : \one \to \Omega$ is represented by the tripos predicate $T(\star, \phi) \defeq \phi$.
+
+
+\subsection{Topos logic}
+\label{sec:internal-logic-topos}
+
+The topos logic differs from the tripos logic because it accounts for the equality and existence predicates. We refer to~\cite[\S2.3]{oosten08:_realiz} for details, and give here an overview that will suffice for our purposes.
+
+In the topos logic, the predicates on an object $X$ are its subobjects, which turn out to be in
+bijective correspondence with equivalence classes of \defemph{strict predicates}~\cite[Thm.~2.2.1]{oosten08:_realiz}, i.e., those $\phi \in \Pred{|X|}$ that satisfy
+%
+\begin{align*}
+  x \of X &\models \phi(x) \limply \Ex{X}(x) & &\text{(strict)} \\
+  x \of X, y \of X &\models \phi(x) \land x \eq[X] y \limply \phi(y) & &\text{(relational)}
+\end{align*}
+%
+The tripos falsehood is strict, and the tripos conjunction, disjunction, and the existential quantifier preserve strictness, hence these are computed in the topos in the same way as in the tripos. Truth, implication, and the universal quantifier require modification. We distinguish notationally between the tripos and topos logic by writing
+``$\limply$'', ``$\forall y \of Y$'', and ``$\exists y \of Y$'' in the former, and
+``$\lthen$'',  ``$\forall y \in Y$'', and ``$\exists y \in Y$'' in the latter.
+
+First, the topos truth $\top$ qua predicate on~$X$ is the tripos predicate $\Ex{X}$. Indeed, this is a strict predicate, and for any strict predicate $\phi \in \Pred{X}$ the implication $\phi(x) \to \Ex{X}(x)$ is valid by strictness of~$\phi$. Because the top predicate has changed, we must also adjust validity: a strict predicate $\phi \in \Pred{X}$ is topos-valid when the tripos validates
+%
+\begin{equation*}
+  x \of X \models \Ex{X}(x) \to \phi(x).
+\end{equation*}
+%
+Explicitly, there exists $\R{a} \in \AA$ such that for all $x \in |X|$, $\R{b} \in \Ex{X}(x)$ and $p \in \PP$ we have $\R{a} \, \R{b} \rz[p] \phi(x)$.
+
+Second, the topos implication $\phi \lthen \psi$ of strict predicates  $\phi$ and $\psi$ on~$X$ is represented by the strict predicate
+%
+\begin{equation*}
+  [x \of X \mid \Ex{X}(x) \land (\phi(x) \limply \psi(x))].
+\end{equation*}
+%
+Explicitly, $\R{a} \in (\phi \lthen \psi)(x)$ when for all $p \in \PP$
+%
+\begin{equation*}
+  (\combFst \, \R{a} \rz[p] \Ex{X}(x))
+  \land
+  (\combSnd \, \R{a} \rz[p] \phi(x) \to \psi(x)).
+\end{equation*}
+
+Third, if $\phi$ is a strict predicate on $X \times Y$, the topos universal $\all{y \in Y} \phi(x, y)$ is represented by the strict predicate
+%
+\begin{equation*}
+  [x \of X \mid \Ex{X}(x) \land \all{y \of |Y|} (\Ex{Y}(y) \limply \phi(x,y))].
+\end{equation*}
+%
+Assuming $|Y|$ is inhabited, $\R{a} \in (\all{y \in Y} \phi(x, y))$ when for all $p \in \PP$
+%
+\begin{equation*}
+  (\combFst \, \R{a} \rz[p] \Ex{X}(x))
+  \land
+  \all{y \in |Y|} \all{\R{b} \in \Ex{Y}(y)} \combSnd \, \R{a} \, \R{b} \rz[p] \phi(x, y).
+\end{equation*}
+%
+The first conjunct just makes sure that non-existent~$x$ do not get in the way. The second one is more interesting, as it adjusts the unreasonable uniformity of tripos~$\forall$ by providing $\combSnd \, \R{a}$ with a realizer of~$y \in |Y|$.
+
+One might expect the topos existential $\some{y \in Y} \phi(x, y)$ to be
+%
+\begin{equation*}
+  [x \of X \such \some{y \of Y} \Ex{Y}(y) \land \phi(x, y)],
+\end{equation*}
+%
+but we can reuse $\some{y \of Y} \phi(x, y)$, for if $\R{a} \in (\some{y \of Y} \phi(x, y))$
+and~$s$ realizes strictness of~$\phi$ then $s \, \R{a} \in \Ex{Y}(y)$ for some $y \in |Y|$.
+
+In contrast to the tripos logic, the topos logic is equipped with equality.
+%
+Unsurprisingly, equality on~$X$ is represented by $\eq[X]$, one just needs to check that this is indeed a strict predicate.
+%
+More generally, equality of morphisms $F, G : X \to Y$ is represented by the predicate
+%
+\begin{equation*}
+  [x \of X \such \some{y \of Y} F(x, y) \land G(x, y)].
+\end{equation*}
+
+\begin{example}
+  \label{example:topos-forall-exists}%
+  Suppose $\carrier{X}$ is inhabited, and $\phi \in \Pred{\carrier{X} \times \carrier{Y}}$.
+  A short calculations shows that $\all{x \in X} \some{y \in Y} \phi(x, y)$ is realized
+  when there is $\R{a} \in \AA$ such that
+  %
+  \begin{equation*}
+    \all{x \in |X|}
+    \all{\R{b} \in \Ex{X}(x)}
+    \all{p \in \PP}
+    \some{y \in |Y|}
+    \R{a} \, \R{b} \rz[p] \phi(x, y).
+  \end{equation*}
+  %
+  Note that the unreasonable uniformity of \cref{example:tripos-forall-exists} has been rectified,
+  as~$\R{b}$ is passed to~$\R{a}$.
+\end{example}
+
+
+\subsection{Parameterized assemblies}
+\label{sec:unif-assemblies}
+
+Direct manipulation of topos objects, and especially morphisms, can be cumbersome. Fortunately, the
+subcategory of assemblies~\cite[Sect.~2.4]{oosten08:_realiz} is significantly easier to work with and already contains most objects of interest.
+
+The idea is to take existence predicates as primary.
+%
+Define a \defemph{(parameterized) assembly} $X = (|X|, \Ex{X})$ to be a set $|X|$ with a tripos predicate $\Ex{X} \in \Pred{|X|}$, called the \defemph{existence predicate}, such that $\Ex{X}(x) \neq \emptyset$ for all $x \in |X|$.
+%
+Also define a \defemph{(parameterized) assembly map} $f : X \to Y$ to be a map $f : |X| \to |Y|$ which is realized by some $\R{a} \in \AA$, meaning: for all $x \in |X|$, $\R{b} \in \Ex{X}(x)$ and $p \in \PP$, we have $\R{a} \, \R{b} \rz[p] \Ex{Y}(f(x))$.
+%
+Assembly maps are closed under composition and include the identity maps, so we have a category $\PAsm{\AA, \PP}$. 
+
+Given an assembly~$X$, let $\eq[X]$ be the tripos predicate on $|X| \times |X|$, defined by
+%
+\begin{equation*}
+  (x \eq[X] x') \defeq \set{\R{a} \in \Ex{X}(x) \such x = x'}.
+\end{equation*}
+%
+Thus $x \eq[X] x'$ is empty when $x \neq x'$ and equals $\Ex{X}(x)$ when $x = x'$.
+%
+It is evident that $x \eq[X] x'$ is an equality predicate on~$|X|$, hence the assembly~$X$ may be construed as the topos object $(|X|, \eq[X])$.
+%
+Not every topos object arises this way, for instance the subobject classifier~$\Omega$.
+
+To get a functorial embedding of assemblies into the topos, we map an assembly map $f : X \to Y$ to the topos morphism $F : X \to Y$ where
+%
+\begin{equation*}
+  F(x, y) \defeq \set{\R{b} \in \AA \such
+    f(x) = y
+    \land
+    \all{p \in \PP}
+    \combFst \, \R{b} \rz[p] \Ex{X}(x)
+    \land
+    \combSnd \, \R{b} \rz[p] \Ex{Y}(y)}.
+\end{equation*}
+%
+This is a functional relation, for if~$\R{a}$ realizes~$f$ then $\ucode{\abstr{x} \combPair \, x \, (\R{a} \, x)}$ realizes totality of~$F$.
+%
+The passage from assemblies to topos objects constitutes a full and faithful embedding $\PAsm{\AA, \PP} \to \PRT{\AA, \PP}$. Only fullness deserves attention. Suppose $X$ and $Y$ are assemblies and $F : X \to Y$ a morphism between the induced topos objects. Because $Y$ is an assembly and $F$ is single-valued, each $x \in |X|$ has at most one $y \in |Y|$ such that $F(x, y) \neq \emptyset$. Therefore, we may define a map $f : |X| \to |Y|$ by
+%
+\begin{equation*}
+  f(x) = y \defiff F(x,y) \neq \emptyset.
+\end{equation*}
+%
+If $\R{a} \in \AA$ realizes totality of $F$ then $\ucode{\abstr{x} \combSnd \, (\R{a} \, x)}$ realizes~$f$ as an assembly map.
+
+\subsection{Some distinguished assemblies}
+\label{sec:distinguished-assemblies}
+
+We review certain objects of the topos that will play a role in the construction of the object of the Dedekind reals.
+
+\subsubsection{Natural numbers, integers, and rational numbers}
+\label{sec:natur-numb-integ}
+
+The natural numbers object is the assembly $\objN \defeq (\NN, \Ex{\objN})$ where $\Ex{\objN}(n) \defeq \set{\numeral{n}}$, so that each number is realized by the corresponding Curry numeral.
+%
+The induction principle is realized by the primitive recursor $\comb{primrec}$ from \cref{sec:progr-with-ppcas}.
+
+The objects of integers and rational numbers are the assemblies
+%
+\begin{equation*}
+  \objZ \defeq (\ZZ, \Ex{\objZ})
+  \quad\text{\and}\quad
+  \objQ \defeq (\QQ, \Ex{\objQ}),
+\end{equation*}
+%
+whose existence predicates are induced by computable enumerations.
+For the integers we can use
+%
+\begin{equation*}
+  \Ex{\objZ}(k) \defeq
+  \begin{cases}
+    \set{\numeral{2 k}}     & \text{if $k \geq 0$,} \\
+    \set{\numeral{1 - 2 k}} & \text{if $k < 0$.}
+  \end{cases}
+\end{equation*}
+%
+For the rationals we may reuse the bijection $\rat{} : \NN \to \QQ$ from \cref{sec:oracle-comp-maps},
+%
+\begin{equation*}
+  \Ex{\objQ}(\rat{n}) \defeq \set{\numeral{n}}.
+\end{equation*}
+%
+Any other reasonable codings would result in isomorphic objects.
+%
+Arithmetical operations are realized and the order relation is decidable, i.e., the statement
+$\all{x, y} x < y \lor y \leq x$ is realized, both for $x, y \in \ZZ$ and for $x, y \in \QQ$.
+
+\subsubsection{Products and exponentials}
+\label{sec:prod-expon}
+
+The category of parameterized assemblies is cartesian closed. The product of $X$ and $Y$ is the assembly
+%
+\begin{equation*}
+  X \times Y \defeq (|X| \times |Y|, \Ex{X \times Y})
+\end{equation*}
+%
+where
+%
+\begin{equation*}
+  \Ex{X \times Y}(x, y) \defeq
+  \set{\R{a} \in \AA \such
+  \all{p \in \PP} \combFst \, \R{a} \rz[p] \Ex{X}(x) \land \combSnd \, \R{a} \rz[p] \Ex{Y}(y)}.
+\end{equation*}
+%
+To construct the exponential~$Y^X$, we define its existence predicate, for any $f : |X| \to |Y|$, by
+%
+\begin{equation*}
+  \Ex{Y^X}(f) \defeq
+  \set{\R{a} \in \AA \such
+    \all{x \in X} \all{\R{b} \in \Ex{X}(x)} \all{p \in \PP}
+      \R{a} \, \R{b} \rz[p] \Ex{Y}(f(x))
+  },
+\end{equation*}
+%
+and set $|Y^X| \defeq \set{f : |X| \to |Y| \such \Ex{Y^X}(f) \neq \emptyset}$.
+
+\begin{proposition}
+  \label{prop:markov-principle}%
+  Markov's principle
+  %
+  \begin{equation*}
+    \all{f \in \two^\objN} \neg \neg (\some{n \in \objN} f n = 1) \lthen \some{n \in \objN} f n = 1
+  \end{equation*}
+  %
+  is valid.
+\end{proposition}
+
+\begin{proof}
+  The principle is realized by a program that searches for the least $n$ such that $f n \neq 0$:
+  %
+  \begin{equation*}
+    \abstr{f} \abstr{r}
+    \comb{Z} \, (\abstr{s} \abstr{n}
+         \combIf \,
+         (\comb{iszero} \,
+         (f \, n) \,
+         (s \, (\comb{succ} \, n)) \,
+         n))
+     \, \numeral{0}.
+  \end{equation*}
+  %
+  The assumption $\neg\neg{\some{n \in \objN} f(n) = 1}$ ensures that the search will succeed.\footnote{As is typical of realizability models, we are relying on mete-level Markov's principle to realize Markov's principle: since it is impossible that the search will run forever, it will find what it is looking for.}
+\end{proof}
+
+\begin{example}
+  Let us contrast $\forall\exists$ statements and exponentials. Consider a non-empty assembly~$X$, an assembly~$Y$, and
+  a strict predicate $\phi \in \Pred{|X| \times |Y|}$, with $s \in \AA$ witnessing its strictness.
+  %
+  Validity of $\all{x \in X} \some{y \in Y} \phi(x,y)$ is equivalent to there being $\R{a} \in \AA$ such that
+  %
+  \begin{equation*}
+    \all{x \in |X|} \all{\R{b} \in \Ex{X}(x)} \all{p \in \PP} \some{y \in |Y|} \R{a} \, \R{b} \rz[p] \phi(x,y).
+  \end{equation*}
+  %
+  The realizer $\R{c} \defeq \ucode{\abstr{\R{b}} \combSnd \, (s \, (\R{a} \, \R{b}))}$ satisfies, for any $x \in |X|$, $\R{b} \in \Ex{X}(x)$ and $p \in \PP$, that there is $y \in |Y|$ such that $\R{c} \, \R{b} \rz[p] \Ex{Y}(y)$. However, $\R{c}$ need not realize a choice map $f : X \to Y$ because~$y$ may depend on~$\R{b}$ and~$p$.
+  %
+  Thus in general the axiom of choice
+  %
+  \begin{equation*}
+    (\all{x \in X} \some{y \in Y} \phi(x, y))
+    \lthen
+    \some{f \in Y^X} \all{x \in X} \phi(x, f(x)))
+  \end{equation*}
+  %
+  is not realized, even in case that $\Ex{X}(x)$ is a singleton for all~$x \in \carrier{X}$, because there is still dependence on the parameter. In particular, countable choice may fail, as it does in the topos~$\TT{\mil}$ from \cref{sec:topos-with-countable}.
+\end{example}
+
+\subsubsection{Sub-assemblies}
+\label{sec:sub-assemblies}
+
+Suppose $\phi \in \Pred{|X|}$ is a strict predicate on an assembly~$X$. (Notice that $\phi$ is automatically relational because $(x \eq[X] y) \neq \emptyset$ implies $x = y$.) We define the sub-assembly $\set{x \of X \such \phi(x)}$ to have the underlying set
+%
+\begin{equation*}
+  |\set{x \of X \such \phi(x)}| \defeq \set{x \in |X| \such \phi(x) \neq \emptyset}
+\end{equation*}
+%
+and the existence predicate $\Ex{\set{x \of X \such \phi(x)}}(x) \defeq \phi(x)$.
+%
+Then the canonical map $\set{x \of X \such \phi(x)} \to X$ is realized by any realizer for strictness of~$\phi$.
+It is the monomorphism characterized by the predicate~$\phi$.
+
+
+\subsubsection{Constant assemblies}
+\label{sec:constant-assemblies}
+
+Define the \defemph{constant (parameterized) assembly} on a set $S$ to be $\nabla S \defeq (S, \Ex{\nabla S})$ with $\Ex{\nabla S}(x) \defeq \AA$.
+%
+The existence predicate is maximally uninformative, because all elements of~$S$ share all realizers.
+%
+Consequently, given any assembly $X$, every map $f : |X| \to S$ is realized, say by~$\combK$.
+In particular, every map $f : S \to T$ between sets is an assembly map $\nabla f \defeq f : \nabla S \to \nabla T$,
+which makes $\nabla$ a functor from sets to assemblies, see~\cite[Sect.~2.4]{oosten08:_realiz} for details.
+
+\subsubsection{The assembly $\nabla\two$ and $\neg\neg$-stable predicates}
+\label{sec:assembly-nabl-negn}
+
+Of particular interest is the assembly $\nabla \two$ because it classifies $\neg\neg$-stable predicates on any assembly~$X$ (and more generally on any topos object).
+%
+On the one hand, ${\nabla\two}^X$ is isomorphic to $\nabla(\two^{|X|})$ because every map $|X| \to \two$ is realized.
+On the other, $\two^{|X|}$ qua Heyting algebra is equivalent to the Heyting prealgebra of $\neg\neg$-stable strict predicates on~$X$. Too see this, observe that a strict predicate~$\phi$ on~$X$ is $\neg\neg$-stable when
+%
+\begin{equation*}
+  x \of X \models \Ex{X}(x) \to ((\phi(x) \lthen \bot) \lthen \bot) \lthen \phi(x),
+\end{equation*}
+%
+%% Computation of ¬¬-stability of a strict relational ϕ ∈ Pred(X)
+%
+% Note: if ϕ → Ex then Ex → ϕx → P is equivalent to ϕx → P
+%
+% Double negation in the topos:
+% ¬¬ϕx iff
+% ((ϕx ⇒ ⊥ ) ⇒ ⊥) iff
+% Ex → (Ex → ϕx → ⊥) → ⊥ iff
+% Ex → (ϕx → ⊥) → ⊥
+%
+% ¬¬-stability of ϕ:
+% ¬¬ϕx ⇒ ϕx iff
+% Ex → ¬¬ϕx → ϕx iff
+% Ex → ((Ex → (ϕx → ⊥)) → ⊥) → ϕx iff
+% Ex → ((ϕx → ⊥) → ⊥) → ϕx
+%
+which amounts to there being $\R{a} \in \AA$ such that, for all $x \in |X|$, $\R{b} \in \Ex{X}(x)$ and $p \in \PP$,
+if $\phi(x) \neq \emptyset$ then $\R{a} \, \R{b} \rz[p] \phi(x)$.
+%
+Therefore, $\phi$ is equivalent to the strict predicate
+%
+$x \mapsto \set{a \in \AA \such \phi(x) \neq \emptyset}$,
+%
+which in turn corresponds to a unique map $|X| \to \two$, obtained when~$\emptyset$ and~$\AA$ are mapped to $0$ and~$1$, respectively.
+
+
+
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "countable-reals"
+%%% End:
+ 
