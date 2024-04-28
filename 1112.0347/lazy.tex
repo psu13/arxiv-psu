@@ -1,0 +1,151 @@
+\section{The Lazy Lambda-Calculus}
+We begin with the syntax, which is standard.
+\begin{definition}
+{\rm We assume a set {\sf Var} of variables, ranged over by $x, y, z$. The set ${\bf \Lambda}$ of $\lambda$-terms, ranged over by {\mit M, N, P, Q, R} is defined by}
+\[ M \;\; ::= \;\; x \; | \; \lambda x . M \; | \; M N . \]
+\end{definition}
+For standard notions of free and bound variables etc. we refer to \cite{Bar}. The reader should also refer to that work for definitions of notation such as: 
+${\sf FV}(M)$, $C[\cdot ]$, $\Lambda^{0}$. 
+Our one point of difference concerns substitution; we write $M[N/x]$ rather than $M[x := N]$.
+\begin{definition}
+\label{convdef}
+{\rm The relation $M \Converges N$ (``$M$ converges to principal weak head normal form $N$'') is defined inductively over $\Lambda^{0}$ as follows:}
+\[ \bullet \;\; \lambda x . M \Converges \lambda x . M \]
+\[ \bullet \;\; \frac{M \Converges \lambda x . P \;\; P[N/x] \Converges Q}{M N \Converges Q} \]
+\end{definition}
+{\bf Notation} 
+\begin{Eqarray} 
+M \Converges & \equiv & \exists N . M \Converges N & 
+\mbox{(``$M$ converges'')} \\
+M \Diverges & \equiv & \neg (M \Converges ) & \mbox{(``$M$ diverges'')}
+\end{Eqarray}
+It is clear that $\Converges$ is a partial function, i.e. evaluation is deterministic.
+
+We now have an (unlabelled) transition system $(\Lambda^{0}, 
+\underline{\ }\Converges \underline{\ } )$. The relation $\Converges$ by itself is too ``shallow'' to yield information about the behaviour of a term under all experiments. However, just as in  the study of concurrency, we shall use it as a building block for a deeper relation, which we shall call {\em applicative bisimulation}. To motivate this relation, let us spell out the observational scenario we have in mind.
+
+Given a closed term $M$, the only experiment of depth 1 we can do is to evaluate $M$ and see if it converges to some abstraction (weak head normal form) $\lambda x . M_{1}$. If it does so, we can continue the experiment to depth 2 by supplying a term $N_{1}$ as input to $M_{1}$, and so on. Note that what the experimenter can observe at each stage is only the {\em fact} of convergence, not which term lies under the abstraction. 
+We can picture matters thus:
+\begin{center}
+\begin{tabular}{cl}
+Stage 1 of experiment: & $M \Converges \lambda x . M_{1}$; \\
+& environment ``consumes'' $\lambda$, \\
+& produces $N_{1}$ as input \\
+Stage 2 of experiment: & $M_{1}[N_{1}/x] \Converges \ldots$ \\
+$\vdots$ &
+\end{tabular}
+\end{center}
+\begin{definition}[Applicative Bisimulation]
+{\rm We define a sequence of relations $\{ \preord_{k} \}_{k \in \omega}$ on $\Lambda^{0}$:
+\[ M \preord_{0} N \;\;\;\; {\rm always} \]
+\begin{eqnarray*}
+M \preord_{k+1} n \;\; \Longleftrightarrow \;\; M \Converges \lambda x . M_{1} & \Rightarrow & \exists N_{1}. \, N \Converges \lambda y . N_{1} \; \& \; \forall P \in \Lambda^{0}. \\
+& & M_{1}[P/x] \preord_{k} N_{1}[P/x]
+\end{eqnarray*}
+\[ M \preord^{B} N \;\; \equiv \;\; \forall k \in \omega . \, M \preord_{k} N \]
+Clearly each $\preord_{k}$ and $\preord^{B}$ is a preorder. We extend $\preord^{B}$ to $\Lambda$ by:
+\[ M \preord^{B} N \;\; \equiv \;\; \forall \sigma : {\sf Var} \rightarrow \Lambda^{0}. \, M \sigma \preord^{B} N \sigma \]
+(where e.g. $M \sigma$ means the result of substituting $\sigma x$ for each $x \in FV(M)$ in $M$). Finally,}
+\[ M \bisim^{B} N \;\; \equiv \;\; M \preord^{B} N \; \& \; N \preord^{B} M. \]
+\end{definition}
+Analogously to our treatment of bisimulation in the previous Chapter, $\preord^{B}$ can be shown to be the maximal fixpoint of a certain function, and hence to satisfy:
+\begin{eqnarray*}
+M \preord^{B} N \;\; \Longleftrightarrow \;\; M \Converges \lambda x . M_{1} & \Rightarrow & \exists N_{1}. \, N \Converges \lambda y . N_{1} \; \& \; \forall P \in \Lambda^{0}. \\
+& & M_{1}[P/x] \preord^{B} N_{1}[P/y]
+\end{eqnarray*}
+Further details are given in the next section.
+
+The applicative bisimulation relation can be dexcribed in a more traditional 
+way (from the point of view of $\lambda$-calculus) as a ``Morris-style 
+contextual congruence'' \cite{Mor68,Plo77,Mil77,Bar}.
+\begin{definition}
+{\rm The relation $\preord^{C}$ on $\Lambda^{0}$ is defined by
+\[ M \preord^{C} N \;\; \equiv \;\; \forall C[\cdot ] \in \Lambda^{0}. \, C[M] \Converges \; \Rightarrow \; C[N] \Converges . \]
+This is extended to $\Lambda$ in the same way as $\preord^{B}$.}
+\end{definition}
+\begin{proposition}
+\label{cont}
+${\preord^{B}} = {\preord^{C}}$.
+\end{proposition}
+This is a special case of a result we will prove later. Our proof will make essential use of domain logic, despite the fact that the {\em statement} of the result does not mention domains at all. The reader who may be sceptical of our approach is invited to attempt a direct proof.
+
+We now list some basic properties of the relation $\preord^{B}$ (superscript omitted).
+\begin{proposition}
+\label{lazycong}
+For all $M, N, P \in \Lambda$:
+\[\begin{array}{rl}
+(i) & M \preord M \\
+(ii) & M \preord N \; \& \; N \preord P \;\; \Rightarrow \;\; M \preord P \\
+(iii) & M \preord N \;\; \Rightarrow \;\; M[P/x] \preord N[P/x] \\
+(iv) & M \preord N \;\; \Rightarrow \;\; P[M/x] \preord P[N/x] \\
+(v) & \lambda x . M \bisim \lambda y . M[y/x] \\
+(vi) & M \preord N \;\; \Rightarrow \;\; \lambda x . M \preord \lambda x . N \\
+(vii) & M_{i} \preord N_{i} \; (i=1,2) \;\; \Rightarrow \;\; M_{1}M_{2} \preord N_{1}N_{2} .
+\end{array} \]
+\end{proposition}
+
+\proof\ $(i)$--$(iii)$ and $(v)$--$(vi)$ are trivial; 
+$(vii)$ follows from $(ii)$ and $(iv)$, since taking $C_{1} \equiv [\cdot ]M_{2}$, 
+$M_{1}M_{2} \preord N_{1}M_{2}$, and taking $C_{2} \equiv N_{1}[\cdot ]$, $N_{1}M_{2} \preord N_{1}N_{2}$, whence $M_{1}M_{2} \preord N_{1}N_{2}$. It remains to prove $(iv)$, which by 2.5 is equivalent to
+\[ M \preord^{C} N \;\; \Rightarrow \;\; P[M/x] \preord^{C} P[N/x]. \]
+We rename all bound variables in $P$ to avoid clashes with $M$ and $N$, 
+and replace $x$ by $[\cdot ]$ to obtain a context $P[\cdot ]$ such that
+\[ P[M/x] = P[M], \;\;\;\; P[N/x] = P[N]. \]
+Now let $C[\cdot ] \in \Lambda^{0}$ and $\sigma \in {\sf Var} \rightarrow \Lambda^{0}$ be given. 
+Let $C_{1}[\cdot ] \equiv C[P[\cdot ] \sigma ]$. $M \preord^{C} N$ implies
+\[ C_{1}[M \sigma ] \Converges \;\; \Rightarrow \;\; C_{1}[N \sigma ] \Converges \]
+which, since $(P[M/x])\sigma = (P[\cdot ] \sigma )[M \sigma ]$, yields
+\[ C[(P[M/x]) \sigma ] \Converges \;\; \Rightarrow \;\; C[(P[N/x]) \sigma ] \Converges , \]
+as required. \qed
+
+This Proposition can be summarised as saying that $\preord^{B}$ is a {\em precongruence}. We thus have an (in)equational theory $\lambda \ell = (\Lambda , \sqsubseteq , = )$, where:
+\[ \lambda \ell \; \vdash \; M \sqsubseteq N \;\;\; \equiv \;\;\; M \preord^{B} N \]
+\[ \lambda \ell \; \vdash \; M = N \;\;\; \equiv \;\;\; M \bisim^{B} N. \]
+What does this theory look like?
+\begin{proposition}
+\label{lazyprop}
+(i) The theory $\lambda$ \cite{Bar} is included in $\lambda \ell$; in particular,
+\[ \lambda \ell \; \vdash \; (\lambda x . M)N = M[N/x] \;\;\;\; (\beta ).\]
+(ii) ${\bf \Omega} \equiv (\lambda x . xx)(\lambda x . xx)$ is a least element for $\sqsubseteq$, i.e.
+\[ \lambda \ell \; \vdash \; {\bf \Omega} \sqsubseteq x . \]
+(iii) $(\eta )$ is not valid in $\lambda \ell$, e.g.
+\[ \lambda \ell \; \not{\vdash} \; \lambda x . {\bf \Omega} x = {\bf \Omega} , \]
+but we do have the following conditional version of $\eta$:
+\[ (\Converges \eta ) \;\; \lambda \ell \; \vdash \; \lambda x . M x = M \;\;\;\; (M \Converges , \; x \not\in FV(M)) \]
+\[ (M \Converges \; \equiv \; \forall \sigma \in {\sf Var} \rightarrow \Lambda^{0}
+. \, (M \sigma ) \Converges). \]
+(iv) {\bf YK} is a greatest element for $\sqsubseteq$, i.e.
+\[ \lambda \ell \; \vdash \; x \sqsubseteq {\bf YK} . \]
+\end{proposition}
+
+\proof\ {\em (i)} is an easy consequence of \ref{lazycong}. \\
+{\em (ii)}. ${\bf \Omega} \Diverges$, hence ${\bf \Omega} \preord^{B} M$ for all $M \in \Lambda^{0}$. \\
+{\em (iii)}. $\lambda x . {\bf \Omega} x \npreord_{1} {\bf \Omega}$, since $(\lambda x . {\bf \Omega} x)\Converges $. 
+Now suppose $M\Converges$, and let $\sigma : {\sf Var} \rightarrow \Lambda^{0}$ be given. 
+Then $(M \sigma ) \Converges \lambda y . N$, and $(\lambda x . {\bf \Omega} x)\sigma \Converges \lambda x . {\bf \Omega} x$. 
+For any $P \in \Lambda^{0}$,
+\begin{Eqarray}
+(M \sigma )P \Converges Q & \Leftrightarrow & ((M \sigma )x) [P/x] \Converges Q
+& \mbox{since $x \not\in FV(M)$,} \\
+& \Leftrightarrow & ((\lambda x . M x) \sigma ) P \Converges Q , & 
+\end{Eqarray}
+and so $M \bisim^{B} \lambda x . M x$, as required. \\
+{\em (iv)}. Note that ${\bf YK} \Converges \lambda y . N$, where 
+$N \equiv (\lambda x . {\bf K} (x x))(\lambda x . {\bf K} (x x))$, and that for all $P$,
+\[ N[P/y] \Converges \lambda y . N . \]
+Hence for all $P_{1}, \ldots , P_{n} \;\; (n \geq 0)$,
+\[ {\bf YK} P_{1} \ldots P_{n} \Converges , \]
+and so $M \preord^{B} {\bf YK}$ for all $M \in \Lambda^{0}$. \qed
+
+To understand {\em (iv)}, we can think of {\bf YK} as the infinite process \[ \stackrel{\lambda}{\circlearrowleft} \]
+solving the equation
+\[ \xi = \lambda x . \xi . \]
+This is a top element in our applicative bisimulation ordering because it converges under all finite stages of evaluation for all arguments---the experimenter can always observe convergence (or ``consume an infinite $\lambda$-stream'').
+
+We can make some connections between the theory $\lambda \ell$ and \cite{Lon83}, as pointed out to me by Luke Ong. Firstly, \ref{lazyprop}(ii) can be generalised to:
+\begin{itemize}
+\item The set of terms in $\Lambda^{0}$ which are least in $\lambda \ell$ 
+are exactly the $PO_{0}$ terms in the terminology of \cite{Lon83}.
+\end{itemize}
+Moreover, {\bf YK} is an $O_{\infty}$ term in the terminology of \cite{Lon83}, although it is {\em not} a greatest element in the ordering proposed there.
+

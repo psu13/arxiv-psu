@@ -1,0 +1,203 @@
+\section{Programs as Elements: Endogenous Logic}
+We extend our meta-language for denotational semantics to include typed
+terms.
+
+\subsection*{Syntax}
+For each type $\sigma$, we have a set of variables 
+\[ {\sf Var}(\sigma ) = \{ x^{\sigma}, y^{\sigma}, z^{\sigma}, \ldots \} . \]
+We give the term formation rules {\it via} an inference system for assertions
+of the form $M : \sigma$, i.e. ``$M$ is a term of type $\sigma$''.
+\[ ({\sf Var}) \;\;\; x^{\sigma} : \sigma \]
+\[ ({\bf 1}-I) \;\;\; \star : {\bf 1} \]
+\[ ({\times}-I) \;\; \frac{M : \sigma , \;\; N : \tau}{(M, N) : \sigma \times \tau}
+\;\;\;\;\;\; 
+   ({\times}-E) \;\; \frac{M : \sigma \times \tau , \;\; N : \upsilon}{\mylet{M}{x^{\sigma}}{y^{\tau}}{N} 
+ : \upsilon} \]
+\[ ({\rightarrow}-I) \;\; \frac{M : \tau}{\lambda x^{\sigma}. M:\sigma \rightarrow \tau} \;\;\;\;\;\;
+   ({\rightarrow}-E) \;\; 
+\frac{M:\sigma \rightarrow \tau  , \;\; N:\sigma}{MN:\tau} \]
+\[ ({\oplus}-I-L) \;\; \frac{M : \sigma}{\imath_{\sigma \tau}(M) : \sigma \oplus \tau}
+\;\;\;\;\;\;
+   ({\oplus}-I-R) \;\; \frac{N : \tau}{\jmath_{\sigma \tau}(M) : \sigma \oplus \tau} \]
+\[ ({\oplus}-E) \;\; \frac{M : \sigma \oplus \tau , \;\; N_{1}, N_{2} : 
+\upsilon}{\mycases{M}{x^{\sigma}}{N_{1}}{y^{\tau}}{N_{2}} : \upsilon} \]
+\[ ((\cdot )_{\bot}-I) \;\; \frac{M : \sigma}{{\sf up}(M) : (\sigma )_{\bot}}
+\;\;\;\;\;\;
+   ((\cdot )_{\bot}-E) \;\; \frac{M : (\sigma )_{\bot}, \;\; N : \tau}{\lift{M}{x^{\sigma}}{N} : \tau } \]
+\[ ({\Diamond}-I) \;\; \frac{M : \sigma}{\lsing M \rsing_{l} : P_{l} \sigma}
+\;\;\;\;\;\;
+   ({\Box}-I) \;\; \frac{M:\sigma}{\lsing M \rsing_{u} : P_{u} \sigma} \] 
+\[ ({\Diamond}-E) \;\; \frac{M : P_{l} \sigma , \;\; N : P_{l} \tau}{\lextend{M}{x^{\sigma}}{N} : P_{l} \tau} \]
+\[ ({\Box}-E) \;\; \frac{M: P_{u} \sigma , \;\; N : P_{u} \tau}{\uextend{M}{x^{\sigma}}{N} : P_{u} \tau} \]
+\[ ({\Diamond}-{+}) \;\; \frac{M, N : P_{l} \sigma}{M \uplus_{l} N : P_{l} \sigma}
+\;\;\;\;\;\;
+   ({\Box}-{+}) \;\; \frac{M, N: P_{u} \sigma}{M \uplus_{u} N : P_{u} \sigma} \] 
+\[ ({\Diamond}-{\otimes}) \;\; \frac{M : P_{l} \sigma , \;\; N : P_{l} \tau}{M \otimes_{l} N : P_{l} (\sigma \times \tau )}
+\;\;\;\;\;\;
+   ({\Box}-{\otimes}) \;\; \frac{M:P_{u}
+\sigma , \;\; N:P_{u} \tau}{M \otimes_{u} N:P_{u} (\sigma \times \tau )} \]
+\[ ({\sf rec}-I) \;\; \frac{M : \sigma [ {\sf rec} \: t. \, \sigma / t]}{{\sf fold}_{t, \sigma}(M) : {\sf rec} \: t . \, \sigma}
+\;\;\;\;\;\;
+   ({\sf rec}-E) \;\; \frac{M : {\sf rec} \: t . \, \sigma}{{\sf unfold}_{t, \sigma}(M) : \sigma [{\sf rec} \: t . \, \sigma / t]} \]
+\[ ({\mu}-I) \;\; \frac{M : \sigma}{\mu x^{\sigma} . \, M : \sigma} \]
+We write $\Lambda (\sigma )$ for the set of terms of type $\sigma$. 
+Note the systematic presentation of these constructs as {\em introduction}
+and {\em elimination} rules for each of the type constructions,
+following ideas of Martin-L\"{o}f \cite{M-L83} and Plotkin \cite{Plo85}.
+Note
+that $\lambda$, {\sf let}, {\sf cases}, {\sf lift}, {\sf extend}, $\mu$  are
+all {\em variable binding} operations in the obvious way.
+Also, note
+that $\lsing . \rsing$, {\sf extend} arise from the adjunction defining the
+powerdomain construction; $\uplus$ is the operation of the free algebras
+for this adjunction; while $\otimes$ is the universal map for the tensor
+product with respect to this operation   \cite{HP79}.
+
+We now introduce an endogenous program logic with assertions of the form
+\[M,\Gamma \vdash \phi \] where $M:\sigma$, $\phi \in L(\sigma )$, and
+$\Gamma \in \prod_{\sigma} \{{\sf Var}(\sigma ) \rightarrow L(\sigma )\}$
+gives {\em assumptions} on the free variables of $M$.
+
+\noindent {\bf Notation}
+\[ \Gamma \leq \Delta \equiv \forall x \in {\sf Var}. \, {\cal L} \vdash \Gamma
+x \leq \Delta x . \]
+For the remainder of this Chapter, we shall omit type subscripts and 
+superscripts ``whenever we think we can get away with it'',
+in the delightful formulation of Barr and Wells \cite[p.\ 1]{BW84}.
+\subsection*{Axiomatisation}
+\[ ({\vdash}-{\wedge}) \;\;\; \frac{ \{ M, \Gamma \vdash \phi_{i} \}_{i \in I}}{M, \Gamma \vdash \bigwedge_{i \in I} \phi_{i}} \;\;\;\;\;\;
+   ({\vdash}-{\vee}) \;\;\; \frac{ \{ M, \Gamma [x \mapsto \phi_{i}] \vdash \psi \}_{i \in I}}{M, \Gamma [x \mapsto \bigvee_{i \in I}\phi_{i}] \vdash \psi} \]
+\[ ({\vdash}-{\leq}) \;\;\; \frac{\Gamma \leq \Delta \;\; M, \Delta \vdash \phi \;\; \phi \leq \psi}{M, \Gamma \vdash \psi} \;\;\;\;\;\;
+   x, \Gamma [x \mapsto \phi ] \vdash \phi \] 
+\[ \frac{M, \Gamma \vdash \phi \;\;\; N, \Gamma \vdash \psi}{(M, N), \Gamma \vdash (\phi \times \psi )} \;\;\;\;\;\;
+   \frac{M, \Gamma \vdash (\phi \times \psi ) \;\;\; N, \Gamma [x \mapsto \phi , y \mapsto \psi ] \vdash \theta}{\mylet{M}{x}{y}{N} , \Gamma \vdash \theta} \]
+\[\frac{M, \Gamma [x \mapsto \phi ] \vdash \psi}{\lambda x.M, \Gamma
+\vdash (\phi \rightarrow \psi )} \;\;\;\;\;\; 
+  \frac{M, \Gamma \vdash (\phi
+\rightarrow \psi ) \;\;\; N, \Gamma \vdash \phi}{MN, \Gamma \vdash \psi} \]
+\[ \frac{M, \Gamma \vdash \phi}{\imath (M), \Gamma \vdash (\phi \oplus \false )}
+\;\;\;\;\;\;
+   \frac{M : (\phi \oplus \false ) \;\;\; (\phi \converges ) \;\;
+N_{1}, \Gamma [x \mapsto \phi ] \vdash \theta}{\mycases{M}{x}{N_{1}}{y}{N_{2}}, \Gamma \vdash \theta} \]
+\[ \frac{N, \Gamma \vdash \psi}{\jmath (N), \Gamma \vdash (\false \oplus \psi )}
+\;\;\;\;\;\;
+   \frac{M : (\false \oplus \psi ) \;\;\; (\psi \converges ) \;\;
+N_{2}, \Gamma [y \mapsto \psi ] \vdash \theta}{\mycases{M}{x}{N_{1}}{y}{N_{2}}, \Gamma \vdash \theta} \]
+\[ \frac{M, \Gamma \vdash \phi}{{\sf up}(M), \Gamma \vdash (\phi )_{\bot}} \;\;\;\;\;\;
+   \frac{M, \Gamma \vdash (\phi )_{\bot} \;\;\; N, \Gamma [x \mapsto \phi ] \vdash \psi}{\lift{M}{x}{N}, \Gamma \vdash \psi} \]
+\[\frac{M, \Gamma \vdash \phi}{\lsing M \rsing_{l}, \Gamma \vdash \Diamond
+\phi} \;\;\;\;\;\;
+  \frac{M, \Gamma \vdash \phi}{\lsing M \rsing_{u}, \Gamma \vdash \Box \phi} \]
+\[ \frac{M, \Gamma \vdash \Diamond \phi \;\;\; N, \Gamma [x \mapsto \phi ] \vdash \Diamond \psi}{\lextend{M}{x}{N}, \Gamma \vdash \Diamond \psi} 
+\;\;\;\;\;\;
+   \frac{M, \Gamma \vdash \Box \phi \;\;\; N, \Gamma [x \mapsto \phi ] \vdash
+\Box \psi}{\uextend{M}{x}{N}, \Gamma \vdash \Box \psi} \]
+\[ \frac{M, \Gamma \vdash \Diamond \phi}{M \uplus_{l} N, \Gamma \vdash \Diamond \phi} \;\;\;\;\;\;
+   \frac{N, \Gamma \vdash \Diamond \psi}{M \uplus_{l} N, \Gamma \vdash \Diamond \psi} \;\;\;\;\;\;
+   \frac{M, \Gamma \vdash \Box \phi \;\;\; N, \Gamma \vdash \Box \phi}{M
+\uplus_{u} N, \Gamma \vdash \Box \phi} \]
+\[ \frac{M, \Gamma \vdash \Diamond \phi \;\;\; N, \Gamma 
+\vdash \Diamond \psi}{M \otimes_{l} N, \Gamma \vdash \Diamond (\phi \times \psi )} \;\;\;\;\;\;
+   \frac{M, \Gamma \vdash \Box \phi \;\;\; N, \Gamma
+\vdash \Box \psi}{M \otimes_{u} N, \Gamma \vdash
+\Box (\phi \times \psi )} \]
+\[ \frac{M, \Gamma \vdash \phi}{{\sf fold}(M), \Gamma \vdash \phi} \;\;\;\;\;\;
+   \frac{M, \Gamma \vdash \phi}{{\sf unfold}(M), \Gamma \vdash \phi} \]
+\[ \frac{\mu x . \, M, \Gamma \vdash \phi \;\;\; M, \Gamma [x \mapsto \phi ]
+\vdash \psi}{\mu x . \, M, \Gamma \vdash \psi} \]
+Note that there is one inference rule for $\vdash$ per formation rule in
+our syntax.
+Thus we can refer {\it e.g.} to rule $({\vdash}-{\times}-E)$ without ambiguity.
+Note the role of the convergence predicate $( \cdot ) \converges$ in 
+$({\vdash}-{\oplus}-E)$; it plays a similar role in the elimination rules
+for the other ``strict'' constructions of smash product \cite[Chapter 3 p.\  1]{PloLN} and strict 
+function space \cite[Chapter 1 p.\ 11]{PloLN},
+which we do not cover here.
+\subsection*{Semantics}
+Following standard ideas \cite{PloLN,SP82,Plo76}, we now give a denotational semantics for this
+meta-language, in the form of a map
+\[ \lsem \cdot \rsem_{\sigma} : \Lambda (\sigma ) \longrightarrow    {\sf Env}
+\longrightarrow {\cal D}(\sigma ) \]
+where ${\sf Env} \equiv \prod_{\sigma}\{{\sf Var}(\sigma ) \rightarrow {\cal
+D}(\sigma ) \}$ is the set of {\em environments}. 
+\[ \begin{array}{lcl}
+\lsem x \rsem \rho & = & \rho x \\
+\lsem (M, N) \rsem \rho & = & \ltuple \lsem M \rsem \rho , 
+\lsem N \rsem \rho \rtuple \\
+\lsem \mylet{M}{x}{y}{N} \rsem \rho & = & \lsem N \rsem \rho [ x \mapsto d,
+y \mapsto e ] \\
+& & {\rm where} \\
+& & \ltuple d, e \rtuple = \lsem M \rsem \rho \\
+\lsem \imath (M) \rsem \rho & = & \left\{ \begin{array}{ll}
+\ltuple 0, \lsem M \rsem \rho \rtuple , & \lsem M \rsem \rho \not= \bot \\
+\bot & \lsem M \rsem \rho = \bot  
+\end{array}
+\right. \\
+\lsem \jmath (N) \rsem \rho & = & \left\{ \begin{array}{ll}
+\ltuple 1, \lsem N \rsem \rho \rtuple , & \lsem N \rsem \rho \not= \bot \\
+\bot & \lsem N \rsem \rho = \bot 
+\end{array}
+\right. \\
+\lsem {\sf cases} \; M \; {\sf of} & & \\
+\imath (x). \, N_{1} \; {\sf else} \; \jmath (y). \, N_{2} \rsem \rho & = & \left\{ \begin{array}{ll}
+\lsem N_{1} \rsem \rho [x \mapsto d], & \lsem M \rsem \rho = \ltuple 0, d \rtuple \\
+\lsem N_{2} \rsem \rho [x \mapsto e], & \lsem M \rsem \rho = \ltuple 1, e \rtuple \\
+\bot , & \lsem M \rsem \rho = \bot
+\end{array}
+\right. \\
+\lsem {\sf up}(M) \rsem \rho & = & \ltuple 0, \lsem M \rsem \rho \rtuple \\
+\lsem \lift{M}{x}{N} \rsem \rho & = & \left\{ \begin{array}{ll}
+\lsem N \rsem \rho [x \mapsto d], & \lsem M \rsem \rho = \ltuple 0, d \rtuple \\
+\bot , & \lsem M \rsem \rho = \bot
+\end{array}
+\right. \\
+\lsem \lsing M \rsing_{l} \rsem \rho & = & \converges ( \lsem M \rsem \rho ) \\
+\lsem \lextend{M}{x}{N} \rsem \rho & = & \bigcup \{ \lsem N \rsem \rho [x
+\mapsto d] : d \in \lsem M \rsem \rho \} \\
+\lsem M \uplus_{l} N \rsem \rho & = & ( \lsem M \rsem \rho ) \cup ( \lsem N \rsem \rho ) \\
+\lsem M \otimes_{l} N \rsem \rho & = & ( \lsem M \rsem \rho ) \times ( \lsem N
+\rsem \rho ) \\
+\end{array} \]
+\[ \begin{array}{lcl}
+\lsem \lsing M \rsing_{u} \rsem \rho & = & \diverges ( \lsem M \rsem \rho ) \\
+\lsem \uextend{M}{x}{N} \rsem \rho & = & \bigcup \{ \lsem N \rsem \rho [x
+\mapsto d] : d \in \lsem M \rsem \rho \} \\
+\lsem M \uplus_{u} N \rsem \rho & = & ( \lsem M \rsem \rho ) \cup ( \lsem N
+ \rsem \rho ) \\
+\lsem M \otimes_{u} N \rsem \rho & = & ( \lsem M \rsem \rho ) \times ( \lsem N
+\rsem \rho ) \\
+\lsem {\sf fold}(M) \rsem \rho & = & {\foldalph}(\lsem M \rsem \rho ) \\
+\lsem {\sf unfold}(M) \rsem \rho & = & {\foldalph}^{-1}(\lsem M \rsem \rho ) \\
+\lsem \mu x. \, M \rsem \rho & = & \bigsqcup_{k \in \omega} d_{k} \\
+& & {\rm where} \\
+& & d_{0} = \bot , \;\; d_{k+1} = \lsem M \rsem \rho [x \mapsto d_{k}]
+\end{array} \] 
+Here $\foldalph$ is the initial algebra isomorphism as in Section~2 page~\pageref{foldalph}.
+We can use this 
+semantics to define a notion of validity for assertions:
+\[ M, \Gamma \models \phi \; \equiv \;  \forall \rho \in {\sf Env} . \, \rho \models
+\Gamma \Rightarrow \lsem M \rsem_{\sigma} \rho \models \phi \]
+where
+\[ \rho \models \Gamma \; \equiv \; \forall x \in {\sf Var} . \, 
+\rho x \models \Gamma x
+\]
+and for $d \in D(\sigma )$, $\phi \in L(\sigma )$:
+\[ d \models \phi \; \equiv \; d \in \lsem \phi \rsem_{\sigma} . \]
+We can now state the main result of this section:
+\begin{theorem}
+\label{endogth}
+The Endogenous logic is sound and complete:
+\[ \forall M, \Gamma , \phi . \: M, \Gamma \vdash \phi \;\; \Longleftrightarrow \;\; 
+M, \Gamma \models \phi . \]
+\end{theorem}
+
+We can state this result more sharply in terms of Stone Duality: it says
+that
+\[ \eta_{\sigma}^{-1}(\{ [\phi ]_{=_{\sigma}} :  M, \Gamma \vdash \phi \}) = 
+\lsem M \rsem_{\sigma} \rho , \]
+where 
+\[ \eta_{\sigma} : {\cal D}(\sigma ) \; \cong \; {\sf Spec} \: {\cal LA}(\sigma ) \]
+is the component of the natural isomorphism arising from Theorem~\ref{sdual};
+i.e. that we recover the point of ${\cal D}(\sigma )$ given by the 
+denotational semantics
+of $M$ from the properties we can prove to hold of $M$ in our logic.

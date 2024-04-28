@@ -1,0 +1,514 @@
+\section{Applications of the Domain Logic}
+We shall now use domain logic to study bisimulation.
+Our results in this section can be grouped under four main headings:
+\begin{enumerate}
+\item Comparisons with Hennessy-Milner logic 
+\item Characterisation Theorems
+\item Finitary Transition Systems
+\item Universal Semantics
+\end{enumerate}
+Of these, (1) and (2) will confirm the appropriateness of our definitions, while (3) and (4) will represent a distinctive payoff for our approach.
+
+\subsection*{Comparison with Hennessy-Milner logic}
+We begin with some technicalities on normal forms.
+\begin{definition}
+{\rm We define a class of normal forms ${\sf N} \Ellinfty \subseteq \Ell_{\infty \pi}$ inductively as follows:}
+\[ \bullet \;\; \frac{ \{\phi_{i} \in {\sf N} \Ellinfty \}_{i \in I}}{\bigwedge_{i \in I} \phi_{i}, \bigvee_{i \in I} \phi_{i} \in {\sf N} \Ellinfty} \]
+\[ \bullet \;\; \frac{\phi \in {\sf N} \Ellinfty\ , \;\; a \in {\sf Act}}{\Diamond a(\phi ) \in {\sf N} \Ellinfty} \]
+\[ \bullet \;\; \frac{ \{ \phi_{i} \in {\sf N} \Ellinfty \}_{i \in I}, \;\; \{ a_{i} \in {\sf Act} \}_{i \in I} \;\; \{ i \not= j \; \Rightarrow \; a_{i} \not= a_{j} \}_{i, j \in I}}
+{\Box \bigvee_{i \in I} a_{i} ( \phi_{i}) \in {\sf N} \Ellinfty} \]
+\end{definition}
+
+\begin{lemma}[Normal Forms]
+\label{hmnf}
+For all $\phi \in \Ell_{\infty \pi}$, for some $\psi \in {\sf N} \Ellinfty$:
+\[ \Ellinfty  \vdash  \phi = \psi . \]
+\end{lemma}
+
+\proof\ By induction on ${\sf md}(\phi )$.
+We consider the two non-trivial cases.
+
+\noindent $\Diamond \phi$: In this case, using the distributive lattice laws there is $\phi'$ of the form
+\[ \bigvee_{i \in I} \bigwedge_{j \in J_{i}} a_{ij}(\phi_{ij}) \]
+such that $\vdash  \phi = \phi'$, and ${\sf md}(\phi' ) \leq {\sf md}(\phi)$.
+By the induction hypothesis, for each $\phi_{ij}$ there is $\phi'_{ij} \in {\sf N} \Ellinfty$ such that $\vdash  \phi_{ij} = \phi'_{ij}$.
+Using $(a-{\leq})$ and $({\Diamond}-{\leq})$, we have
+\begin{equation} 
+\label{nf1}
+\vdash  \Diamond \phi = \Diamond \bigvee_{i \in I} \bigwedge_{j \in J_{i}} a_{ij}(\phi_{ij}) .
+\end{equation}
+Now for each $i \in I$, there are three cases:
+\begin{enumerate}
+\item $J_{i} = \varnothing$. In this case, $\vdash \Diamond \phi = \Diamond \true$, and we can use $({\Diamond}-\true\ )$ to obtain a normal form.
+\item $\exists j_{1}, j_{2} \in J_{i}$, $a_{j_{1}} \not= a_{j_{2}}$.
+In this case, we can use $(a-{\wedge})$ to delete the $i$'th disjunct in the RHS of~\ref{nf1}.
+\item $\{ a_{ij} : j \in J_{i} \} = \{ a \}$, for some $a \in {\sf Act}$. In this case, we can use $(a-{\wedge})(i)$.
+\end{enumerate}
+In this way, we obtain {\em either}
+\[ \vdash \Diamond \phi = \true , \]
+if case (1) is ever applicable, {\em or}
+\[ \vdash \Diamond \phi = \Diamond \bigvee_{i' \in I'} a_{i'}(\psi_{i'}) \;\;\; (\psi_{i'} \in {\sf N} \Ellinfty ). \]
+In the latter case, we can apply $({\Diamond}-{\vee})$ to get a normal form.
+
+\noindent $\Box \phi$: Similarly to the previous case, we have
+\[ \vdash \Box \phi = \Box \bigwedge_{i \in I} \bigvee_{j \in J_{i}} a_{ij} (\phi_{ij}) \;\;\; (\phi_{ij} \in {\sf N} \Ellinfty ). \]
+We can then use $({\Box}-{\wedge})$ to get
+\[ \vdash \Box \phi =  \bigwedge_{i \in I} \Box \bigvee_{j \in J_{i}} a_{ij} (\phi_{ij}) . \]
+Now if we partition each $J_{i}$ by $\sim_{i}$, with
+\[ j \sim_{i} k \;\; \Longleftrightarrow \;\; a_{ij} = a_{ik} \;\;\; (j, k \in J_{i}),  \]
+we have
+\[ \vdash \Box \phi =  \bigwedge_{i \in I} \Box \bigvee_{[j] \in J_{i}/{\sim_{i}}} ( \bigvee_{k \in [j]} a_{ij} (\phi_{ik}))  \]
+using the lattice laws; we can then apply $(a-{\vee})$ to get a normal form. \qed
+
+\begin{definition}
+\label{tfuns}
+{\rm We define translation functions}
+\[ ( \cdot )^{\ast} : {\rm HML}_{\infty} \longrightarrow {\sf N} \Ellinfty\ , \]
+\[ ( \cdot )^{\dagger} : {\sf N} \Ellinfty  \longrightarrow {\rm HML}_{\infty} . \]
+\[ \begin{array}{lll}
+( \bigwedge_{i \in I} \phi_{i})^{\ast} & = & \bigwedge_{i \in I} (\phi_{i})^{\ast} \\
+( \bigvee_{i \in I} \phi_{i})^{\ast} & = & \bigvee_{i \in I} (\phi_{i})^{\ast} \\
+( \ltuple a \rtuple \phi )^{\ast} & = & \Diamond a(\phi^{\ast}) \\
+( [ a ] \phi )^{\ast} & = & \Box  a((\phi )^{\ast}) \vee \bigvee \{ b(\true ) : b \in {\sf Act} - \{ a \} \} ) \\
+( \bigwedge_{i \in I} \phi_{i})^{\dagger} & = & \bigwedge_{i \in I} (\phi_{i})^{\dagger} \\
+( \bigvee_{i \in I} \phi_{i})^{\dagger} & = & \bigvee_{i \in I} (\phi_{i})^{\dagger} \\
+( \Diamond a(\phi ))^{\dagger} & = &  \ltuple a \rtuple (\phi )^{\dagger} \\
+( \Box \bigvee_{i \in I} a_{i}(\phi_{i}))^{\dagger} & = & \bigwedge_{i \in I} [ a_{i} ] (\phi_{i})^{\dagger} \; \wedge \; \bigwedge \{ [ b ] \false : b \in {\sf Act} - \{ a_{i} : i \in I \} \}
+\end{array} \]
+\end{definition}
+The following is easily verified.
+\begin{proposition}
+\label{faitht}
+For all $\phi \in {\rm HML}_{\infty}, \psi \in {\sf N} \Ellinfty$:
+\[ \begin{array}{rrcl}
+(i) & {\sf md}(\phi ) & = & {\sf md}(\phi^{\ast}) \\
+(ii) & {\sf md}(\psi ) & = & {\sf md}(\psi^{\dagger}) \\
+(iii) & p \: \models \: \phi & \Longleftrightarrow & p \: \models \phi^{\ast} \\
+(iv) &  p \: \models \: \psi & \Longleftrightarrow & p \: \models \psi^{\dagger} .
+\end{array} \]
+\end{proposition}
+
+As an immediate consequence of this Proposition together with~\ref{hmnf}, we have
+
+\begin{theorem}[Comparison Theorem (Infinitary Case)]
+For $p, q \in {\rm Proc}$ in any transition system,  $A \subseteq {\sf Act}$ and $\lambda \in {\sf Ord}$:
+\[ \Ell^{(A, \lambda )}_{\infty}(p) \subseteq \Ell^{(A, \lambda )}_{\infty}(q) \;\; \Longleftrightarrow \;\; {\rm HML}^{(A, \lambda )}_{\infty}(p) \subseteq {\rm HML}^{(A, \lambda )}_{\infty}(q) . \]
+\end{theorem}
+
+Thus in the infinitary case, $\Ellinfty$ determines the same preorder on processes as ${\rm HML}_{\infty}$.
+However, when {\sf Act} is infinite this does {\em not} cut down to a corresponding result for the finitary case, since our
+translation functions introduce infinite disjunctions in translating $[a]$, and infinite conjunctions in translating $\Box$, even for finite formulas.
+Our general considerations on observability in Chapter 2 suggest that the introduction of infinite conjunctions is more serious, and indicates a weakness of expressive power in ${\rm HML}_{\infty}$ as an ``observational logic''.
+This is in keeping with our remarks at the end of Section~2.
+In fact, our translation functions suggest an appropriate way of extending ${\rm HML}_{\infty}$ so as to render it equivalent to $\Ellomega$.
+This will be the content of a second Comparison Theorem which we will prove later in this section, when we have some additional machinery at our disposal.
+
+\subsection*{Characterisation Theorems}
+Combining the Comparison Theorem with the Modal Characterisation Theorem~\ref{mct}, we have:
+\begin{theorem}[Characterisation Theorem for \Ellinfty]
+\label{linfct}
+With notation as in the previous Theorem,
+\[ p {\preord}_{\lambda} q \;\; \Longleftrightarrow \;\; {\Ell}^{({\sf Act}, \lambda )}_{\infty}(p) \subseteq {\Ell}^{({\sf Act}, \lambda )}_{\infty}(q) \]
+and therefore
+\[ p \preord^{B} q \;\; \Longleftrightarrow \;\; {\Ellinfty}(p) \subseteq {\Ellinfty}(q) . \]
+\end{theorem}
+
+We now turn to the question of finding a Characterisation Theorem for $\Ellomega$.
+Intuitively, \Ellomega\ represents finitely observable properties of processes, hence should correspond to the ``finitely observable part'' of bisimulation.
+If we accept the finite synchronisation trees ${\sf ST}_{\omega}$ as a suitable notion of {\em finite process}, we can use them to determine the {\em algebraic} part of the bisimulation preorder, in the sense e.g. of \cite{Gue81}.
+\begin{definition}
+{\rm The {\em finitary preorder} $\preord^{F}$ is defined on any transition system by:}
+\[ p \preord^{F} q \; \equiv \; \forall t \in {\sf ST}_{\omega}. \: t \preord^{B} p \; \Rightarrow \; t \preord^{B} q . \]
+\end{definition}
+Our aim is to prove
+\begin{theorem}[Characterisation Theorem for $\Ellomega$]
+\label{lct}
+With notation as in the previous Theorem,
+\[ p \preord^{F} q \;\; \Longleftrightarrow \;\; \Ellomega (p) \subseteq \Ellomega (q). \]
+\end{theorem}
+
+We will need a few auxiliary results which also have some independent interest.
+\begin{definition}
+{\rm The {\em height} of a synchronisation tree is defined by:}
+\[ {\sf ht}(\sum_{i \in I} a_{i}t_{i} \; [+ \Omega ] ) = \sup \: \{ {\sf ht}(t_{i}) : i \in I \} + 1 \]
+\end{definition}
+
+\begin{lemma}
+\label{htl}
+For any synchronisation tree $T \in {\sf ST}_{\infty}$, ${\sf ht}(T) < \lambda$ implies
+\[ T \preord^{B} p \;\; \Longleftrightarrow \;\; T \preord_{\lambda} p . \]
+\end{lemma}
+
+\proof\ The left-to-right implication is immediate; the converse is an easy induction on ${\sf ht}(T)$. \qed
+
+In particular, we see that for a finite synchronisation tree $t \in {\sf ST}_{\omega}$, $t \preord^{B} p \; \Leftrightarrow \; t\preord_{\omega} p$.  
+Thus we have the inclusions
+\[ {\preord^{B}} \subseteq {\preord_{\omega}} \subseteq {\preord^{F}} . \]
+In general, these inclusions are strict.
+\subsection*{Examples}
+(1) ${\preord^{B}} \not= {\preord_{\omega}}$.
+\[ p \equiv a^{\omega} + \Omega , \;\;\;\; q \equiv \sum_{k \in \omega} a^{k} \Oh\ + \Omega \]
+Then $p \preord_{\omega} q$, but $p \npreord_{\omega + 1} q$.
+
+\noindent (2) ${\preord_{\omega}} \not= {\preord^{F}}$.
+\begin{eqnarray*}
+p & \equiv & a( \sum_{n \in \omega} b_{n} \Oh + \Omega ) + \Omega \\
+q & \equiv & \sum_{n \in \omega} a(\sum_{m \in \omega - \{ n \} } b_{n} \Oh + \Omega ) + \Omega
+\end{eqnarray*}
+Then $p \preord^{F} q$, but $p \npreord_{2} q$.
+
+These examples gain in significance because all the processes involved can be defined in finitary calculi, in particular SCCS, as we shall see in the next section.
+
+\begin{lemma}[Sort Lemma]
+\label{stl}
+In any transition system, let $p, q \in {\rm Proc}$, ${\sf sort}(p) \subseteq A \subseteq {\sf Act}$, $\lambda \in {\sf Ord}$. Then
+\[ p \npreord_{\lambda} q \;\; \Longrightarrow \;\; {\Ell}^{(A, \lambda )}_{\infty}(p) \not\subseteq {\Ell}^{(A, \lambda )}_{\infty}(q) . \]
+\end{lemma}
+
+\proof\ By induction on $\lambda$.
+We assume $ p \npreord_{\lambda} q$, and must construct $\phi \in {\Ell}^{(A, \lambda )}_{\infty}(p) - {\Ell}^{(A, \lambda )}_{\infty}(q)$.
+There are three cases.
+
+\noindent (1) $\labarrow{p}{a}{p'}$ and for all $q'$, $\labarrow{q}{a}{q'}$ implies $p' \npreord_{\alpha} q'$ for some $\alpha < \lambda$.
+By induction hypothesis, for each such $q$ there is $\phi_{q'} \in {\Ell}^{(A, \alpha )}_{\infty}(p') - {\Ell}^{(A, \alpha )}_{\infty}(q')$.
+Now define
+\[ \phi \; \equiv \; \Diamond a ( \bigwedge \{ \phi_{q'} : \labarrow{q}{a}{q'} \} ) . \]
+
+\noindent (2) $p \converges$ and $q \diverges$.
+Let $\phi \equiv \Box \bigvee \{ a(\true ) : \exists p' . \, \labarrow{p}{a}{p'} \}$.
+
+\noindent (3) $p \converges$, $q \converges$, $\labarrow{q}{a}{q'}$, and for all $p'$, $\labarrow{p}{a}{p'}$ implies $p' \npreord_{\alpha} q'$ for some $\alpha < \lambda$.
+Define $\phi_{p'}$ similarly to case (1). Then we define
+\[ \phi \; \equiv \; \Box ( \bigvee \{ a(\phi_{p'}) : \labarrow{p}{a}{p'} \} \; \vee \; \bigvee \{ b(\true ) : b \not= a \: \& \: \exists r . \, \labarrow{p}{a}{r} \} ) . \;\;\; \qed \]
+Note that this result is stronger than the Modal Characterisation Theorem~\ref{mct} for Hennessy-Milner logic, since we only require ${\sf sort}(p) \subseteq A$.
+This is significant in the light of the example at the end of Section 2.
+
+\begin{proposition}
+\label{finbis}
+For all $t \in {\sf ST}_{\omega}$:
+\[ t \preord^{B} p \;\; \Longleftrightarrow \;\; {\Ellomega}(t) \subseteq {\Ellomega}(p) . \]
+\end{proposition}
+
+\proof\ Combining \ref{htl} and \ref{stl}, we see that
+\[ t \preord^{B} p \;\; \Longleftrightarrow \;\; {\Ell}^{(A, k )}_{\infty}(t)  \subseteq {\Ell}^{(A, k )}_{\infty}(p) , \]
+where $A = {\sf sort}(t)$ and $k = {\sf ht}(t)$.
+Since $A$ and $k$ are both finite, $ {\Ell}^{(A, k )}_{\infty}$ is finite up to logical equivalence (i.e. the Lindenbaum algenbra is finite).
+Thus each formula in $ {\Ell}^{(A, k )}_{\infty}$ is equivalent to one in $\Ellomega$, and the proposition is proved. \qed
+
+We need one more auxiliary result, which will in fact be a consequence of our work on SCCS in the next section.
+Firstly, we define a map from prime normal forms to finite synchronisation trees
+\[ {\sf st} : \mbox{PNF} \rightarrow {\sf ST}_{\omega} \]
+as follows:
+\[ \begin{array}{lll}
+{\sf st}( \bigwedge_{i \in I} \Diamond a_{i}(\phi_{i})) & \equiv & {\sum_{i \in I} a_{i} {\sf st}(\phi_{i}) } + \Omega \\
+{\sf st}( \Box \bigvee_{i \in I} a_{i}(\phi_{i}) \; \wedge \; \bigwedge_{j \in J} \Diamond b_{j}(\psi_{i})) & \equiv & {\sum_{i \in I} a_{i} {\sf st}(\phi_{i}) } + { \sum_{j \in J} b_{j} {\sf st}(\psi_{j}) }  .
+\end{array} \]
+Now analogously to~\ref{psoun} we have
+\begin{proposition} 
+\label{stprop}
+For all $\phi$ in PNF, and $p \in {\rm Proc}$ in any transition system:
+\[ p  \models  \phi \;\; \Longleftrightarrow \;\; {\sf st}(\phi ) \preord^{B} p . \]
+\end{proposition}
+The proof is entirely analogous to \ref{psoun}.
+
+We can now prove~\ref{lct}.
+Firstly, ${\Ellomega}(p) \subseteq {\Ellomega}(q)$ implies $p \preord^{F} q$, by \ref{finbis}.
+For the converse, assume $p \preord^{F} q$ and $p \models \phi$, $(\phi \in \Ellomega\ )$.
+By the SDNF Theorem~\ref{SDNF},
+\[ \begin{array}{llr}
+\bullet & \vdash \phi = \bigvee_{i \in I} \phi_{i} & (\phi_{i} \in \mbox{PNF}) \\
+\Longrightarrow & \exists i \in I . \, p \models \phi_{i} & \\
+\Longrightarrow & {\sf st}(\phi_{i}) \preord^{B} p & \ref{stprop} \\
+\Longrightarrow & {\sf st}(\phi_{i}) \preord^{B} q & p \preord^{F} q \\
+\Longrightarrow & q \models \phi_{i} & \ref{stprop} \\
+\Longrightarrow & q \models \phi . & \qed\ 
+\end{array} \]
+\subsection*{Finitary Transition Systems}
+
+We now embark on our next topic.
+The various finiteness conditions on transition systems defined in section~2 reflect attempts to capture features of finitary processes.
+Nowever, none of these conditions seems to capture exactly the right class of systems unless we make some unwelcome assumptions such as that the set of actions is finite.
+We shall adopt what seems to be a novel approach, of using our program logic to axiomatize a class of systems which we propose as the finitary ones.
+Our axiomatisation consists of two schemes over $\Ellinfty$.
+
+\noindent {\bf Notation.} ${\sf Fin}(I)$ is the set of finite subsets of $I$.
+\begin{itemize}
+\item The axiom scheme of {\em bounded non-determinacy}:
+\[ \mbox{(BN)} \;\; \Box \bigvee_{i \in I} \phi_{i} \leq \bigvee_{J \in {\sf Fin}(I)} \Box \bigvee_{j \in J} \phi_{j} \;\;\; (\phi_{i} \in \Ellomega\ ). \]
+\item The axiom scheme of {\em finite approximability}:
+\[ \mbox{(FA)} \;\; \bigwedge_{J \in {\sf Fin}(I)} \Box \bigwedge_{j \in J} \phi_{j}  \leq \Diamond \bigwedge_{i \in I} \phi_{i} \;\;\; (\phi_{i} \in \Ellomega\ ). \]
+\end{itemize}
+
+Note that these axioms are duals.
+Since the opposite entailments are theorems of {\Ellinfty}, we shall in fact use (BN) and (FA) to denote the corresponding {\em equations}.
+The axioms could equivalently be formulated as: $\Box$~preserves directed joins, $\Diamond$~preserves filtered meets.
+
+What are the intuitions behind these axioms?
+(BN) is (thinking of each process as the set of its capabilities and each $\phi_{i}$ as an open set) exactly a statement of {\em compactness}; the link between compactness and the computational notion of bounded non-determinacy is well-known from the literature on powerdomains \cite{PloLN,Smy83}.
+
+The axiom of finite approximability is less familiar from either the topological or the computer science literature.
+It is best understood as a logical (or localic) expression of the idea that only {\em closed} sets are taken as elements of a finitary powerdomain construction (or, better put, that from the point of view of finite observability we cannot distinguish between a set and its closure).
+The best way to get a more precise understanding is probably to read the proof of the next Theorem.
+
+The duality between the two axioms is reminiscent of the discussion of finite {\em breadth} (BN) and finite {\em length} (FA) limitations of testing in \cite{Abr83a}.
+
+\begin{definition}
+\label{fts}
+{\rm A transition system is {\em finitary} if it satisfies (all instances of) (BN) and (FA).
+The class of finitary transition systems is denoted {\bf FTS}.}
+\end{definition}
+
+As a first step, we shall give a substantive example of a finitary transition system.
+As we will see, it is actually the best possible example.
+\begin{theorem}
+\Dom\ is a finitary transition system.
+\end{theorem}
+
+\proof\ By the Duality Theorem~ \ref{bdual}, we have a map
+\[ \lsem \cdot \rsem : \Ell_{\omega \pi} \longrightarrow K \Omega (\Dom ) \]
+\[ \lsem \phi \rsem  \equiv  \{ d \in \Dom : d \models \phi \} . \]
+Now for $d \in \Dom$,
+\[ d \models \Box \bigvee_{i \in I} \phi_{i}  \;\; \Longrightarrow \;\; d \models \bigvee_{J \in {\sf Fin}(I)} \Box \bigvee_{j \in J} \phi_{j}  \]
+is just the statement
+\[ d \subseteq \bigcup_{i \in I} O_{i} \;\; \Longrightarrow \;\; \exists J \in {\sf Fin}(I) . \, d \subseteq \bigcup_{j \in J} O_{j} , \]
+where $O_{i} = \lsem \phi_{i} \rsem$, i.e. that $d$ is compact as a subset of $\sum_{a \in {\sf Act}} \Dom$.
+Since $d \in \Dom \cong P^{0} [ \sum_{a \in {\sf Act}} \Dom ]$, and elements of the Plotkin powerdomain are Scott-compact subsets of the base domain (\cite{PloLN}), this proves that \Dom\ satisfies (BN).
+
+Next we show that \Dom\ satisfies (FA).
+Since there are only countably many distinct formulae in $\Ellomega$, it suffices to prove the following:
+\begin{itemize}
+\item Given a sequence $\{ U_{n} \}$ of compact-open subsets of $\Dom$, 
+with $U_{n} \supseteq U_{n + 1} \; (n \in \omega )$, and an element $d \in \Dom$ such that $d \cap U_{n} \not= \varnothing$ $(n \in \omega)$, then $d \cap \bigcap_{n \in \omega} U_{n} \not= \varnothing$.
+\end{itemize}
+(The alternative case for $d \models U_{n}$, namely $\bot \in U_{n}$ for all $n$, is trivial.)
+
+Since each $U_{n}$ is compact-open, it has the form $\diverges B_{n}$, where $B_{n}$ is a finite subset of ${\cal K}(\Dom\ )$.
+Also, $B_{n} \sqsubseteq_{u} B_{n + 1}$, where
+\[ X \sqsubseteq_{u} Y \; \equiv \; \forall y \in Y. \, \exists x \in X . \, x \sqsubseteq y \;\;\; (X, Y \subseteq \Dom\ ) . \]
+Now define
+\[ C_{n} \; \equiv \; \{ b \in B_{n} : \exists x \in d . \, b \sqsubseteq x \} \;\;\; (n \in \omega ) . \]
+Since $d \cap U_{n} \not= \varnothing$, $C_{n} \not= \varnothing$ for all $n$.
+Also, $C_{n} \sqsubseteq_{u} C_{n + 1}$.
+Thus by K\"{o}nig's Lemma in the form given e.g. in~\cite{Niv81}, there is a sequence $\{ c_{n} \}$ with $c_{n} \sqsubseteq c_{n+1}$ and $c_{n} \in C_{n}$.
+Now define
+\[ e_{n} \; \equiv \; \lsing c_{n} \rsing \uplus \lsing \bot \rsing \;\;\; (n \in \omega ). \]
+Clearly $e_{n} \sqsubseteq e_{n + 1}$ and $e_{n} \sqsubseteq d$ for all $n$, whence $\bigsqcup e_{n} \sqsubseteq d$.
+But $\bigsqcup c_{n} \in \bigsqcup e_{n}$ (using the description of least 
+upper bounds of chains in the Plotkin powerdomain given in \cite[Theorem 8]{Plo76}), 
+and so for some $x \in d$, $\bigsqcup c_{n} \sqsubseteq x$.
+Since $\bigsqcup c_{n} \in U_{n}$ for all $n$, $d \cap \bigcap_{n \in \omega} U_{n} \not= \varnothing$, and the proof is complete. \qed
+
+We now draw some striking consequences from the finitary axioms.
+\begin{definition}
+{\rm A formula $\phi \in \Ellinfty$ is in {\em finitary normal form} if it has the form}
+\[ \bigwedge_{i \in I} \bigvee_{j \in J_{i}} \phi_{ij} \;\;\; (\phi_{ij} \in \Ellomega ). \]
+\end{definition}
+
+\begin{lemma} \label{fnf}
+For each $\phi \in \Ellinfty$, for some finitary normal form $\psi$:
+\[ \mbox{(BN) + (FA)} \vdash \phi = \psi . \]
+\end{lemma}
+
+\proof\ An easy induction on ${\sf ht}(\phi)$. \qed
+
+\begin{proposition}
+\label{p18}
+In any finitary transition system ${\cal T}$, for all $p, q \in {\rm Proc}$:
+\[ \Ellinfty (p) \subseteq \Ellinfty (q) \;\; \Longleftrightarrow \;\; \Ellomega (p) \subseteq \Ellomega (q) . \]
+\end{proposition}
+
+\proof\ The left to right implication is immediate.
+For the converse, suppose $ \Ellomega (p) \subseteq \Ellomega (q)$, and $p \models \phi$, $(\phi \in \Ellinfty )$.
+By~\ref{fnf},
+\[ \mbox{(BN) + (FA)} \vdash \phi = \bigwedge_{i \in I} \bigvee_{j \in J_{i}} \phi_{ij} \;\;\;  (\phi_{ij} \in \Ellomega ) \]
+hence since ${\cal T} \models \mbox{(BN) + (FA)}$, ${\cal T} \models \phi = \bigwedge_{i \in I} \bigvee_{j \in J_{i}} \phi_{ij}$, and
+\[ \begin{array}{ll}
+\bullet & p \models \bigwedge_{i \in I} \bigvee_{j \in J_{i}} \phi_{ij} \\
+\Longrightarrow & \forall i \in I . \, \exists j \in J_{i} . \, p \models \phi_{ij} \\
+\Longrightarrow &  \forall i \in I . \, \exists j \in J_{i} . \, q \models \phi_{ij} \\
+\Longrightarrow & q \models \bigwedge_{i \in I} \bigvee_{j \in J_{i}} \phi_{ij} \\
+\Longrightarrow & q \models \phi . \;\;\; \qed
+\end{array} \]
+
+\begin{theorem}[Finitary Characterisation Theorem]
+\label{fct}
+With notation as in the previous Proposition:
+\[ p \preord^{B} q \;\; \Longleftrightarrow \;\; p \preord_{\omega} q \;\; \Longleftrightarrow \;\; p \preord^{F} q \;\; \Longleftrightarrow \;\; \Ellomega (p) \subseteq \Ellomega (q) . \]
+\end{theorem}
+
+\proof\ Combine Theorems~\ref{linfct}, \ref{lct} and \ref{p18}. \qed
+
+In order to continue our study of finitary transition systems, we need to introduce some notions from our final topic of this section.
+
+\subsection*{Universal Semantics}
+
+Given any transition system and $p \in {\rm Proc}$, it is easy to see that $\Ellomega (p) \subseteq \Ellomega$ satisfies the axioms of a prime filter; hence we have a map
+\[ \Ellomega (\cdot ) : {\rm Proc} \longrightarrow {\sf Spec} \; \Ellomega\ . \]
+If we compose this with the isomorphism $ {\sf Spec} \; \Ellomega \cong \Dom$ from the Duality Theorem~\ref{bdual}, we get a map
+\[ \lsem \cdot \rsem : {\rm Proc} \longrightarrow \Dom \]
+which takes each process to an element of our domain.
+This map can be regarded as a {\em syntax-free denotational semantics}; it is {\em universal} since it is defined on every transition system.
+
+\begin{theorem}[Universal Semantics] 
+\label{usem}
+For any transition system ${\cal T}$ with $p, q \in {\rm Proc}$:
+\[  \begin{array}{rl}
+(i)  & p \preord^{F} q \;\; \Longleftrightarrow \;\; \lsem p \rsem \sqsubseteq \lsem q \rsem \\
+(ii) & p \sim^{F} \lsem p \rsem .
+\end{array} \]
+If ${\cal T}$ is finitary, then:
+\[ \begin{array}{rl}
+(iii)  & p \preord^{B} q \;\; \Longleftrightarrow \;\; \lsem p \rsem \sqsubseteq \lsem q \rsem \\
+(iv) & p \sim^{B} \lsem p \rsem .
+\end{array} \] 
+\end{theorem}
+
+\proof\ Clearly (i) follows from (ii), and (iii) from (iv).
+Now $\Ellomega (p) = \Ellomega (\lsem p \rsem )$; 
+and so (ii) follows from \ref{lct}; while (iv) follows from \ref{fct}. \qed
+
+We can think of \ref{usem} as a {\em full abstraction theorem} 
+\cite{Mil75,Plo77,Mil77} for our semantics; it says that every transition system (finitary transition system) can be embedded in \Dom\ with as much identification as possible modulo the finitary equivalence (bisimulation).
+
+Since \Dom\ can itself be viewed as a transition system, we can tie things up even more neatly.
+Let {\bf TS} be the category with objects the transition systems, and morphisms ${\cal T}_{1} \rightarrow {\cal T}_{2}$ maps
+\[ f : {\rm Proc}_{1} \rightarrow {\rm Proc}_{2} \]
+for which
+\[ \Ellomega (p) = \Ellomega (f(p)) \;\;\; (p \in {\rm Proc}_{1}). \]
+It is clear that for such $f$
+\[ p \preord^{F} q \;\; \Longleftrightarrow \;\; f(p) \preord^{F} f(q) , \]
+and if ${\cal T}_{1}$ and  ${\cal T}_{2}$ are finitary,
+\[ p \preord^{B} q \;\; \Longleftrightarrow \;\; f(p) \preord^{B} f(q) . \]
+Now we have
+
+\begin{theorem}[Final Algebra Theorem]
+\label{falg}
+\Dom\ is final in {\bf TS}, and also in the subcategory {\bf FTS} of finitary transition systems.
+\end{theorem}
+
+\proof\ All we need to show is that the semantic map $\lsem \cdot \rsem$ is the unique morphism from a transition system to $\Dom$.
+But for $d_{1}, d_{2} \in \Dom$,
+\begin{Eqarray}
+\Ellomega (d_{1}) \subseteq \Ellomega (d_{2}) & \Longleftrightarrow & K \Omega (d_{1}) \subseteq K \Omega (d_{2}) & \mbox{by~\ref{bdual}} \\
+& \Longleftrightarrow & d_{1} \sqsubseteq d_{2} & \mbox{since \Dom\ is coherent,} \\
+\end{Eqarray}
+which gives uniqueness. \qed
+
+\subsection*{Finitary Transition Systems Resumed}
+Firstly, some conditions equivalent to finitariness.
+\begin{proposition}
+\label{ftsequiv}
+For any transition system ${\cal T}$, the following conditions are equivalent:
+\begin{center}
+\begin{tabular}{rl}
+(i) & ${\cal T}$ is finitary \\
+(ii) & $\forall p \in {\rm Proc} . \, p \sim^{B} \lsem p \rsem$ \\
+(iii) & ${\preord^{B}} = {\preord^{F}}$ in the combined system ${\cal T} + \Dom$ (disjoint union).
+\end{tabular}
+\end{center}
+\end{proposition}
+
+\proof\  $(i) \; \Longrightarrow \; (ii)$ is~\ref{usem} (iv); $(ii) \; \Longrightarrow \; (iii)$ since \Dom\ is finitary.
+
+\noindent $(ii) \; \Longrightarrow \; (i)$. Suppose that ${\cal T}$ is not finitary, in particular that (BN) fails; i.e. that for some $p \in {\rm Proc}$,
+\[ p \models \Box \bigvee_{i \in I} \phi_{i} \;\;\; ( \phi_{i} \in \Ellomega ) \]
+and $\forall J \in {\sf Fin}(I). \, p \nvDash \bigvee_{j \in J} \phi_{j}$.
+Since $\Ellomega (p) = \Ellomega ( \lsem p \rsem )$, and each $\bigvee_{j \in J} \phi_{j} \in \Ellomega$, 
+$\lsem p \rsem \nvDash \bigvee_{j \in J} \phi_{j}$ for all $J \in {\sf Fin}(I)$;
+hence since $\lsem p \rsem \in \Dom$ and $\Dom$ is finitary, $\lsem p \rsem \nvDash \Box \bigvee_{i \in I} \phi_{i}$.
+Thus $\Ellinfty (\lsem p \rsem ) \not= \Ellinfty (p)$, and so by~\ref{linfct} $p \sim^{B} \lsem p \rsem$.
+The case when (FA) fails is similar. 
+
+\noindent $(iii) \; \Longrightarrow \; (ii)$. Suppose for some $p$, $p \nsim^{B} \lsem p \rsem$.
+Then since $p \sim^{F} \lsem p \rsem$ by~\ref{usem} (ii), ${\preord^{B}} \not= {\preord^{F}}$. \qed
+
+Note that in part (iii) of this Proposition we have ``added in'' \Dom\ to the given transition system ${\cal T}$.
+This is to overcome the problem that there may not be enough processes in ${\cal T}$ alone to cause $\preord^{B} = \preord^{F}$ to fail.
+
+Now we relate some of the finitariness conditions of Section~2 to our axioms.
+
+\begin{proposition}
+\label{finots}
+(i) Weakly finite branching is equivalent to weakly image finite plus weakly initials finite.
+
+\noindent (ii) Weakly finite branching implies (BN).
+
+\noindent (iii) (BN) implies weakly initials finite.
+
+\noindent (iv) (BN) + (FA) do {\em not} imply weakly image finite.
+\end{proposition}
+
+\proof\ (i). Easy.
+
+\noindent (ii). Suppose $p \models \Box \bigvee_{i \in I} \phi_{i}$.
+$(\bigvee_{i \in I} \phi_{i}) \diverges  \Leftrightarrow  \exists i \in I. \, \phi_{i} \diverges$, in which case $\vdash \phi_{i} = \true$, and the conclusion is trivial.
+Otherwise, $p \converges$, and so $C(p)$ is finite, say 
+\[ C(p) = \{ \ltuple a_{1}, p_{1} \rtuple\ , \ldots , \ltuple a_{n}, p_{n} \rtuple \} . \]
+Then for each $k$ with $1 \leq k \leq n$, $\ltuple a_{k}, p_{k} \rtuple \models \phi_{i_{k}}$ for some $i_{k} \in I$, and so $p \models \Box \bigvee_{j \in J} \phi_{j}$, where $J = \{ i_{1}, \ldots , i_{n} \}$.
+
+\noindent (iii). Assume (BN) and $p \converges$.
+Then $p \models \Box \bigvee_{a \in {\sf Act}} a(\true\ )$, and so by (BN)
+\[ p \models \bigvee_{J \in {\sf Fin}({\sf Act})} \Box \bigvee_{a \in J} a(\true\ ) , \]
+which says exactly that $p$ has a finite set of initial actions.
+
+\noindent (iv). $\sum_{n \in \omega} a^{n} + a^{\omega}$ is in $\Dom$. \qed
+
+All the usual finitary  calculi are weakly finite branching, and so satisfy (BN).
+However, in general these calculi do {\em not} satisfy (FA) (analogously to the fact that generating trees over domains do not yield closed sets, although they always yield compact ones; cf. \cite{PloLN}).
+As a standard counterexample, define
+\[ \begin{array}{lll}
+p & \equiv & \sum_{n \in \omega} a^{n} \Oh + \Omega \\
+\phi_{0} & \equiv & \true\  \\
+\phi_{k + 1} & \equiv & a(\Diamond \phi_{k}) .
+\end{array} \]
+Then for all $J \in {\sf Fin}(\omega )$, $p \models \Diamond \bigwedge_{j \in J} \phi_{j}$, but $p \nvDash \Diamond \bigwedge_{i \in \omega} \phi_{i}$.
+
+Thus if $p$ can be defined in our calculus, it does not satisfy (FA).
+Since $p$ {\em can} be defined in CCS, SCCS (see next section), etc., these calculi are not finitary transition systems according to Definition~\ref{fts}.
+However, we can take the view that if we only take account of {\em observable} 
+information via the semantics $\lsem \cdot \rsem$, we have collapsed the 
+given system into a finitary one which will actually, 
+by Theorems~\ref{usem} and~\ref{falg}, be isomorphic to a subsystem (or, topologically, a subspace) of $\Dom$.
+
+\subsection*{Comparison Theorems Resumed}
+We now return to the question of finding a suitable correspondence between the finitary parts of HML and $\Ell$.
+As confirmation of our claim that ${\rm HML}_{\omega}$ is unsatisfactory, we have:
+
+\noindent {\bf Observation.} ${\rm HML}_{\omega}$ does not characterise $\preord^{F}$.
+
+In fact, \ref{bex} provides a counter-example since, with the notation used there, $p \npreord^{F} q$ while $ {\rm HML}_{\omega}(p) \subseteq {\rm HML}_{\omega}(q)$.
+
+We can get an idea of how to extend $ {\rm HML}_{\omega}$ by inspection of the translation functions~\ref{tfuns}.
+Although $( \cdot )^{\dagger}$ introduces infinitary conjunctions, these are of a special kind, for which a finitary counterpart can be found.
+
+\begin{definition} 
+{\rm ${\rm HML}^{+}$ is the extension of ${\rm HML}_{\omega}$ with additional atomic fomulae of the form
+\[ {\sf init}(A) \;\;\; (A \in {\sf Fin}({\sf Act})). \]
+The definition of the satisfaction relation is extended by
+\[ p \models {\sf init}(A)  \equiv  p \converges \; \& \; \{ a \in {\sf Act} : \exists q . \, \labarrow{p}{a}{q} \} \subseteq A . \] }
+\end{definition}
+
+We can now modify the translation function $( \cdot )^{\dagger}$ as follows:
+\[ ( \Box \bigvee_{i \in I} a_{i} ( \phi_{i} ))^{\dagger} \; \equiv \; \bigwedge_{i \in I} [a_{i}] ( \phi_{i})^{\dagger} \; \wedge \; {\sf init}(\{ a_{i} : i \in I \} ). \]
+Proposition~\ref{faitht} clearly still holds with this modification, and $( \cdot )^{\dagger}$ now cuts down to a function
+\[ {\sf N} \Ellomega \longrightarrow {\rm HML}^{+}. \]
+There is still a mismatch in the other direction, since $( \cdot )^{\ast}$ introduces infinite disjunctions.
+To overcome this, we have to make the assumption that the transition system satisfies (BN)---a mild one, as~\ref{finots} and the ensuing discussion shows.
+
+Let $\Ell_{\bigvee \infty}$ be the sublanguage of \Ellinfty\ obtained by the restriction to finite {\em conjunctions} (but with infinite disjunctions still allowed).
+\begin{proposition} 
+In any transition system satisfying (BN), for all $p, q \in {\rm Proc}$:
+\[ \Ell_{\bigvee \infty}(p) \subseteq \Ell_{\bigvee \infty}(q) \;\; \Longleftrightarrow \;\; \Ellomega(p) \subseteq \Ellomega(q) . \]
+\end{proposition}
+
+\proof\ Just like~\ref{p18}. \qed
+
+Clearly, $( \cdot )^{\ast}$, extended by the clause
+\[ ({\sf init}(A))^{\ast} \; \equiv \; \Box \bigvee \{ a(\true\ : a \in A \} \]
+cuts down to a function
+\[ {\rm HML}^{+}  \longrightarrow  {\sf N} \Ell_{\bigvee \infty} . \]
+We thus arrive at our
+\begin{theorem}[Comparison Theorem (Finitary Case)]
+With notation as in the previous Proposition:
+\[ {\rm HML}^{+}(p) \subseteq {\rm HML}^{+}(q) \;\; \Longleftrightarrow \;\; \Ellomega (p) \subseteq \Ellomega (q) . \]
+\end{theorem}

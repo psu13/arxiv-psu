@@ -1,0 +1,501 @@
+\section{Full Abstraction for SCCS}
+So far, we have worked with abstract transition systems, in a syntax-free fashion.
+This degree of abstraction carries a price; we lose compositionality.
+Indeed, we need syntax to {\em define} compositionality.
+Accordingly, in this Section we turn to a particular transition system specified by an algebraic syntax, namely Milner's SCCS \cite{Mil83}.
+We equip our domain \Dom\ with a continuous algebraic structure corresponding to the signature of SCCS.
+Our main result is that the resulting denotational semantics for SCCS is {\em fully abstract} \cite{Mil75,Plo77} with respect to bisimulation for finite terms, and with respect to the finitary preorder for recursive terms.
+As a by-product we will show that \Dom\ is isomorphic to Hennessy's term model \cite{Hen81}, and hence obtain a complete axiomatisation of its equational theory as an immediate consequence of Hennessy's results.
+
+Our choice of SCCS is for illustrative purposes, because it is simple and yet expressive.
+Similar accounts could be given for CCS \cite{Mil80}, MEIJE \cite{AB84}, ACP \cite{BK84}, etc.
+Note, however, that our semantics is fully abstract with respect to the {\em strong} congruence in Milner's terminology \cite{Mil83}, where all actions are observable.
+A corresponding treatment of {\em observation equivalence} \cite{HM85}, where unobservable actions are factored out, is still an open problem as far as I know; some hints of a possible approach may be gleaned from \cite{Abr87b}.
+
+We begin by recalling some basic definitions on SCCS from \cite{Mil83,Hen81}.
+We assume familiarity with basic notions of universal algebra; see e.g. \cite{ADJ78,EM85}.
+
+We fix a set of actions {\sf Act}, which we assume comes equipped with an {\em abelian monoid} structure comprising
+\begin{itemize}
+\item an associative, commutative binary operation which we denote by juxtaposition, e.g. $ab$
+\item a unit 1.
+\end{itemize}
+The (one-sorted) signature $\Sigma$ of SCCS is then defined as follows:
+
+\begin{definition} 
+{\rm $\Sigma = \{ \Sigma_{n} \}_{n \in \omega}$, where $\Sigma_{n}$ is the set of operation symbols of arity $n$ in $\Sigma$.
+\begin{eqnarray*}
+\Sigma_{0} & \equiv & \{ \Oh , \Omega \} \\
+\Sigma_{1} & \equiv & \{ a\_ : a \in {\sf Act} \} \cup \{ \_{\restriction} A : A \subseteq {\sf Act} \} \\
+& & \mbox{} \cup \{ \_ [S] : S \; \mbox{is a monoid endomorphism on {\sf Act}} \}  \\
+\Sigma_{2} & \equiv & \{ {+}, {\times} \} \\
+\Sigma_{n} & \equiv & \varnothing , \;\; n > 2 .
+\end{eqnarray*} }
+\end{definition}
+
+Thus our version of SCCS only has {\em finite} sums (in contrast with \cite{Mil83}), and has a constant for the undefined process as in \cite{Hen81}.
+
+We define the subsignature $\Sigma' \subseteq \Sigma$ to be obtained by omitting the {\it restriction} operators $\_{\restriction} A$, 
+the {\it relabelling} operators $\_ [S]$, and the {\it synchronous product} operator $\times$, leaving only the {\it nullary sum} $\Oh$, the {\it binary sum} $+$, {\it prefixing} $a\_$, and the {\it undefined} process $\Omega$.
+
+We take the {\em finite processes} of SCCS to be the terms over the signature $\Sigma$, i.e. the elements of the term algebra $T_{\Sigma}$.
+Evidently, we can take the elements of $T_{\Sigma'}$ as notations for the finite synchronisation trees ${\sf ST}_{\omega}$.
+
+\begin{definition}[Operational Semantics]
+\label{opdef}
+{\rm We make $T_{\Sigma}$ into a transition system by defining the transition relation
+and divergence predicate in a syntax-directed way, as the {\em least}
+relations satisfying the following axioms and rules:}
+\[ (D \Omega ) \;\; \Omega \diverges \]
+\[ (D+L) \;\; \frac{t_{1} \diverges}{(t_{1} + t_{2}) \diverges} \;\;\;\;\;\;\;\; (D+R) \;\; \frac{t_{2} \diverges}{(t_{1} + t_{2}) \diverges} \]
+\[ (D{\restriction} ) \;\; \frac{t \diverges}{(t {\restriction} A) \diverges} \;\;\;\;\;\;\;\; (DS) \;\; \frac{t \diverges}{t [S] \diverges} \]
+\[ (D \times L) \;\; \frac{t_{1} \diverges}{t_{1} \times t_{2} \diverges} \;\;\;\;\;\;\;\; (D \times R) \;\; \frac{t_{2} \diverges}{t_{1} \times t_{2} \diverges} \]
+\[ (Ta) \;\;  \labarrow{at}{a}{t} \]
+\[ (T+L) \;\; \frac{\labarrow{t_{1}}{a}{t'_{1}}}{\labarrow{t_{1} + t_{2}}{a}{t'_{1}}} \;\;\;\;\;\;\;\; 
+(T+R) \;\; \frac{\labarrow{t_{2}}{a}{t'_{2}}}{\labarrow{t_{1} + t_{2}}{a}{t'_{2}}} \]
+\[ (T {\restriction} ) \;\; \frac{\labarrow{t}{a}{t'}, \; a \in A}{\labarrow{t {\restriction} A}{a}{t' {\restriction} A}} \;\;\;\;\;\;\;\; (TS) \;\; \frac{\labarrow{t}{a}{t'}}{\labarrow{t[S]}{S a}{t'[S]}} \]
+\[ (T \times ) \;\; \frac{\labarrow{t_{1}}{a}{t'_{1}} \;\; \labarrow{t_{2}}{b}{t'_{2}}}{\labarrow{t_{1} \times t_{2}}{ab}{t'_{1} \times t'_{2}}} \] 
+\end{definition}
+
+For an illuminating discussion of the conceptual basis for these and related axioms, see \cite{Mil86}.
+
+We now have a transition system $(T_{\Sigma}, {\sf Act}, {\rightarrow}, \diverges )$ implicitly defined by~\ref{opdef}.
+The following proposition gives a more explicit description of this system.
+
+\begin{proposition}
+\label{tops}
+For all $t, t_{1}, t_{2} \in T_{\Sigma}$:
+\[ \begin{array}{rlcl}
+(i) (a) & \Oh \converges & & (b) \;\; \nlabarrow{\Oh}{a}{} \\
+(ii) (a) & \Omega \diverges & & (b) \;\; \nlabarrow{\Omega}{a}{} \\
+(iii) (a) & at \converges \\
+(b) & \labarrow{at_{1}}{b}{t_{2}} & \Longleftrightarrow & b = a \: \& \: t_{1} = t_{2} \\
+(iv) (a) & (t_{1} + t_{2}) \diverges & \Longleftrightarrow & t_{1} \diverges \;  {\rm or} \; t_{2} \diverges \\
+(b) & \labarrow{(t_{1} + t_{2})}{a}{t} & \Longleftrightarrow & \labarrow{t_{1}}{a}{t} \; {\rm or} \; \labarrow{t_{2}}{a}{t} \\
+(v) (a) & (t {\restriction} A) \diverges & \Longleftrightarrow & t \diverges \\
+(b) & \labarrow{t_{1} {\restriction} A}{a}{t_{2}} & \Longleftrightarrow & \exists t . \, \labarrow{t_{1}}{a}{t} \: \& \: t_{2} = t {\restriction} A \: \& \: a \in A \\
+(vi) (a) & t[S] \diverges & \Longleftrightarrow & t \diverges \\
+(b) & \labarrow{t_{1}[S]}{a}{t_{2}} & \Longleftrightarrow & \exists b, t . \, \labarrow{t_{1}}{b}{t} \: \& \: t_{2} = t[S] \: \& \:  a = Sb \\
+(vii) (a) & (t_{1} \times t_{2}) \diverges & \Longleftrightarrow & t_{1} \diverges \;  {\rm or} \; t_{2} \diverges \\
+(b) & \labarrow{t_{1} \times t_{2}}{a}{t} & \Longleftrightarrow & \exists t'_{1}, t'_{2}, b_{1}, b_{2} . \, \labarrow{t_{i}}{b_{i}}{t'_{i}} \; (i = 1, 2) \\
+& & & \& \: t = t'_{1} \times t'_{2} \: \& \: a = b_{1}b_{2} .
+\end{array} \]
+\end{proposition}
+
+\proof\ By induction on the length of proofs of $t \diverges$ and $\labarrow{t_{1}}{a}{t_{2}}$. \qed
+
+Now given any $\Sigma$-algebra ${\cal A}$, by initiality of $T_{\Sigma}$ there is a unique $\Sigma$-homomorphism
+\[ \lsem \cdot \rsem^{\cal A} : T_{\Sigma} \; \longrightarrow \; {\cal A} , \]
+which is just another notation for a compositional denotational semantics as 
+in \cite{MS76,Sto77,Gor79}.
+Thus to form a denotational semantics $\lsem \cdot \rsem^{\cal D}$ based on our domain $\Dom$, it suffices to define each operation in $\Sigma$ as a function of the appropriate arity over $\Dom$.
+We shall in fact define the operations so that they are {\em continuous} over $\Dom$.
+
+\begin{definition} 
+\label{sigd}
+{\rm We specify a $\Sigma$-structure on $\Dom$:
+\[ \begin{array}{rlcl}
+(i) & \Oh^{\Dom} & \equiv & \emptyset \\
+(ii) & \Omega^{\Dom} & \equiv & \lsing \bot \rsing \\
+(iii) & {a\_}^{\Dom} & \equiv & \lambda d \in {\Dom}. \lsing \ltuple a, d \rtuple \rsing \\
+(iv) & +^{\Dom} & \equiv & \uplus \\
+\end{array} \]
+Restriction:
+\[ (v) \;\; (\_ {\restriction} A)^{\Dom}  \equiv  \mu \Phi \in [\Dom \rightarrow \Dom ] . \, \biguplus \circ P^{0} (g_{A} \Phi ) \]
+where
+\[ g_{A} : [ \Dom \rightarrow \Dom ] \rightarrow [ \sum_{a \in {\sf Act}} \Dom \rightarrow \Dom ] \]
+is defined by
+\[ \begin{array}{rcl}
+g_{A} \Phi \bot & = & \lsing \bot \rsing \\
+g_{A} \Phi \ltuple a, d \rtuple & = & \left\{ \begin{array}{ll} 
+\lsing \ltuple a, \Phi d \rtuple \rsing & \mbox{if $a \in A$} \\
+\emptyset & \mbox{otherwise}
+\end{array}
+\right. \\
+\end{array} \]
+(i.e. 
+\[ g_{A} \Phi = {\coprod_{a \in A} \lambda d \in \Dom . \lsing \ltuple a, \Phi d \rtuple \rsing} \; {\textstyle \coprod} \; {\coprod_{a \in {\sf Act} - A} \lambda d \in \Dom . \emptyset } , \]
+where $\coprod$ is ``source tupling'' \cite{ADJ85}).
+
+\noindent Relabelling:
+\[ (vi) \;\; (\_ [S])^{\Dom}  \equiv  \mu \Phi \in [\Dom \rightarrow \Dom ] . \,  P^{0} (g_{S} \Phi ) \]
+where
+\[ g_{S} : [ \Dom \rightarrow \Dom ] \rightarrow [ \sum_{a \in {\sf Act}} \Dom \rightarrow \sum_{a \in {\sf Act}} \Dom  ] \]
+is defined by
+\[ \begin{array}{rcl}
+g_{S} \Phi \bot & = &  \bot  \\
+g_{S} \Phi \ltuple a, d \rtuple & = & \ltuple Sa, \Phi d \rtuple
+\end{array} \]
+Product: 
+\[ (vii) \;\; \times^{\Dom}  \equiv  \mu \Phi \in [\Dom^{2} \rightarrow \Dom ] . \,   (f \Phi )^{\dagger} \]
+where
+\[ f : [ \Dom^{2} \rightarrow \Dom ] \rightarrow [ ( \sum_{a \in {\sf Act}} \Dom )^{2} \rightarrow \sum_{a \in {\sf Act}} \Dom  ] \]
+is defined by
+\[ \begin{array}{rcl}
+f \Phi (x, \bot ) = f \Phi (\bot , x)  & = &  \bot  \\
+f \Phi (\ltuple a, d \rtuple  , \ltuple b, e \rtuple ) & = &  \ltuple ab, \Phi (d, e) \rtuple 
+\end{array} \] }
+\end{definition}
+
+The only point which needs to be checked to ensure that this definition yields well-defined continuous functions is that $g_{A} \Phi$, $g_{S} \Phi$ and $f \Phi$ are (bi)strict and continuous, which is immediate from the definitions.
+Note that restriction, relabelling and product are defined recursively, while sum and prefixing are interpreted by the basic operations derived from the domain equation for $\Dom$.
+This corresponds to the fact that restriction, relabelling and product can be {\em eliminated} (for finite terms) in the equational theory of SCCS modulo bisimulation.
+
+The continuous $\Sigma$-algebra defined by \ref{sigd} is denoted $\Dom_{\Sigma}$.
+The following is an easy consequence of~\ref{sigd} and~\ref{feltp}.
+
+\begin{proposition}
+\label{surs}
+The semantic function
+\[ \lsem\cdot \rsem^{\Dom} : T_{\Sigma} \; \longrightarrow \; \Dom_{\Sigma} \]
+cuts down to surjections
+\[ T_{\Sigma} \twoheadrightarrow {\cal K}(\Dom ), \;\;\;\; T_{\Sigma'} \twoheadrightarrow {\cal K}(\Dom ) . \]
+\end{proposition}
+Thus the finite synchronisation trees provide a notation for the finite elements of $\Dom$.
+
+We now relate our definitions of the SCCS operations on \Dom\ to the transition system view of $\Dom$.
+\begin{proposition}
+\label{dops}
+For all $d, d_{1}, d_{2} \in {\cal K}(\Dom )$:
+\[ \begin{array}{rlcl}
+(i) (a) & \Oh^{\Dom} \converges & &  (b) \;\; \nlabarrow{\Oh^{\Dom}}{a}{} \\
+(ii) (a) & \Omega^{\Dom} \diverges & & (b) \;\; \nlabarrow{\Omega^{\Dom}}{a}{} \\
+(iii) (a) & a^{\Dom} d \converges & & \\
+(b) & \labarrow{a^{\Dom} d_{1}}{b}{d_{2}} & \Longleftrightarrow & b = a \: \& \: d_{1} = d_{2} \\
+(iv) (a) & (d_{1} +^{\Dom} d_{2}) \diverges & \Longleftrightarrow & d_{1} \diverges \; \mbox{or} \; d_{2} \diverges \\
+(b) & \labarrow{d_{1} +^{\Dom} d_{2}}{a}{d} & \Longleftrightarrow & \labarrow{d_{1}}{a}{d} \; \mbox{or} \; \labarrow{d_{2}}{a}{d} \\
+\end{array} \]
+Restriction:
+\[ \begin{array}{rlcl}
+(v) (a) & (d {\restriction}^{\Dom} A) \diverges & \Longleftrightarrow & d \diverges \\
+(b) & \labarrow{d_{1} {\restriction}^{\Dom} A}{a}{d_{2}} & \Longleftrightarrow & \exists e_{1}, e_{2} . \, \labarrow{d_{1}}{a}{e_{i}}, \; (i = 1, 2) \\
+& & & \mbox{} \& \; e_{1} {\restriction}^{\Dom} A \sqsubseteq d_{2} \sqsubseteq e_{2} {\restriction}^{\Dom} A \\
+& & &  \& \; a \in A 
+\end{array} \]
+Relabelling:
+\[ \begin{array}{rlcl}
+(vi) (a) & (d [S]^{\Dom}) \diverges & \Longleftrightarrow & d \diverges \\
+(b) & \labarrow{d_{1} [S]^{\Dom}}{a}{d_{2}} & \Longleftrightarrow & \exists e_{1}, e_{2}, b_{1}, b_{2} . \, \labarrow{d_{1}}{a}{e_{i}}, \; (i = 1, 2) \\
+& & & \mbox{} \& \; e_{1} [S]^{\Dom} \sqsubseteq d_{2} \sqsubseteq e_{2} [S]^{\Dom} \\
+& & &  \& \; S b_{1} = a = S b_{2} 
+\end{array} \]
+Product:
+\[ \begin{array}{rlcl}
+(vii) (a) & (d_{1} \times^{\Dom} d_{2}) \diverges & \Longleftrightarrow & d_{1} \diverges \; \mbox{or} \; d_{2} \diverges \\
+(b) & \labarrow{d_{1} \times^{\Dom} d_{2}}{a}{d} & \Longleftrightarrow & \exists u_{i}, v_{i}, b_{i}, c_{i} \; (i = 1, 2). \\
+& & & \labarrow{d_{1}}{b_{i}}{u_{i}} \: \& \: \labarrow{d_{2}}{c_{i}}{v_{i}} \; (i = 1, 2) \\
+& & & \mbox{} \& \; (u_{1} \times^{\Dom} v_{1}) \sqsubseteq d \sqsubseteq (u_{2} \times^{\Dom} v_{2}) \\
+& & &  \& \; b_{i}c_{i} = a \; (i = 1, 2).
+\end{array} \]
+\end{proposition}
+
+\proof\ We give two cases for illustration.
+
+\noindent (v). We define
+\begin{eqnarray*}
+\Theta & \equiv & \{ \{ \ltuple a, d' {\restriction}^{\Dom} A \rtuple \} : \ltuple a, d' \rtuple \in d, a \in A \} \\
+&  & \mbox{} \cup \{ \varnothing : d = \emptyset \; \mbox{or} \; \exists \ltuple a, d' \rtuple \in d. \, a \not\in A \} \\
+&  & \mbox{} \cup \{ \{ \bot \} : \bot \in d \} .
+\end{eqnarray*}
+Now
+\begin{eqnarray*}
+d {\restriction}^{\Dom} A & = & Con( \bigcup \Theta^{\star})  \\
+& = & Con((\bigcup \Theta )^{\star}) \;\; \mbox{by \cite{Plo76} p. 477} \\
+& = & Con(\bigcup \Theta ) \;\; \mbox{since $d \in {\cal K}(\Dom )$} \\
+& = & Con( \{ \ltuple a, d' {\restriction}^{\Dom} A \rtuple : \ltuple a, d' \rtuple \in d \: \& \: a \in A \} \\
+&   & \mbox{} \cup \{ \bot : \bot \in d \} ), 
+\end{eqnarray*}
+and (v) is readily derived from this description.
+
+\noindent (vii). Similarly to (v),
+\begin{eqnarray*}
+d_{1} \times^{\Dom} d_{2} & = & Con( \{ \ltuple b_{1}b_{2}, e_{1} \times^{\Dom} e_{2} \rtuple : \ltuple b_{i}, e_{i} \rtuple \in d_{i}, \; i = 1, 2 \} \\
+& & \mbox{} \cup \{ \bot : \bot \in d_{1} \; \mbox{or} \; \bot \in d_{2} \} ). \;\;\; \qed
+\end{eqnarray*}
+
+\begin{proposition}
+\label{sbis}
+For all $t \in T_{\Sigma}$, $t \sim^{B} \lsem t \rsem^{\Dom}$.
+\end{proposition}
+
+\proof\ Firstly, we define a height function on $T_{\Sigma}$ in the obvious way:
+\[ {\sf ht}( \sigma (t_{1}, \ldots , t_{n}) = \sup \; \{ {\sf ht}(t_{i} : 1 \leq i \leq n \} + 1 . \]
+As an easy consequence of~\ref{tops}, we have:
+\[ \labarrow{t}{a}{t'} \;\; \Longrightarrow \;\; {\sf ht}(t' ) < {\sf ht}(t) . \]
+The proposition is proved by induction on ${\sf ht}(t)$, and cases on the construction of $t$.
+The cases arising from operations in $\Sigma'$ are immediate in the light of the parallelism between~\ref{tops} and~\ref{dops}.
+We give one of the remaining cases for illustration.
+
+\noindent $t \equiv t_{1} {\restriction}^{\Dom} A$.
+Firstly, 
+\begin{Eqarray}
+t \diverges & \Longleftrightarrow & t_{1} \diverges & \mbox{by \ref{tops}(v)} \\
+& \Longleftrightarrow & \lsem t_{1} \rsem^{\Dom} \diverges & \mbox{by induction hypothesis} \\
+& \Longleftrightarrow & ( \lsem t_{1} \rsem^{\Dom} {\restriction}^{\Dom} A) \diverges & \mbox{by \ref{dops}(v)} \\
+& \Longleftrightarrow & \lsem t_{1} {\restriction}  A) \rsem^{\Dom} \diverges . &
+\end{Eqarray}
+Next,
+\[ \begin{array}{llr}
+\bullet & \labarrow{t}{a}{t'} & \\
+\Longrightarrow & \labarrow{t_{1}}{a}{t'_{1}} \: \& \: t' = t'_{1} {\restriction}  A \: \& \: a \in A & \mbox{by \ref{tops}(v)} \\
+\Longrightarrow & \exists d' . \, \labarrow{\lsem t_{1} \rsem^{\Dom}}{a}{d'} \; \& \; t'_{1} \preord^{B} d' & \mbox{ind. hyp. on $t_{1}$} \\
+\Longrightarrow & t'_{1} {\restriction}  A \sim^{B} \lsem t'_{1} {\restriction}  A \rsem^{\Dom} & \mbox{ind. hyp. on $t'_{1} {\restriction}  A$} \\
+& \mbox{} = \lsem t'_{1} \rsem^{\Dom}  {\restriction}^{\Dom}  A & \\
+& \; \preord^{B} d' {\restriction}^{\Dom} A & \mbox{by \ref{ifs}} \\
+& \mbox{(since ${\restriction}^{\Dom}$ is monotone)} & \\
+\Longrightarrow & \exists u . \, \labarrow{\lsem t \rsem^{\Dom}}{a}{u} \; \& \; t' \preord^{B} u  & \mbox{by \ref{dops}(v).}
+\end{array} \]
+Similarly, we can show
+\[ \labarrow{t}{a}{t'} \; \Rightarrow \; \exists u. \, \labarrow{\lsem t \rsem^{\Dom}}{a}{u} \: \& \: u \preord^{B} t' . \]
+Again,
+\[ \begin{array}{llr}
+\bullet & \labarrow{\lsem t \rsem^{\Dom}}{a}{d} & \\
+\Longrightarrow & \exists d_{1}, d_{2}. \: \labarrow{\lsem t_{1} \rsem^{\Dom}}{a}{d_{i}}, \; i = 1, 2  & \\
+& \mbox{} \& \; d_{1} {\restriction}^{\Dom} A \sqsubseteq d \sqsubseteq d_{2} {\restriction}^{\Dom} A \\
+& \mbox{} \& \; a \in A & \mbox{by \ref{dops}(v)} \\
+\Longrightarrow & \exists t'_{1}, t'_{2}. \: \labarrow{t_{1}}{a}{t'_{i}}, \; i = 1, 2 & \\
+& \mbox{} \& \; t'_{1} \preord^{B} d_{1}, \; d_{2} \preord^{B} t'_{2} & \mbox{by induction hypothesis} \\
+\Longrightarrow & \labarrow{t}{a}{t'_{i} {\restriction} A}, \; i = 1, 2 & \\
+& \mbox{} \& \; t'_{1} {\restriction} A \sim^{B} \lsem t'_{1} {\restriction} A \rsem^{\Dom} &  \mbox{by induction hypothesis} \\
+& \mbox{} = \lsem t'_{1} \rsem^{\Dom} {\restriction}^{\Dom} A \; \preord^{B} \; d_{1} {\restriction}^{\Dom} A \; \preord^{B} d, & 
+\end{array} \]
+and similarly $d \preord^{B} t'_{2} {\restriction} A$.
+Altogether, we have $t \sim^{B} \lsem t \rsem^{\Dom}$. \qed
+
+As an immediate consequence of this Proposition and~\ref{ifs} we have
+\begin{theorem}[Full Abstraction for Finite Terms]
+\label{faft}
+For all $t_{1}, t_{2} \in T_{\Sigma}$: 
+\[ t_{1} \preord^{B} t_{2} \;\; \Longleftrightarrow \;\; \lsem t_{1} \rsem^{\Dom} \sqsubseteq \lsem t_{2} \rsem^{\Dom} . \]
+\end{theorem}
+As further consequences of \ref{faft} we have
+\begin{itemize}
+\item $\lsem \cdot \rsem^{\Dom}$ agrees with the syntax-free map $\lsem \cdot \rsem$ defined in Section 5.
+Indeed, $t \sim^{B} \lsem t \rsem^{\Dom}$ implies $\Ellomega (\lsem t \rsem^{\Dom}) = \Ellomega (t) = \Ellomega (\lsem t \rsem )$, which implies $\lsem t \rsem^{\Dom} = \lsem t \rsem$.
+\item $T_{\Sigma}$ is a finitary transition system, by \ref{ftsequiv}.
+\end{itemize}
+Moreover, we can derive two further characterisations of \Dom.
+\begin{theorem}
+(i) ${\cal K}(\Dom ) \; \cong \; (T_{\Sigma'}/{\sim^{B}}, {\preord^{B}}/{\sim^{B}})$, and therefore
+
+\noindent (ii) $D \; \cong \; {\sf Idl} \: (T_{\Sigma'}/{\sim^{B}}, {\preord^{B}}/{\sim^{B}})$.
+\end{theorem}
+
+\proof\ Immediate from \ref{surs} and \ref{faft}. \qed
+
+We recall the notion of {\em continuous $\Sigma$-algebra} \cite{ADJ78,Gue81}.
+This is just a $\Sigma$-algebra whose carrier is a cpo, and whose operations are continuous.
+A homomorphism of such algebras which is continuous on the carriers is 
+a {\em continuous $\Sigma$-homomorphism}.
+The category of these algebras and homomorphisms is denoted ${\bf CAlg}(\Sigma )$.
+\begin{definition}
+{\rm {\bf SCCS-Alg} is the full subcategory of ${\bf CAlg}(\Sigma )$ of those algebras ${\cal A}$ satisfying
+\[ \forall t_{1}, t_{2} \in T_{\Sigma}. \: t_{1} \preord^{B} t_{2} \; \Longrightarrow \; \lsem t_{1} \rsem^{\cal A} \sqsubseteq \lsem t_{2} \rsem^{\cal A} . \] }
+\end{definition}
+
+\begin{theorem}
+\label{binit}
+$\Dom_{\Sigma}$ is initial in {\bf SCCS-Alg}.
+\end{theorem}
+
+\proof\ We begin by recalling a useful fact about continuous algebras (\cite{Gue81} Proposition 3.12).
+Suppose $\cal A$ is a continuous algebra whose carrier $A$ is an algebraic domain, such that the finite elements ${\cal K}(A)$ form a $\Sigma$-subalgebra.
+Then, given any monotonic $\Sigma$-homomorphism
+\[ f : {\cal K}(A)  \longrightarrow  {\cal B} \]
+to a continuous $\Sigma$-algebra $\cal B$, there is a unique extension
+\[ \hat{f} : {\cal A}  \longrightarrow  {\cal B} \]
+to a continuous $\Sigma$-homomorphism on $\cal A$.
+
+By \ref{surs}, ${\cal K}(\Dom )$ is closed under the $\Sigma$-operations.
+Hence it suffices to construct a unique monotone $\Sigma$-homomorphism
+\[ f : {\cal K}(\Dom )  \longrightarrow  {\cal A} \]
+to any $\cal A$ in {\bf SCCS-Alg}.
+Given $d \in {\cal K}(\Dom )$, by \ref{surs} there is $t \in T_{\Sigma}$ with 
+$\lsem t \rsem^{\Dom} = d$, and the only possible definition for $f$ giving a $\Sigma$-homomorphism is
+\[ f : d \mapsto \lsem t \rsem^{\cal A} . \]
+This establishes uniqueness.
+For existence,
+\begin{Eqarray}
+\lsem t_{1} \rsem^{\Dom} = \lsem t_{2} \rsem^{\Dom} & \Longleftrightarrow & \lsem t_{1} \rsem^{\Dom} \sim^{B} \lsem t_{2} \rsem^{\Dom} &\mbox{by \ref{ifs}} \\
+& \Longleftrightarrow & t_{1} \sim^{B} t_{2} & \mbox{by \ref{faft}} \\
+& \Longrightarrow & \lsem t_{1} \rsem^{\cal A} = \lsem t_{2} \rsem^{\cal A} &
+\end{Eqarray}
+since $\cal A$ is in {\bf SCCS-Alg}, and so $f$ is well-defined.
+Similarly,
+\[ \lsem t_{1} \rsem^{\Dom} \sqsubseteq \lsem t_{2} \rsem^{\Dom} \; \Rightarrow \; t_{1} \preord^{B} t_{2} \; \Rightarrow \; \lsem t_{1} \rsem^{\cal A} \sqsubseteq \lsem t_{2} \rsem^{\cal A}, \]
+and so $f$ is monotone. \qed
+
+The purely algebraic part of SCCS which we have developed so far only allows the description of {\em finite} processes.
+We now extend the calculus with recursion.
+\begin{definition}
+{\rm We fix a set of variables {\sf Var}, ranged over by $x, y, z$.
+The syntax of {\em recursive terms} ${\rm REC}_{\Sigma}$, is then defined by
+\[ t \;\; ::= \;\; \sigma (t_{1}, \ldots , t_{n}) \;\; (\sigma \in \Sigma_{n}) \; | \; x \; | \; {\sf rec} \: x.t \] }
+\end{definition}
+In an obvious way, we can take $T_{\Sigma}$ as a subset of ${\rm REC}_{\Sigma}$. Note that $ {\sf rec} \: x.t$ is a variable-binding construct.
+The set of {\em closed recursive terms} is denoted ${\rm CREC}_{\Sigma}$.
+
+We now extend the definition of the operational semantics to ${\rm CREC}_{\Sigma}$:
+\[ (D{\sf rec}) \;\; \frac{t[{\Omega}/x] \diverges}{{\sf rec} \: x.t \diverges} 
+\;\;\;\;\;\;\;\; (T {\sf rec}) \;\; \frac{\labarrow{t[{\sf rec} \: x.t/x]}{a}{t'}}{\labarrow{{\sf rec} \: x.t }{a}{t'}} \]
+
+We thus obtain a transition system $({\rm CREC}_{\Sigma}, {\sf Act}, \rightarrow , \diverges )$.
+It is not too hard to see that this system is weakly finite-branching, and therefore by~\ref{finots} satisfies (BN).
+However, most of the other finiteness conditions on transition systems fail, as the following examples show.
+
+\subsection*{Examples}
+(1) {\bf Failure of sort-finiteness.} Assume {\sf Act} is infinite, in 
+particular that $\{ a_{n} \}$ is a sequence of distinct actions, and that $S$ is a relabelling such that
+\[ S a_{n} = a_{n + 1} \;\; (n \in \omega ). \]
+Then
+\[ {\sf rec} \: x. \: a_{0} \Oh + x[S] \]
+has the behaviour described by the synchronisation tree
+\[ {\sum_{n \in \omega} a_{n} \Oh } + \Omega . \]
+
+\noindent (2) {\bf Failure of (FA), and ${\preord_{\omega}} \not= {\preord^{B}}$.} By the example following~\ref{finots}, it suffices to show that the synchronisation tree
+\[ p \equiv {\sum_{n \in \omega} a^{n} \Oh } + \Omega \]
+can be defined in SCCS to disprove (FA); while the same example shows that $\preord_{\omega} \not= \preord^{B}$, since
+\[ p \sim_{\omega} p + a^{\omega}, \;\; p \nsim_{\omega + 1} p + a^{\omega} , \]
+and we can define $a^{\omega} \equiv {\sf rec} \: x. \: ax$. 
+But using {\em unguarded} recursion (cf. \cite{Mil83}), we can define
+\[ p \equiv ({\sf rec} \: x. \: ( \Delta a + ( \Delta a \times x)))\restriction \{ a \} \]
+where $\Delta a \equiv {\sf rec} \: y. \: a 1^{\omega} + 1 y$.
+
+\noindent (3) ${\preord^{F}} \not= {\preord_{\omega}}$. Again, following the examples after~\ref{htl}, it suffices to show that the synchronisation trees
+\begin{eqnarray*}
+p & \equiv & a(\sum_{n \in \Nat} b_{n}\Oh ) + \Omega \\
+q & \equiv & {\sum_{n \in \Nat} a({\sum_{m \in \Nat - \{ n \}} b_{m} \Oh} + \Omega )} + \Omega
+\end{eqnarray*}
+are definable in  SCCS.
+Clearly $p$ is definable in the same way as Example~(1).
+For $q$, we need some additional assumptions on {\sf Act}:
+\begin{itemize}
+\item There are $c, \{ c_{n} \} \in {\sf Act}$ such that,
+for $k, m \in \Nat$:
+\begin{eqnarray*}
+c^{(k)} c_{m} & = & b_{m} \;\; (k \not= m) \\
+c^{(m)} c_{m} & = & b_{m + 1} 
+\end{eqnarray*}
+where $c^{(k)} \equiv \underbrace{c \ldots c}_{k}$, i.e. the product in the monoid {\sf Act}.
+\item There is a relabelling $S$ such that
+\[ S c_{n} = c_{n + 1} \;\; (n \in \Nat ). \]
+\end{itemize}
+(To see that these requirements can be met, let {\sf Act} be the free abelian
+monoid over the generators $0, a, b_{k}, c, c_{k}$ $(k \in \Nat)$ subject
+to the relations
+\[ 0x = x0 = 0, \;\;\;\; c^{(k)}c_{m} = b_{m} \;\;(k \not= m), \;\;\;\; c^{(m)}c_{m} = b_{m+1} \]
+for $k, m \in \Nat$.
+Let $S$ be the endomorphism induced by
+\[ S 0 = S a = S b_{k} = S c = 0, \;\;\;\; S c_{k} = c_{k+1} , \]
+which is well-defined since $S$ preserves the relations.)
+
+Then we can define
+\begin{eqnarray*}
+q & \equiv & {\sf rec} \: x. \: ar + (1 c \Oh \times x) \\
+r & \equiv & {\sf rec} \: y. \: c_{1} \Oh + x[S] ,
+\end{eqnarray*}
+and calculate:
+\begin{eqnarray*}
+r & = & {\sum_{n \in \Nat} c_{n} \Oh } + \Omega , \\
+q & = & {\sum_{n \in \Nat} ( \prod_{i=1}^{n} 1 c \Oh \times ar) } + \Omega \\
+& = & {\sum_{n \in \Nat} a(c^{(n)} \Oh \times \sum_{m \in \Nat} c_{m} \Oh + \Omega )} + \Omega \\
+& = & {\sum_{n \in \Nat} a( \sum_{m \in \Nat} (c^{(n)} c_{m}) \Oh + \Omega )} + \Omega \\
+& = &  {\sum_{n \in \Nat} a( \sum_{m \in \Nat - \{ n \}} b_{m} \Oh + \Omega )} + \Omega 
+\end{eqnarray*}
+as required.
+
+By contrast with Example (3), Hennessy claims in~\cite{Hen81} Theorem~4.1 that ${\preord^{F}} = {\preord_{\omega}}$ for SCCS.
+The defect in his argument occurs in the definition of $p^{(n)}$ at the start of section~4 of \cite{Hen81}; 
+there appears to be an implicit assumption that SCCS is sort-finite.
+Indeed, as an easy consequence of our work in the previous Section, we have
+\begin{proposition}
+In any sort-finite transition system satisfying (BN):
+\[ {\preord^{F}} = {\preord_{\omega}} . \]
+\end{proposition}
+
+\proof\ Let $p, q \in {\rm Proc}$ in such a system.
+\begin{Eqarray}
+p \preord^{F} q & \Longrightarrow & \Ellomega (p) \subseteq \Ellomega (q) & \\
+& \Longrightarrow & \Ell_{\bigvee \infty}(p) \subseteq \Ell_{\bigvee \infty}(q) & \mbox{(BN)} \\
+& \Longrightarrow & {\rm HML}_{\omega}(p) \subseteq {\rm HML}_{\omega}(q) & \\
+& \Longrightarrow & p \preord_{\omega} q & \mbox{sort-finiteness. \qed}
+\end{Eqarray}
+
+Nevertheless, Hennessy's results on full abstraction are valid when $\preord_{\omega}$ is replaced by $\preord^{F}$, and we shall make use of them shortly.
+
+Firstly, we need to extend our denotational semantics $\lsem \cdot \rsem^{\Dom}$ to recursive terms.
+This is done in the standard way; we introduce environments to deal with variables, and interpret recursion by least fixed points.
+\begin{definition}
+{\rm Denotational semantics of recursive terms:}
+\[ {\sf Env} \equiv \Dom^{\sf Var} \]
+\[ \lsem \cdot \rsem^{\Dom} : {\rm REC}_{\Sigma}  \longrightarrow {\sf Env} \longrightarrow \Dom \]
+\[ \begin{array}{lll}
+\lsem x \rsem^{\Dom} \rho & \equiv & \rho x \\
+\lsem \sigma (t_{1}, \ldots , t_{n}) \rsem^{\Dom} \rho & \equiv & \sigma^{\Dom} (\lsem t_{1} \rsem^{\Dom} \rho , \ldots , \lsem t_{n} \rsem^{\Dom} \rho ) \\
+\lsem {\sf rec} \: x. \, t \rsem^{\Dom} \rho & \equiv & \mu d \in \Dom . \: \lsem t \rsem^{\Dom} \rho [ x \mapsto d ] .
+\end{array} \]
+\end{definition}
+
+We now want to extend our Full Abstraction Theorem to recursive terms.
+We can use Hennessy's results in~\cite{Hen81} to get a cheap proof.
+In that paper, Hennessy constructs a term model $\cal I$ with the following properties:
+\begin{enumerate}
+\item $\cal I$ is an algebraic continuous $\Sigma$-algebra all finite elements of which are definable in $T_{\Sigma}$.
+\item $\cal I$ is fully abstract for recursive terms with repect to the finitary preorder; for all $t_{1}, t_{2} \in {\rm CREC}_{\Sigma}$:
+\[ t_{1} \preord^{F} t_{2} \;\; \Longleftrightarrow \;\; \lsem t_{1} \rsem^{\cal I} \sqsubseteq  \lsem t_{2} \rsem^{\cal I}. \]
+\end{enumerate}
+Combining (1) and (2) with Theorem~\ref{binit}, we obtain
+\begin{theorem}
+\label{isoalg}
+$\Dom_{\Sigma}$ and $\cal I$ are isomorphic as continuous $\Sigma$-algebras.
+\end{theorem}
+Let $h : \Dom_{\Sigma} \rightarrow {\cal I}$ be the isomorphism given by Theorem~\ref{isoalg}.
+It is immediate that $h$ preserves denotations of terms in $T_{\Sigma}$:
+\[ \forall t \in T_{\Sigma}. \: h(\lsem t \rsem^{\Dom}) = \lsem t \rsem^{\cal I} . \]
+To extend this to recursive terms we need one further piece of machinery.
+\begin{definition}
+{\rm Let $\simeq$ be the least $\Sigma$-congruence over ${\rm REC}_{\Sigma}$ generated by
+\[ {\sf rec} \: x. \, t \simeq t[{\sf rec} \: x. \, t/x] . \]
+Let $t_{\Omega}$ be the term obtained from $t$ by replacing each subexpression of the form ${\sf rec} \: x. \, t'$ by $\Omega$.
+The {\em syntactic approximants} of $t$ are defined by:
+\[ SA(t) \equiv \{ t'_{\Omega} : t' \simeq t \} . \] } 
+\end{definition}
+Note that $SA(t) \subseteq T_{\Sigma}$ for all $t \in {\rm CREC}_{\Sigma}$.
+
+Now the following is standard (cf. e.g. \cite{ADJ77}):
+\begin{lemma}[Syntactic Approximation]
+\label{sapprox}
+For all $t \in {\rm CREC}_{\Sigma}$:
+\[ \lsem t \rsem^{\Dom} = \bigsqcup \{ \lsem t' \rsem^{\Dom} : t' \in SA(t) \} . \]
+\end{lemma}
+Hennessy proves the corresponding result for $\lsem \cdot \rsem^{\cal I}$ as his Lemma~3.4.
+
+\begin{proposition}
+\label{hpres}
+For all $t \in {\rm CREC}_{\Sigma}$:
+\[ h(\lsem t \rsem^{\Dom}) = \lsem t \rsem^{\cal I} . \]
+\end{proposition}
+
+\proof\ 
+\begin{Eqarray}
+h(\lsem t \rsem^{\Dom}) & = & h( \bigsqcup \{ \lsem t' \rsem^{\Dom} : t' \in SA(t) \} ) & \mbox{by \ref{sapprox}} \\
+& = & \bigsqcup \{ h( \lsem t' \rsem^{\Dom}) : t' \in SA(t) \}  & \mbox{$h$ is continuous} \\
+& = & \bigsqcup \{ \lsem t' \rsem^{\cal I} : t' \in SA(t) \}  & \mbox{by \ref{isoalg}} \\
+& = & \lsem t \rsem^{\cal I} . & \qed
+\end{Eqarray}
+
+\begin{theorem}[Full Abstraction for Recursive Terms]
+For all $t_{1}, t_{2} \in {\rm CREC}_{\Sigma}$:
+\[ t_{1} \preord^{F} t_{2} \;\; \Longleftrightarrow \;\;  \lsem t_{1} \rsem^{\Dom} \sqsubseteq \lsem t_{2} \rsem^{\Dom} . \]
+\end{theorem}
+
+\proof\ 
+\begin{eqnarray*}
+t_{1} \preord^{F} t_{2} & \Longleftrightarrow & \lsem t_{1} \rsem^{\cal I} \sqsubseteq \lsem t_{2} \rsem^{\cal I} \\
+& \Longleftrightarrow & \lsem t_{1} \rsem^{\Dom} \sqsubseteq \lsem t_{2} \rsem^{\Dom} ,
+\end{eqnarray*}
+by~\ref{hpres} and since $h$ is an order-isomorphism. \qed
+
+Since $\Dom$ is algebraic, this result extends to terms with variables in the obvious way.
+It follows that the axiomatisation of the order and equality relations between 
+terms of SCCS presented in \cite{Hen81} is sound and complete for $\Dom_{\Sigma}$.

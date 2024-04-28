@@ -1,0 +1,355 @@
+\section{Domains as Propositional Theories}
+
+We begin by introducing the first part of a meta-language for
+denotational semantics, the {\em type expressions}, with syntax
+\[ \sigma \;\; ::= \;\; {\bf 1} \; | \; \sigma \times \tau \; | \;
+\sigma \rightarrow \tau \; | \; 
+\sigma \oplus \tau \; | \; (\sigma )_{\bot} \; | \;
+P_{u} \sigma \; | \; 
+P_{l} \sigma \; | \; t  \; | \; 
+{\sf rec} \, t.\sigma \]
+where $t$ ranges over type variables, and $\sigma , \tau$ over
+type expressions.
+
+The standard way of interpreting these expressions is as objects
+of  {\bf SDom} (more generally as cpo's, but {\bf SDom} is closed
+under all the above constructions as a subcategory of  {\bf CPO}).
+Thus for each type expression $\sigma$ we define a domain
+${\cal D} ( \sigma ) = (D(\sigma ), \sqsubseteq_{\sigma} )$ in
+{\bf SDom}; $\sigma \times \tau$ is interpreted as product,
+$\sigma \rightarrow \tau$ as function space, $\sigma \oplus \tau$
+as coalesced sum, $(\sigma )_{\bot}$ as lifting, $P_{u} \sigma$
+and $P_{l} \sigma$ as the upper and lower (or Smyth and Hoare)
+powerdomains, and ${\rm rec} \, t. \sigma$ as the solution of the
+domain equation
+\[t = \sigma (t),\]
+i.e. as the initial fixpoint of an endofunctor over {\bf SDom}.
+Other constructions (e.g. strict function space, smash product)
+can be added to the list.
+
+So far, all this is standard (\cite {PloLN,SP82}). 
+Now we begin our alternative approach.
+For each type expression $\sigma$, we shall define a propositional
+theory ${\cal L}(\sigma ) = (L(\sigma ), \: \leq_{\sigma}, \: =_{\sigma})$,
+where:
+\begin{itemize}
+\item $L(\sigma )$ is a set of formulae
+\item $\leq_{\sigma}$, $=_{\sigma}$ are the relations of logical
+{\em entailment} and {\em equivalence} between formulae.
+\end{itemize}
+
+${\cal L}(\sigma )$ is defined inductively via formation rules,
+axioms and inference rules in the usual way.
+\subsection*{Formation Rules}
+\[ \bullet \;\; {\sl t, f} \in L(\sigma ) \;\;\;\;\;\;\;\;
+\bullet \;\; \frac{\phi , \psi \in L(\sigma )}{\phi \wedge \psi , \phi \vee \psi
+\in L(\sigma )}\]
+\[\bullet \;\; \frac{\phi \in L(\sigma ), \; \psi \in L(\tau )}
+{(\phi \times \psi ) \in L(\sigma \times \tau ), \;
+(\phi \rightarrow \psi ) \in L(\sigma \rightarrow \tau ) } \]
+\[ \bullet \;\; \frac{\phi \in L(\sigma ), \; \psi \in L(\tau )}
+{(\phi \oplus \false ), \; (\false \oplus \psi ) \in L(\sigma \oplus \tau )} \;\;\;\;\;\;\;\; 
+\bullet \;\; \frac{\phi \in L(\sigma )}{(\phi )_{\bot} \in L((\sigma )_{\bot})} \]
+\[ \bullet \;\; \frac{\phi \in L(\sigma )}
+{\Box \phi \in L(P_{u} \sigma ), \; 
+\Diamond \phi \in L(P_{l} \sigma ) } \;\;\;\;\;\;\;\;
+\bullet \;\; \frac{\phi \in L(\sigma [{\sf rec} \, t.\sigma / t])}
+{\phi \in L({\sf rec} \, t.\sigma )} \]
+
+We should think of $(\phi \rightarrow \psi )$, $\Box \phi$ etc.
+as ``constructors'' or ``generators'', which build basic formulae
+at complex types from arbitrary formulae at simpler types.
+Note that no constructors are introduced for recursive types;
+we are taking advantage of the observation, familiar from work on information
+systems \cite{LW84}, that if we work with preorders it is easy to solve
+domain equations up to {\em identity}.
+\subsection*{Examples}
+We define separated sum as a derived operation:
+\[ \sigma + \tau \equiv (\sigma )_{\bot} \oplus (\tau )_{\bot} \]
+Also, we define the Sierpinski space (two-point domain):
+\[ \Oh \equiv ({\bf 1})_{\bot} \]
+Now we construct a number of familiar semantic domains:
+\begin{center}
+\begin{tabular}{|l|c|l|} \hline
+name &  expression &  description \\ \hline
+{\sf B} & ${\bf 1} + {\bf 1}$ & flat domain of booleans \\
+{\sf N} & ${\sf rec} \: t. \, \Oh \oplus t$ & flat domain of natural numbers \\
+{\sf LN} & ${\sf rec} \: t. \, {\bf 1} + t$ & lazy natural numbers \\
+{\sf List(N)} & ${\sf rec} \: t. \, {\bf 1} + ({\sf N} \times t)$ & lazy lists of eager numbers \\
+{\sf CBN} & ${\sf rec} \: t. \, {\sf N} + (t \rightarrow t)$ & call-by-name untyped $\lambda$-calculus \\ \hline
+\end{tabular}
+\end{center}
+Now we define some formulas in these types, to suggest how the expected
+structure emerges from the formal definitions.
+\begin{center}
+\begin{tabular}{|l|c|l|}  \hline
+name & formula & type \\ \hline
+$\star$ & $(\true )_{\bot}$ & $\Oh$ \\
+{\sf true} & $(\star \oplus \false )$ & {\sf B} \\
+{\sf false} & $(\false \oplus \star )$ & {\sf B} \\
+$\overline{0}$ & $(\star \oplus \false )$ & {\sf N} \\
+$\overline{1}$ & $(\false \oplus \overline{0})$ & {\sf N} \\
+$\overline{n+1}$ & $(\false \oplus \overline{n})$  & {\sf N} \\
+{\sf nil} & $(\star \oplus \false )$ & {\sf List(N)} \\
+$\overline{0} :: {\sf nil}$ & $(\false \oplus (\overline{0} \times {\sf nil}))$ & {\sf List(N)} \\
+$\overline{0} :: \bot$ & $(\false \oplus (\overline{0} \times \true ))$ & {\sf List(N)} \\
+{\sf parallel or} & $(({\sf true} \times \true ) \rightarrow {\sf true})$ & \\
+& $\mbox{} \wedge ((\true \times {\sf true}) \rightarrow {\sf true})$ & \\
+& $\mbox{} \wedge (({\sf false} \times {\sf false}) \rightarrow {\sf false})$ 
+& $({\sf B} \times {\sf B}) \rightarrow {\sf B}$ \\ \hline
+\end{tabular}
+\end{center}
+\subsection*{Auxiliary Predicates}
+Before proceeding to the axiomatisation proper, we shall define some
+auxiliary predicates on formulas. These will be used as side-conditions
+on a number of axioms and rules (e.g. $(\rightarrow - \vee - R)$ below).
+Thus it is important that they are recursive predicates, defined
+syntactically on formulae. The main predicates we define are:
+\begin{itemize}
+\item {\sf PNF}($\phi$): $\phi$ is in {\em prime normal form},
+defined by the condition that disjunctions only occur in $\phi$
+immediately under $\Box$.
+\end{itemize}
+Then for $\phi$ in PNF, we shall define:
+\begin{itemize}
+\item {\sf C}($\phi$): $\phi$ is {\em consistent}, i.e. so that we have
+\[ {\sf C}(\phi ) \; \Longleftrightarrow \; \neg (\phi \leq {\sl f})
+\; \Longleftrightarrow \; \lsem \phi \rsem \neq \varnothing \]
+(where $\lsem \cdot \rsem$ is the semantics to be introduced below).
+\item {\sf T}($\phi$): $\phi$ requires {\em termination}, i.e. so that we have
+\[ {\sf T}(\phi ) \; \Longleftrightarrow \; \neg ({\sl t} \leq \phi )
+\; \Longleftrightarrow \; \bot \not\in \lsem \phi \rsem . \] 
+\end{itemize}
+
+Of these, the idea of formal consistency, and its definition for
+function spaces, go back to \cite{Kre59}, and also play a major role in
+\cite{Sco81,Sco82}.
+The other predicates, as syntactic conditions on expressions, are
+apparently new (and in the presence of the  type constructions
+we are considering, specifically function space and coalesced sum,
+the definitions of {\sf C} and {\sf T} are {\em mutually recursive}).
+\[ \begin{array}{lll}
+{\sf C}(\true ) & \equiv & {\sf true} \\
+{\sf C}(\bigwedge_{i \in I}(\phi_{i} \times \psi_{i})) & \equiv & {\sf C}(\bigwedge_{i \in I}
+\phi_{i}) \; \& \; {\sf C}(\bigwedge_{i \in I}\psi_{i}) \\
+{\sf C}(\bigwedge_{i \in I}(\phi_{i} \rightarrow
+\psi_{i})) & \equiv  & \forall J \subseteq I. \: 
+{\sf C}
+(\bigwedge_{j \in J}\phi_{j})
+\; \Rightarrow \; {\sf C}(\bigwedge_{j \in J}\psi_{j}) \\
+{\sf C}(\bigwedge_{i \in I}(\phi_{i} \oplus {\sl f}) & & \\
+\mbox {} \wedge \bigwedge_{j \in J}({\sl f} \oplus \psi_{j})) & \equiv &
+\neg ({\sf T}(\bigwedge_{i \in I}\phi_{i}) \; \& \; 
+{\sf T}(\bigwedge_{j \in J}\psi_{j})) \\
+& & \& \; {\sf C}(\bigwedge_{i \in I}\phi_{i}) \; \& \;
+{\sf C}(\bigwedge_{j \in J}\psi_{j}) \\
+{\sf C}(\bigwedge_{i \in I}(\phi_{i})_{\bot}) & \equiv & 
+{\sf C}(\bigwedge_{i \in I}\phi_{i}) \\
+{\sf C}(\bigwedge_{i \in I}\Diamond \phi_{i}) & \equiv & \forall i \in I. \:
+{\sf C}(\phi_{i}) \\
+{\sf C}(\bigwedge_{i \in I} \Box \bigvee_{j \in J_{i}} \phi_{ij}) & \equiv &
+\exists f \in \prod_{i \in I} J_{i}. \: {\sf C}(\bigwedge_{i \in I} \phi_{i f(i)  } )
+\end{array} \]
+\[ \begin{array}{lll}
+{\sf T}(\bigwedge_{i \in I}\phi_{i}) & \equiv & \exists i \in I. \: {\sf T}(\phi ) \\
+{\sf T}(\phi \rightarrow \psi ) & \equiv & {\sf C}(\phi ) \; \& \; {\sf T}(\psi ) \\
+{\sf T}(\phi \times \psi ) & \equiv & {\sf T}(\phi ) \; \mbox{or} \; {\sf T}(\psi ) \\
+{\sf T}(\phi \oplus {\sl f}) & \equiv &
+{\sf T}({\sl f} \oplus \phi ) \;\; \equiv \;\; {\sf T}(\phi ) \\
+{\sf T}((\phi )_{\bot}) & \equiv & {\sf true} \\
+{\sf T}(\Diamond \phi ) & \equiv & {\sf T}(\Box \phi ) \equiv T(\phi ) .
+\end{array} \] 
+
+Once we have defined {\sf C} and {\sf T}, we can introduce the following derived predicates:
+\begin{eqnarray*}
+{\sf CPNF}(\phi) & \equiv & {\sf PNF}(\phi ) \; \mbox{and for all sub-formulae
+$\psi$ of $\phi$,} \\
+& &  {\sf PNF}(\psi ) \; \Rightarrow \; {\sf C}(\psi ) . \\
+{\sf CDNF}(\phi ) & \equiv & \phi = \bigvee_{i \in I} \phi_{i} \; \& \; \forall   i \in I. \, {\sf CPNF}(\phi_{i}) \\
+\#(\phi ) & \equiv & \phi = \bigvee_{i \in I} \phi_{i} \; \& \; \forall i \in I. \, {\sf PNF}(\phi ) \: \& \: \neg {\sf C}(\phi ) \\ 
+(\phi ) \converges  & \equiv & \phi = \bigvee_{i \in I} \phi_{i} \; \& \; \forall i \in I. \, {\sf PNF}(\phi ) \: \& \: {\sf T}(\phi ).
+\end{eqnarray*}
+
+Now we turn to the axiomatization.
+The axioms of our logic are all ``polymorphic'' in character,
+i.e. they arise from the type constructions uniformly over
+the types to which the constructions are applied.
+Thus we omit type subscripts.
+
+The axioms fall into two main groups.
+\subsection*{Logical Axioms}
+These give each $\cal L (\sigma )$ the structure of a distributive
+lattice.
+\[ ({\leq}-{\rm ref}) \;\;\; \phi \leq \phi \;\;\;\;\;\;
+({\leq}-{\rm trans}) \;\;\;  \frac{\phi \leq \psi , \; \psi \leq \chi}
+{\phi \leq \chi} \]
+\[ ({=}-I) \;\;\; \frac{\phi \leq \psi , \; \psi \leq \phi}{\phi = \psi} 
+\;\;\;\;\;\;
+({=}-E) \;\;\; \frac{\phi = \psi}{\phi \leq \psi , \; \psi \leq \phi} \]
+\[ ({\true}-I) \;\;\; \phi \leq \true \;\;\;\;\;\;	
+({\wedge}-I) \;\;\; \frac{\phi \leq \psi_{1} , \; \phi \leq \psi_{2}}
+{\phi \leq \psi_1 \wedge \psi_2} \]
+\[ ({\wedge}-E-L) \;\;\; \phi \wedge \psi \leq \phi \;\;\;\;\;\; 
+({\wedge}-E-R) \;\;\; \phi \wedge \psi \leq \psi  \]
+\[ ({\false}-E) \;\;\; \false \leq \phi \;\;\;\;\;\;
+({\vee}-I) \;\;\; \frac{\phi_{1} \leq \psi , \; \phi_{2} \leq \psi}
+{\phi_{1} \vee \phi_{2} \leq \psi} \]
+\[ ({\vee}-E-L) \;\;\; \phi \leq \phi \vee \psi \;\;\;\;\;\;
+({\vee}-E-R) \;\;\; \psi \leq \phi \vee \psi \]  
+\[ ({\wedge}-{\rm dist}) \;\;\; \phi \wedge (\psi \vee \chi )  \leq  
+(\phi \wedge \psi )
+\vee (\psi \wedge \chi ) \]
+
+\subsection*{Type-specific Axioms}
+These articulate each type construction, by showing how its generators
+interact with the logical structure.
+
+\[ ({\times}-{\leq}) \;\;\; \frac{\phi \leq \phi' , \; \psi \leq \psi'}
+{(\phi \times \psi ) \leq (\phi' \times \psi' )} \]
+\[ ({\times}-{\wedge}) \;\;\; \bigwedge_{i \in I} (\phi_{i} \times \psi_{i}) = (\bigwedge_{i \in I} \phi_{i} \times \bigwedge_{i \in I} \psi_{i} ) \]
+\[ ({\times}-{\vee}-L) \;\;\; ( \bigvee_{i \in I} \phi_{i} \times \psi ) = \bigvee_{i \in I} (\phi \times \psi ) \]
+\[ ({\times}-{\vee}-R) \;\;\; (\phi \times \bigvee_{i \in I}\psi_{i}) = \bigvee_{i \in I} (\phi \times \psi_{i}) \]
+\[ ({\rightarrow}-\leq ) \;\;\; \frac{\phi^{\prime} \leq \phi ,\; 
+\psi \leq \psi^{\prime} }
+{(\phi \rightarrow \psi )  \leq (\phi^{\prime} \rightarrow \psi^{\prime} )} \]
+\[ ({\rightarrow}-\wedge ) \;\;\; 
+(\phi \rightarrow \bigwedge_{i \in I} \psi_i ) = 
+\bigwedge_{i \in I} (\phi \rightarrow \psi_i ) \]
+\[ ({\rightarrow}-\vee-L) \;\;\; 
+(\bigvee_{i \in I} \phi_{i} \rightarrow \psi ) =
+\bigwedge_{i \in I} (\phi_{i} \rightarrow \psi ) \]
+\[ ({\rightarrow}-\vee-R) \;\;\; 
+(\phi \rightarrow \bigvee_{i \in I} \psi_{i}) =
+\bigvee_{i \in I} (\phi \rightarrow \psi_{i})  \;\;\;\; ({\sf CPNF}(\phi )) \]
+\[ ({\oplus}-{\leq}) \;\;\; \frac{\phi \leq \psi}{(\phi \oplus \false ) \leq (\psi \oplus \false ), \; (\false \oplus \phi ) \leq (\false \oplus \psi )} \]
+\[ ({\oplus}-{\wedge}-L) \;\;\; (\bigwedge_{i \in I} \phi_{i} \oplus \false ) = 
+\bigwedge_{i \in I} (\phi_{i} \oplus \false ) \]
+\[ ({\oplus}-{\wedge}-R) \;\;\; (\false \oplus \bigwedge_{i \in I} \psi_{i}) =
+\bigwedge_{i \in I} (\false \oplus \psi_{i}) \]
+\[ ({\oplus}-{\vee}-R) \;\;\; (\bigvee_{i \in I} \phi_{i} \oplus \false ) =
+\bigvee_{i \in I} (\phi_{i} \oplus \false ) \]
+\[ ({\oplus}-{\vee}-L) \;\;\; (\false \oplus \bigvee_{i \in I} \psi_{i}) =
+\bigvee_{i \in I} (\false \oplus \psi_{i})   \]
+\[ ({( \cdot )_{\bot}}-{\leq}) \;\;\; \frac{\phi \leq \psi}{(\phi )_{\bot} \leq
+(\psi )_{\bot}} \]
+\[ ({( \cdot )_{\bot}}-{\wedge}) \;\;\; (\phi \wedge \psi )_{\bot} = (\phi )_{\bot} \wedge (\psi )_{\bot} \]
+\[ ({( \cdot )_{\bot}}-{\vee}) \;\;\; (\bigvee_{i \in I} \phi_{i} )_{\bot} =
+\bigvee_{i \in I} (\phi_{i})_{\bot} \]
+\[ ({\Box}-{\leq}) \;\;\; \frac{\phi \leq \psi}{\Box \phi \leq \Box \psi} \]
+\[ ({\Box}-{\wedge}) \;\;\; \Box \bigwedge_{i \in I} \phi_{i} =
+\bigwedge_{i \in I} \Box \phi_{i} \]
+\[ ({\Box}-{\sl f}) \;\;\; \Box {\sl f} = {\sl f} \]
+\[ ({\Diamond}-{\leq}) \;\;\; \frac{\phi \leq \psi}{\Diamond \phi \leq \Diamond \psi} \]
+\[ ({\Diamond}-{\vee}) \;\;\; \Diamond \bigvee_{i \in I} \phi_{i} =
+\bigvee_{i \in I} \Diamond \phi_{i} \]
+\[ ({\Diamond}-{\true}) \;\;\; \Diamond \true = \true \]
+\[ (\#) \;\;\; \phi \leq \false \;\;\;\; (\# (\phi )) \]
+
+The axiom $({\Box}-{\sl f})$ exemplifies the possibilities for
+fine-tuning in our approach. It corresponds exactly to the
+{\em omission} of the empty set from the upper powerdomain.
+
+To make precise the sense in which this axiomatic presentation is
+equivalent to the usual denotational construction of domains we define,
+for each (closed) type expression $\sigma$, an interpretation function
+\[ \lsem \cdot \rsem_{\sigma } : L(\sigma ) \longrightarrow K \Omega (\cal D 
+(\sigma ) ) \]
+by
+\[ \begin{array}{lll}
+\lsem \phi \wedge \psi \rsem_{\sigma} & = & \lsem \phi \rsem_{\sigma} \cap
+\lsem \psi \rsem_{\sigma} \\
+\lsem {\sl t} \rsem_{\sigma} & = & D(\sigma ) = 1_{K \Omega (\cal D (\sigma ))} 
+\\
+\lsem \phi \vee \psi \rsem_{\sigma} & = & \lsem \phi \rsem_{\sigma} \cup
+\lsem \psi \rsem_{\sigma} \\
+\lsem \false \rsem_{\sigma} & = & \varnothing = 0_{K \Omega (\cal D (\sigma ))}
+\\
+\lsem (\phi \times \psi ) \rsem_{\sigma \times \tau} & = & 
+\{ \ltuple u, v \rtuple : u \in \lsem \phi \rsem_{\sigma}, \; v \in \lsem \psi
+\rsem_{\tau} \} \\
+\lsem (\phi \rightarrow \psi ) \rsem_{\sigma \rightarrow \tau} & = &
+\{ f \in D(\sigma \rightarrow \tau ) : f(\lsem \phi \rsem_{\sigma })
+\subseteq \lsem \psi \rsem_{\tau} \} \\
+\lsem (\phi \oplus \false ) \rsem_{\sigma \oplus \tau} & = &
+\{ \ltuple 0, u \rtuple : u \in \lsem \phi \rsem_{\sigma} - \{ \bot_{\sigma} \} \} \\
+&  & \mbox{} \cup \{ \bot_{\sigma \oplus \tau} : \bot_{\sigma} \in \lsem \phi \rsem_{\sigma} \} \\
+\lsem (\false \oplus \psi ) \rsem_{\sigma \oplus \tau} & = &
+\{ \ltuple 1, v \rtuple : v \in \lsem \psi \rsem_{\tau} - \{ \bot_{\tau} \} \} \\
+& & \mbox{} \cup \{ \bot_{\sigma \oplus \tau} : \bot_{\tau} \in \lsem \psi \rsem_{\tau} \} \\
+\lsem (\phi )_{\bot} \rsem_{(\sigma )_{\bot}} & = & \{ \ltuple 0, u \rtuple :
+u \in \lsem \phi \rsem_{\sigma} \} \\
+\lsem \Box \phi \rsem_{P_{u} \sigma } & = & \{ S \in D(P_{u} \sigma ) :
+S \subseteq \lsem \phi \rsem_{\sigma} \} \\
+\lsem \Diamond \phi \rsem_{P_{l} \sigma } & = & \{ S \in D(P_{l} \sigma ) : 
+S \cap \lsem \phi \rsem_{\sigma} \neq \varnothing \} \\
+\lsem \phi \rsem_{{\sf rec} \: t. \, \sigma} & = & 
+\{ {\foldalph}_{\sigma}(u) : u \in \lsem \phi \rsem_{\sigma [{\sf rec} \: t. \, {\sigma}/ t]} \}
+\end{array} \] 
+where ${\foldalph}_{\sigma} : \Dom (\sigma [{\sf rec} \: t. \, {\sigma}/t]) \cong \Dom ({\sf rec} \: t. \, \sigma )$\label{foldalph} is the isomorphism
+arising from the initial solution to the domain equation $t = \sigma (t)$.
+
+Then for $\phi , \psi \in L(\sigma )$, we define
+\[ \cal D (\sigma ) \models \phi \leq \psi \; \equiv \; \lsem \phi 
+\rsem_{\sigma}
+\subseteq \lsem \psi \rsem_{\sigma}. \]
+
+We now use the results of Chapter~3 to establish some fundamental properties
+of our system of ``Domain Logic''.
+
+Firstly, we note that operations on prelocales in the style of
+Chapter~3 can be distilled from our definitions for product, lifting and
+Hoare powerdomain.
+The reader will find no difficulty in carrying out the same
+programme for these constructions as that shown for function space,
+Smyth powerdomain and coalesced sum in Chapter~3.
+Now using~\ref{obs}, we see that, for each closed $\sigma$ and any $\rho \in {\sf LEnv}$:
+\[ {\cal L} \lsem \sigma \rsem \rho = \Ell (\sigma ) . \]
+The following results are then immediate consequences of our work
+in Chapter~3.
+
+\noindent {\bf Notation.} ${\sf PNF}(\sigma ) \equiv \{ \phi \in L(\sigma ) :
+{\sf PNF}(\phi ) \}$, 
+and similarly for ${\sf CPNF}(\sigma )$, ${\sf CDNF}(\sigma )$.
+\begin{proposition}
+\label{metap}
+For all $\phi \in {\sf PNF}(\sigma )$:
+\[ \begin{array}{rl}
+(i) & \lsem \phi \rsem_{\sigma} \in {\sf pr}(K \Omega (\Dom (\sigma ))) \\
+(ii) & {\sf C}(\phi ) \;\; \Longleftrightarrow \;\; \lsem \phi \rsem_{\sigma}
+\not= \varnothing \\
+(iii) & {\sf T}(\phi ) \;\; \Longleftrightarrow \;\; \bot_{\sigma} \not\in \lsem \phi \rsem .
+\end{array} \]
+\end{proposition}
+\begin{lemma}[Normal Forms]
+\label{dptnf}
+For all $\phi \in L(\sigma )$, for some $\psi \in {\sf CDNF}(\sigma )$:
+\[ \Ell (\sigma ) \vdash \phi = \psi . \]
+\end{lemma}
+
+Now we define a relation
+\[ {\leftrightsquigarrow} \subseteq {\sf CPNF}(\sigma ) \times K( \Dom (\sigma )):\]
+\[ \phi \leftrightsquigarrow u \equiv \lsem \phi \rsem_{\sigma} = \diverges u. \]
+\begin{proposition}
+\label{squig}
+$\leftrightsquigarrow$ is a surjective total function.
+\end{proposition}
+
+Now we come to the main results of the section:
+\begin{theorem}[Soundness and Completeness]
+For all $\phi , \psi \in L(\sigma )$:
+\[ {\cal L} (\sigma ) \vdash \phi \leq \psi \;\; \Longleftrightarrow
+\;\; {\cal D} (\sigma ) \models \phi \leq \psi . \]
+\end{theorem}
+Now we define 
+\[{\cal LA}(\sigma ) \; \equiv \; (L(\sigma )/{=}_{\sigma}, \:
+\leq_{\sigma}/{=}_{\sigma}),\]
+the {\em Lindenbaum algebra} of
+${\cal L}(\sigma )$.
+\begin{theorem}[Stone Duality]
+\label{sdual}
+${\cal LA}(\sigma )$ is the Stone dual of ${\cal D}(\sigma )$, i.e.
+\[\begin{array}{rl}
+(i)  &  {\cal D}(\sigma ) \; \cong \; {\sf Spec} \: {\cal LA}(\sigma ) \\
+(ii) &  K\Omega ( {\cal D}(\sigma )) \; \cong \; {\cal LA}(\sigma ).
+\end{array} \]
+\end{theorem}
