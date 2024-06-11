@@ -1,6 +1,6 @@
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesClass{notices}
-\LoadClass[twocolumn]{article} 
+\LoadClass[12pt]{article} 
 
 \RequirePackage[alphabetic,msc-links]{amsrefs}
 
