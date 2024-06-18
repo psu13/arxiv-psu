@@ -1,0 +1,208 @@
+\subsection{Memory-Efficient Model Adaptation}\label{sec-memory}  
+
+Due to the huge number of model parameters, LLMs take a significant memory footprint for inference, making it very costly to be deployed in real-world applications. In this section, we discuss how to reduce the memory footprint of LLMs via a popular model compression approach (\ie model quantization), so that large-sized LLMs can be used in resource-limited settings, which also likely reduces the inference latency.  
+
+
+\subsubsection{Background for Quantization} In this part,  we 
+present a general introduction of quantization techniques for neural networks. 
+
+In neural network compression, quantization often refers to the mapping process from  floating-point numbers to  integers~\cite{Gholami-CoRR-2022-A}, especially the 8-bit integer quantization (\ie  \emph{INT8 quantization}). 
+For neural network models, there are typically two kinds of data to be quantized, namely \emph{weights} (model parameters) and \emph{activations} (hidden activations), which are originally represented in floating-point numbers.  To illustrate the essential idea of model quantization,  we   introduce a simple yet popular quantization function:
+$x_q = R(x/S) - Z$, which transforms a floating number $x$ into a quantized value $x_q$. In this function, 
+$S$ and $Z$ denote the scaling factor (involving two  parameters $\alpha$ and $\beta$ that determine the clipping range) and zero-point factor (determining symmetric or asymmetric quantization),  respectively, and $R(\cdot)$ denotes the rounding operation that maps a scaled floating value to an approximate integer. 
+
+
+As the reverse process,  \emph{dequantization}  recovers the original value from the quantized value accordingly: $\Tilde{x} = S\cdot (x_q + Z)$.  The  quantization error is calculated as the numerical difference between the original value $x$ and the recovered value $\Tilde{x}$.  
+{The range parameters  $\alpha$ and $\beta$ have a large impact on the quantization  performance}, which often need to be  \emph{calibrated} according to real data distributions, in either a \emph{static} (offline) or \emph{dynamic} way (runtime).
+
+For more details, we refer to the readers to the excellent  survey~\cite{Gholami-CoRR-2022-A} about quantization methods on neural networks.  
+
+
+
+
+\subsubsection{Quantization Methods for LLMs}
+
+There are generally two major model quantization approaches, namely \emph{quantization-aware training~(QAT)}~(requiring additional full model retraining) and \emph{post-training quantization~(PTQ)} (requires no model retraining). 
+Compared with small-sized language models, two major differences need to be considered when designing or selecting quantization methods for LLMs. Firstly, LLMs consist of a huge number of parameters, and thus PTQ methods are more preferred due to a much lower computational cost than QAT methods. Secondly, LLMs exhibit very different activation patterns (\ie large outlier features), and it becomes more  difficult to quantize LLMs, especially  hidden activations. Next, we will briefly review several representative PTQ  methods\footnote{Since we mainly focus on discussing  quantization methods in the context of LLMs,  the line of  quantization work on small-sized language models (\eg BERT) has not been included in this survey. 
+} for LLMs.   
+
+
+\paratitle{Post-Training Quantization~(PTQ)}. We first introduce the PTQ methods for LLMs. 
+
+
+$\bullet$ \emph{Mixed-precision decomposition}. 
+As observed in \cite{Dettmers-arxiv-2022-LLM}, extreme large values occur in hidden activations (called \emph{the emergence of outliers}) when the model size reaches  6.7B parameters or above. %
+Interestingly, these outliers are mainly distributed in  some specific  feature dimensions  at Transformer layers. 
+Based on this finding, a vector-wise  quantization approach, called \emph{LLM.int8()}, has been proposed in \cite{Dettmers-arxiv-2022-LLM}, which separates  the feature dimensions with outliers and the rest dimensions  in  matrix multiplication. 
+Then, the calculations for the two parts are performed with \emph{16-bit floating numbers} and \emph{8-bit integers}, respectively, so as to recover these outliers in a high precision. 
+
+$\bullet$ \emph{Fine-grained quantization}.
+For Transformer models, weights and activations are usually represented in the form of tensors. A straightforward approach is to use coarse-grained   quantization parameters for the  whole tensor (\ie  per-tensor quantization)~\cite{Xiao-CoRR-2022-SmoothQuant}. However, it usually leads to inaccurate reconstruction results. 
+Thus, fine-grained  methods are proposed to reduce the quantization error.  %
+ZeroQuant~\cite{Yao-NeurlPS-2022-ZeroQuant} adopts a  token-wise quantization approach with dynamic calibration for compressing activations. Whereas for weights (easier to be quantized), it uses a group-wise quantization. In practice, a group size of 128~\cite{Yao-NeurlPS-2022-ZeroQuant,Lin-arXiv-2023-AWQ} is commonly used for model quantization.  %
+
+
+
+
+
+
+
+
+
+$\bullet$ \emph{Balancing the quantization difficulty}.   
+Considering that weights are easier to be quantized than activations, SmoothQuant~\cite{Xiao-CoRR-2022-SmoothQuant}  proposes to migrate the difficulty from  activations to weights. Specially, they incorporate a scaling transformation  to balance the difficulty between weights and activations in a linear layer: $\mathbf{Y} = (\mathbf{X}\text{diag}(\mathbf{s})^{-1}) \cdot (\text{diag}(\mathbf{s})\mathbf{W})$. %
+By introducing an mathematically equivalent transformation, this formula  controls the quantization difficulty through the scaling factor $\mathbf{s}$. 
+To set $\mathbf{s}$, it  incorporates a migration strength parameter $\alpha$ to balance the difficulties,  where each entry $s_j=\max(\mathbf{x}_j)^\alpha / \max(\mathbf{w}_j)^{(1-\alpha)}$ is determined by  the migration strength.  %
+
+
+
+{
+$\bullet$ \emph{Layerwise quantization}. This approach finds optimal  quantized weights that minimize a layerwise reconstruction loss: {$\arg\min_{\widehat{\mathbf{W}}}\parallel \mathbf{W}\mathbf{X} -  \widehat{\mathbf{W}} \mathbf{X}\parallel_2^2$}.  %
+To efficiently optimize this objective, GPTQ~\cite{frantar-arxiv-2022-gptq} improves the  original optimal brain quantization~(OBQ)~\cite{Frantar-NeurIPS-2022-Optimal} method by fixing the quantization order of weights for all rows. 
+Further, with specially designed   methods (\ie lazy batch-updates and Cholesky reformulation),  GPTQ  is feasible to quantize very large models (\eg 175B OPT)  in 3 or 4 bit precision.   
+More recently, AWQ~\cite{Lin-arXiv-2023-AWQ} further simplifies the optimization form by incorporating activation-aware scaling for weights, which resembles the idea of  SmoothQuant~\cite{Xiao-CoRR-2022-SmoothQuant}: weights corresponding to outlier activations are more important to be precisely quantized. It does not directly optimize the reconstruction loss, but instead performs simple hyper-parameter search to achieve  the minimal  loss on calibration data. 
+}
+
+%
+
+
+  
+
+
+%
+
+
+These strategies in the above methods can be jointly used to improve the quantization performance. 
+{In order to achieve high-efficiency implementation, quantization methods also rely on hardware- or system-level support (\eg efficient GPU kernels or hardware-friendly group partition). %
+} 
+
+
+\paratitle{Other Quantization Methods}. In the above, we mainly focus on PTQ methods, and next introduce two recent studies that explore efficient fine-tuning methods or QAT methods   for quanitizing LLMs. 
+   
+
+$\bullet$ \emph{Efficient fine-tuning enhanced quantization.} 
+For post-training quantization, direct low-bit  quantization (\eg INT4 quantization) often results in large performance degradation.  To overcome this challenge, QLoRA~\cite{Dettmers-CoRR-2023-QLoRA} 
+incorporates additional small tunable  adapters (16-bit precision) into the quantized models,  to achieve an efficient, high-precision model fine-tuning.  
+It combines the merits of LoRA~(See Section~\ref{sec-PEFT-methods}) and quantization methods. The experiment results show that 4-bit quantized  models can 
+achieve the full 16-bit fine-tuning performance by QLoRA.
+
+
+
+$\bullet$ \emph{Quantization-aware training~(QAT) for LLMs}. A recent study~\cite{liu-2023-arxiv-LLM-QAT} explores the effect of QAT methods by applying a data-free distillation method to compress the weights, activations as well as key-value cache. By conducting extensive experiments based on LLaMA, they show promising results with 4-bit quantization on both weights and key-value cache, but not on 4-bit activation quantization, which still needs more exploration. 
+
+
+
+
+
+\subsubsection{Empirical Analysis and Findings}
+\label{sec:quantization_empirical}
+Quantization has currently become a common technique to reduce the memory footprint and latency of LLMs in deployment. 
+In particular, it is important to understand what level of precision (\eg INT8 or INT4) can be applied to quantize different parts of LLMs (\eg weights or activations), while retaining  a high accuracy. 
+In this part, we first summarize the major findings about the quantization of LLMs in existing literature, and then present some empirical analysis with quantization experiments.  
+
+\paratitle{Important Findings from Existing Work}. Recently, a very comprehensive evaluation~\cite{Yao-CoRR-2023-ZeroQuant-V2}  has been conducted about the impact of multiple factors (\eg model size and sensitivity) on the post-training quantization methods. Another  study~\cite{Dettmers-2022-arxiv-case} examines the scaling law of $k$-bit quantization in inference performance.   
+{In addition to  the overall performance, the study~\cite{Liu-2023-arxiv-Do_emergent} specifically focuses on the potential impact of quantification on emergent capabilities, as well as the levels of performance that can be achieved across various levels of bit precision.}
+Also,  prior  work (\eg LLM.int8()~\cite{Dettmers-CoRR-2022-LLM.int8}, GPTQ~\cite{frantar-arxiv-2022-gptq}, QLoRA~\cite{Dettmers-CoRR-2023-QLoRA}, and GLM~\cite{Zeng-arxiv-2022-GLM}) has also extensively examined the performance of quantization methods in various settings. Next, we summarize several important findings from these studies, which will be useful for those who may not want to delve into the technical details of quantization methods. 
+
+$\bullet$ \emph{INT8 weight quantization can often yield very good results on LLMs, while the performance of lower precision weight quantization depends on specific  methods}~\cite{Yao-CoRR-2023-ZeroQuant-V2,Xiao-CoRR-2022-SmoothQuant,frantar-arxiv-2022-gptq,Lin-arXiv-2023-AWQ}.  In most cases, INT8 weight quantization can be effectively applied to reduce the memory footprint without performance degradation. 
+While for INT4 (or INT3) weight quantization, existing methods rely on specific strategies to reduce the performance degradation, \eg layerwise method~\cite{frantar-arxiv-2022-gptq,Yao-NeurlPS-2022-ZeroQuant}, activation-aware scaling~\cite{Lin-arXiv-2023-AWQ} and low-rank adapter tuning~\cite{Dettmers-CoRR-2023-QLoRA}. Interestingly, LLMs seem to be less sensitive to low-bit weight quantization than small-sized language models~\cite{Yao-CoRR-2023-ZeroQuant-V2}.
+In practice, with the same memory cost, it is suggested to use a larger language model with a lower quantization precision rather than a smaller language model with a higher quantization precision. For example, a 4-bit 60GB LLM is demonstrated to have better performance than a 8-bit 30GB LLM~\cite{Dettmers-2022-arxiv-case}. 
+{Moreover, focusing on emergent capabilities, the study~\cite{Liu-2023-arxiv-Do_emergent} finds that in-context learning, step-by-step reasoning, and instruction following all seem to be seldom affected with 4-bit weight quantization. This result suggests that INT4 quantization exhibits a favorable trade-off in terms of both total bits and performance of emergent abilities.}
+
+
+$\bullet$ \emph{Activations are more difficult to be quantized than weights}~\cite{Yao-CoRR-2023-ZeroQuant-V2,Dettmers-arxiv-2022-LLM,Xiao-CoRR-2022-SmoothQuant}. It has been found that large outliers would occur for Transformer language models having a size of 6.7B or above~\cite{Dettmers-arxiv-2022-LLM}. This issue has been one of the most fundamental difficulties to quantize LLMs.  
+To overcome this issue, various methods, \eg mixed-precision decomposition~\cite{Dettmers-arxiv-2022-LLM}, fine-grained  quantization~\cite{wei-arxiv-2023-zero,Dettmers-arxiv-2022-LLM} and difficulty migration~\cite{Xiao-CoRR-2022-SmoothQuant},   can be applied to alleviate the influence of outlier values. 
+Since large outliers mainly exist in the activations of LLMs, small language models are more resistant to activation quantization~\cite{Yao-CoRR-2023-ZeroQuant-V2,Liu-2023-arxiv-Do_emergent}.  %
+{In practice, high-quality INT8 activation quantization is still a difficult task, though several methods can attain satisfying results. }
+Further, lower precision activation quantization has still not been successfully explored, even for QAT methods~\cite{liu-2023-arxiv-LLM-QAT}.  
+
+{
+$\bullet$ \emph{Efficient fine-tuning enhanced quantization is a good option to enhance the performance of quantized LLMs}~\cite{Dettmers-CoRR-2023-QLoRA,Hu-ICLR-2022-LoRA}.  
+The benefits of efficient fune-tuning methods in quantization can be twofold. Firstly, it can directly compensate the performance degradation suffered from low-bit quantization~\cite{Yao-CoRR-2023-ZeroQuant-V2,Liu-2023-arxiv-Do_emergent}, by 
+increasing the fitting capacity by updating high precision adapters. Secondly, it is flexible to support  task-specific or goal-specific fine-tuning of LLMs in a lightweight way~\cite{Dettmers-CoRR-2023-QLoRA}, \eg instruction tuning or chat-oriented tuning, by only tuning the small adapters. Overall, it makes a good trade-off between the effectiveness and training cost, which provides a promising approach to enhancing the performance of quantized LLMs.   
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\paratitle{Empirical Analysis on Quantization Experiments}. 
+To further help readers  understand the  impact of quantization on LLMs, we also conduct  a group of experiments to investigate the inference performance of quantized models here. 
+Specifically, we focus on the fine-tuned LLaMA models~(\ie 7B and 13B) using popular SFT datasets, including FLAN-v2~\cite{Chung-arxiv-2022-Scaling}, Alpaca-52K~\cite{alpaca} and ShareGPT~\cite{ShareGPT}.
+For evaluation, we utilize the same tasks  in Table~\ref{tab-instruction-tuning-res}, and  follow the quantization settings in the study~\cite{Liu-2023-arxiv-Do_emergent} examining the performance of quantized language models at three precision levels: 4-bit, 8-bit and 16-bit. The results are summarized in Table~\ref{tab-quantization-tuning-res}.
+As can be observed from Table~\ref{tab-quantization-tuning-res}, the results obtained with 8-bit and 4-bit weight quantization are close to the performance of 16-bit models while significantly reducing memory consumption. 
+In practice, it is recommended to first examine the performance of 4-bit weight quantization for LLMs if reducing memory usage is a critical consideration for deployment.
+
+\begin{table*}[htb]
+    \centering
+    \caption{Evaluation results for quantized LLaMA models~(7B and 13B). {We employ existing model checkpoints provided by~\cite{Wang-arxiv-2023-How} for quantization experiments, which have been fine-tuned on FLAN-v2, Alpaca-52K, and ShareGPT, respectively.} Specifically, we report the performance with AlpacaFarm, MMLU, and BBH, as well as the memory usage of the loaded model~(Mem.).
+    For quantization, we employ \emph{bitesandbytes} to quantize the 16-bit models to 8/4 bits by specifying the commands \texttt{load\_in\_8bit} and \texttt{load\_in\_4bit} when loading the weights. 
+    It is worth noting that we select~\emph{text-davinci-003} as the baseline model for the AlpacaFarm dataset.}
+    \label{tab-quantization-tuning-res}
+\resizebox{2.0\columnwidth}{!}{
+\begin{tabular}{llcccccccccccc}
+\toprule
+\multirow{2.5}{*}{\textbf{Models}}   & \multirow{2.5}{*}{\begin{tabular}[c]{@{}c@{}}\textbf{SFT Dataset}\end{tabular}} & \multicolumn{4}{c}{\textbf{16-bit}}& \multicolumn{4}{c}{\textbf{8-bit}} & \multicolumn{4}{c}{\textbf{4-bit}} \\ 
+\cmidrule(r){3-6}\cmidrule(r){7-10}\cmidrule(r){11-14} & & AlpacaFarm & MMLU & BBH & Mem.$_{\rm{(GiB)}}$ & AlpacaFarm & MMLU & BBH & Mem.$_{\rm{(GiB)}}$& AlpacaFarm & MMLU & BBH & Mem.$_{\rm{(GiB)}}$\\
+\midrule
+LLaMA~(7B) 
+& FLAN-v2 & 6.65 & 47.34 & 35.05 & 12.58 & 6.15 & 47.02 & 35.17 & 6.65 & 7.83 & 46.23 & 34.77 & 3.94 \\
+ & Alpaca-52K & 32.55 & 40.87 & 33.66 & 12.58 & 33.60 & 39.98 & 34.38 & 6.65 & 29.57 & 39.24 & 32.80 & 3.94 \\
+ & ShareGPT & 72.05 & 41.30 & 32.90 & 12.58 & 72.86 & 39.34 & 32.71 & 6.65 & 70.31 & 40.08 & 32.11 & 3.94 \\
+
+ \midrule
+ LLaMA~(13B) 
+ & FLAN-v2 & 8.14 & 51.67 & 41.46 & 24.40 & 7.64 & 51.02 & 41.25 & 12.53 & 7.52 & 50.48 & 40.68 & 7.34 \\
+ & Alpaca-52K & 33.60 & 47.63 & 36.10 & 24.40 & 31.43 & 47.04 & 35.98 & 12.53 & 30.87 & 46.20 & 36.16 & 7.34 \\
+ & ShareGPT & 75.59 & 47.58 & 38.00 & 24.40 & 73.79 & 47.71 & 38.31 & 12.53 & 71.99 & 45.77 & 36.97 & 7.34 \\
+\bottomrule
+\end{tabular}
+}
+\end{table*}
+
+
+
+\subsubsection{Open-source  Libraries and Quantized LLMs} 
+In this part, we briefly introduce the available open-source  quantization libraries and quantized LLMs. 
+
+\paratitle{Quantization Libraries}. Next, we introduce three major quantization libraries for LLMs, including:  
+
+$\bullet$ \emph{Bitsandbytes}\footnote{https://github.com/TimDettmers/bitsandbytes} is developed based on the methods introduced in the papers of LLM.int8()~\cite{Dettmers-arxiv-2022-LLM} and 8-bit optimizers~\cite{Dettmers-ICLR-2022-8bit}. 
+{It focuses on the quantization of both activations and weights for LLMs, including the support on 8-bit and 4-bit~(NF4,FP4) matrix multiplication for efficient inference, as well as an 8-bit optimizer for efficient training.}
+
+$\bullet$ \emph{GPTQ-for-LLaMA}\footnote{https://github.com/qwopqwop200/GPTQ-for-LLaMa} is  developed specially for quantizing LLaMA models. It enables 4-bit quantization of LLaMA models of varied sizes based on the GPTQ algorithm~\cite{frantar-arxiv-2022-gptq}. Also, it provides a comparison with bitsandbytes in both memory and performance (PPL) on the project website. 
+
+
+$\bullet$ \emph{AutoGPTQ}\footnote{https://github.com/PanQiWei/AutoGPTQ} is a quantization package developed based on the GPTQ algorithm~\cite{frantar-arxiv-2022-gptq}, which supports INT4 quantization for LLMs. 
+It includes a number of quantized models in the library, and supports  LoRA by integrating with HuggingFace PEFT library. 
+
+
+$\bullet$ \emph{llama.cpp}\footnote{https://github.com/ggerganov/llama.cpp} makes it feasible to run  quantized LLaMA models on a MacBook device.
+It supports INT4, INT5 and INT8 quantization, which is developed in efficient C/C++ implementation. It also supports a number of LLaMA based models, such as Alpaca and  Vicuna. 
+
+
+
+
+
+
+
+
+
+\paratitle{Quantized LLMs}. 
+Compared with original models, quantized language models take a smaller memory footprint, and likely have a faster inference speed~\cite{Dettmers-arxiv-2022-LLM,Tao-ACL-2022-Compression,Zeng-arxiv-2022-GLM}.  
+Recently, a nubmer of quantized model copies of several publicly available language models have been released on HuggingFace, including BLOOM, GPT-J, and ChatGLM. 
+In particular, GPTQ~\cite{frantar-arxiv-2022-gptq} has been widely used to quantize generative language models, leading to various quantized variants for LLaMA and OPT. Further, it has been also applied to  quantize instruction-tuned models, such as Vicuna and WizardLM. Due to the large number of quantized LLMs, we do not directly incorporate the corresponding links of these models. The readers can easily find them by searching on HuggingFace. 
+
+%
+
+

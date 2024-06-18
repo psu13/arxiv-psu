@@ -1,0 +1,73 @@
+\subsection{Parameter-Efficient Model Adaptation}\label{sec-PEFT}
+In the above, we have discussed the approaches of instruction tuning and alignment tuning to adapt LLMs according to specific goals. Since  LLMs consist of a huge amount of model parameters, it would be costly to perform the full-parameter tuning. In this section, we will discuss how to conduct efficient tuning  on LLMs.  We first review several representative parameter-efficient fine-tuning methods for Transformer language models, and then summarize existing work on parameter-efficient fine-tuned LLMs. 
+
+\subsubsection{Parameter-Efficient Fine-Tuning Methods}\label{sec-PEFT-methods}
+In existing literature, parameter-efficient fine-tuning~\cite{Li-ACL-2021-prefix,Lester-ACL-2021-The,Hu-ICLR-2022-LoRA} has been an important topic that aims to reduce the number of trainable parameters while retaining a good performance as possible. In what follows, we briefly review four  parameter-efficient fine-tuning methods for Transformer language models, including adapter tuning, prefix tuning, prompt tuning and 
+LoRA. The illustration of these four methods are shown in Figure~\ref{fig:efficient-tuning}.
+
+
+\paratitle{Adapter  Tuning}. Adapter tuning  incorporates small neural network modules (called \emph{adapter}) into the Transformer models~\cite{Houlsby-ICML-2019-Parameter}. To implement  the adapter module, a bottleneck architecture has been proposed in \cite{Houlsby-ICML-2019-Parameter,Hu-arXiv-2023}, which first compresses the original feature vector into a smaller dimension (followed by a nonlinear transformation) and then recovers it to the original dimension.  
+The adapter modules would be integrated into each Transformer layer, typically using a serial insertion after each of the two core parts (\ie  attention layer and feed-forward layer) of a Transformer layer. 
+Alternatively,  parallel adapters~\cite{He-ICLR-2022-towards} can be also used in Transformer layers, where it places two adapter modules in parallel with the attention layer and feed-forward layer accordingly.   
+During fine-tuning, the adapter modules would be optimized according to the  specific task goals, while the parameters of the original language model are  frozen in this process. 
+In this way, we can effectively reduce the number of trainable parameters during fine-tuning.
+
+
+\paratitle{Prefix Tuning}. 
+Prefix tuning~\cite{Li-ACL-2021-prefix} prepends a sequence of prefixes, which are a set of trainable continuous vectors,  to each Transformer layer in language models.  These prefix vectors are task-specific,  which can be considered as virtual token embeddings. To optimize the prefix vectors, a reparameterization trick~\cite{Li-ACL-2021-prefix} has been proposed by learning a MLP function that maps a smaller matrix to the parameter matrix of prefixes, instead of directly optimizing the prefixes.   
+It has been shown that this trick is useful for stable training.  
+After optimization, the mapping function would be discarded, and only the derived prefix vectors are kept to enhance task-specific performance. 
+Since only the prefix parameters would be trained, it can lead to a  parameter-efficient model optimization.
+Similar to prefix tuning, p-tuning v2~\cite{Liu-arXiv-2021-P-tuning} incorporates layer-wise prompt vectors into the Transformer architecture specially for natural language understanding, which also utilizes multi-task learning for jointly optimizing shared prompts.  
+It has been shown to be useful in improving the model performance of different  parameter scales  on  natural language understanding tasks. 
+
+
+
+
+\paratitle{Prompt Tuning}. Different from prefix tuning, prompt tuning~\cite{Liu-arXiv-2021-GPT,Lester-ACL-2021-The}  mainly focuses on incorporating trainable prompt vectors at the input layer\footnote{Here, prompt tuning denotes a category of related efficient tuning methods exemplified by the work~\cite{Liu-arXiv-2021-GPT,Lester-ACL-2021-The,gu-ACL-2022-ppt}, instead of a specific method as used in \cite{Lester-ACL-2021-The}. Indeed, the prefix based tuning methods~\cite{Li-ACL-2021-prefix,Liu-arXiv-2021-P-tuning} can be also considered as prompting methods, which are called \emph{deep prompting tuning}   in \cite{Liu-arXiv-2021-P-tuning}. In this survey, prompt tuning specially refer to the methods that only include the prompt tokens at the input layer, in the context of LLMs.
+We assign p-tuning v2~\cite{Liu-arXiv-2021-P-tuning} to the category of prefix tuning, because it incorporates layerwise prompts in langauge models. }. 
+Based on the discrete prompting methods~\cite{jiang-TACL-2020-how,shin-EMNLP-2020-autoprompt}, it  augments the input text  by including a group of soft prompt tokens (either in a free form~\cite{Liu-arXiv-2021-GPT} or a prefix form~\cite{Lester-ACL-2021-The}), and then takes the prompt-augmented input to solve specific downstream tasks. 
+In implementation, task-specific prompt embeddings are combined with the input text embeddings, which are subsequently fed into language models. P-tuning~\cite{Liu-arXiv-2021-GPT} has proposed a free form to combine the context, prompt and target tokens, which can be applied to the  architectures for both natural language understanding and generation. They further learn the representations of soft prompt tokens by a bidirectional LSTM. 
+Another representative approach~\cite{Lester-ACL-2021-The}  named \emph{prompt tuning} directly prepends  prefix prompts to the input.
+During training, only the prompt embeddings would be learned according to  task-specific supervisions.
+Since this method only includes a small number of trainable parameters at the input layer, it has been found that the performance highly relies on the model capacity of the underlying language models~\cite{Lester-ACL-2021-The}.  
+
+
+
+
+\paratitle{Low-Rank Adaptation~(LoRA)}. LoRA~\cite{Hu-ICLR-2022-LoRA} imposes  the low-rank constraint for approximating the update matrix at each dense layer, so as to reduce the trainable parameters  for adapting to downstream tasks. 
+Consider the case of optimizing a parameter matrix $\mathbf{W}$. The update process can be written in a general form as:   $\mathbf{W} \leftarrow \mathbf{W} + \Delta \mathbf{W}$. 
+The basic idea of LoRA is to freeze the original matrix $\mathbf{W} \in \mathbb{R}^{m \times n}$ while approximating the parameter update $\Delta \mathbf{W}$ by low-rank decomposition matrices, \ie $\Delta \mathbf{W}=\mathbf{A}\cdot  \mathbf{B}^\top$, where $\mathbf{A}\in \mathbb{R}^{m \times k}$ and $\mathbf{B}\in \mathbb{R}^{n \times k}$ are the trainable  parameters for task adaptation and $k \ll \min(m,n)$ is the reduced rank. The major merit of LoRA is that it can largely save the memory and storage usage (\eg VRAM). Further, one can only keep a single large model copy, while maintaining a number of task-specific low-rank decomposition matrices for adapting to different downstream tasks.
+Further, several studies have also discussed how to set the rank in a more principled approach, \eg  importance score based allocation~\cite{Zhang-arXiv-2023-Adaptive} and search-free optimal rank selection~\cite{Valipour-arXiv-2022-DyLoRA}.
+
+Besides the above  methods, there is  extensive research on efficient tuning of Transformer language models.  
+ However, a more comprehensive discussion  of efficient tuning is beyond the scope of this article, which can be found in the related papers on this topic~\cite{He-ICLR-2022-towards,Ding-NMI-2023-Parameter}.  
+ 
+
+
+
+\subsubsection{Parameter-Efficient Fine-Tuning on LLMs}
+With the rising of LLMs, efficient tuning  has attracted increasing research attention for developing a more lightweight adaptation approach in downstream tasks. 
+
+
+In particular, LoRA~\cite{Hu-ICLR-2022-LoRA} has been widely applied to open-source LLMs (\eg LLaMA and BLOOM) for parameter-efficient fine-tuning. 
+Among these research attempts, LLaMA and its  variants have  gained much attention for parameter-efficient tuning.  
+For example, Alpaca-LoRA~\cite{Alpaca-LoRA} has been trained using LoRA as a lightweight tuned  version of  Alpaca~\cite{Taori-github-2023-Stanford} (a fine-tuned 7B LLaMA model with 52K human demonstrations of instruction following).  
+There are extensive explorations of Alpaca-LoRA ranging in different languages or model sizes, which can be found in the collection page\footnote{https://github.com/tloen/alpaca-lora}. 
+ A recent study LLaMA-Adapter~\cite{Zhang-arXiv-2023-LLaMA-Adapter} inserts  learnable prompt vectors into each Transformer layer, in which zero-initialized attention has been proposed to improve the training by mitigating the influence of under-fitted prompt vectors. They  also extend this approach to a multi-modal setting, \eg visual question answering.   
+
+Further, an empirical study~\cite{Hu-arXiv-2023} has been conducted to examine the effect of  different tuning methods on  language models.
+They compare four efficient tuning methods including  serial adapter tuning~\cite{Houlsby-ICML-2019-Parameter},  parallel adapter tuning~\cite{He-ICLR-2022-towards,Pfeiffer-EMNLP-2022-MAD-X}, and LoRA~\cite{Hu-ICLR-2022-LoRA}, on three open-source LLMs,   namely GPT-J (6B), BLOOM (7.1B) and LLaMA (7B), for evaluation.  Based on the experimental results on six math reasoning datasets, they show that these efficient-tuning methods  under-perform the reference baseline GPT-3.5 on difficult tasks, while achieving a comparable performance on simple tasks. 
+Overall, LoRA performs relatively  well among these  comparison methods, using significantly fewer trainable parameters.     
+
+As an important resource, the library \emph{PEFT}~\cite{peft-github-2022} (standing for parameter-efficient fine-tuning) has been released on GitHub\footnote{https://github.com/huggingface/peft}. It has included several widely used efficient tuning methods, including LoRA~\cite{Hu-ICLR-2022-LoRA}/AdaLoRA~\cite{Zhang-arXiv-2023-Adaptive}, prefix-tuning~\cite{Li-ACL-2021-prefix,Liu-arXiv-2021-P-tuning}, P-Tuning~\cite{Liu-arXiv-2021-GPT}, and prompt-tuning~\cite{Lester-ACL-2021-The}. Further, it supports a number of language models such as GPT-2 and LLaMA, and also covers several representative vision Transformer models (\eg ViT and Swin Transformer).       
+
+
+As  discussed in Section~\ref{sec-PEFT-methods}, there have been a large number of efficient tuning methods proposed in the existing literature. However,  most of these approaches are tested on  small-sized pre-trained  language models, instead of the LLMs. 
+So far, there still lacks a thorough investigation on the effect of  different efficient tuning methods  on large-sized language models at different settings or tasks.  
+
+
+
+
+
+

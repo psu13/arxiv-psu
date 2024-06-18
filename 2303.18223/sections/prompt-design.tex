@@ -1,0 +1,262 @@
+\subsection{Prompting}
+As discussed in previous work~\cite{Liu-survey-2023-Pre-train}, prompting is the major approach to utilizing LLMs for solving various tasks. 
+Since the quality of prompts will largely influence the  performance of LLMs in specific tasks, there have been a series of studies proposed to generate suitable task prompts through manual creation or automatic optimization, which will be introduced in this section.
+
+
+
+\subsubsection{Prompt Creation}\label{subsec:promptdesign}
+The process of manually creating a suitable prompt is also called \emph{prompt engineering}~\cite{Liu-arxiv-2022-Design,White-arxiv-2023-Prompt}. 
+A well-designed prompt is very helpful to elicit the abilities of LLMs for accomplishing specific tasks.
+In this part, we will first introduce the key components of prompts and discuss several principles for prompt design. Then, we evaluate ChatGPT with different prompts to show the results on several representative tasks. 
+We are aware that there have been several existing papers~\cite{Santu-arxiv-2023-TELeR,White-arxiv-2023-Prompt} and websites~\cite{OpenAI-OpenAI-2023-PromptGuide,Contributors-AIShort-2023-AIShort,Contributors-Github-2023-Awesome} that present the suggestions and guidelines to design good prompts. 
+As a comparison, we mainly aim to discuss the key factors (ingredients and principles) that are useful for prompt creation, and provide experimental results and analysis on popular tasks as the reference to the beginners. 
+
+
+\paratitle{Key Ingredients.}
+Typically, there are four key ingredients that {depict the functionality of a  prompt for eliciting the abilities of LLMs to complete the tasks}, including task description, input data, contextual information, and prompt  style. To have an intuitive understanding of our discussion, we also present three prompt examples for question answering, meta-review generation, and text-to-SQL    in Table~\ref{tab:prompt-examples}.
+
+
+\textbullet~\emph{Task description.}
+A task description is typically a specific instruction that LLMs are expected to follow. 
+In general, one  should clearly describe the task goal  in natural language. 
+For the tasks with special input or output format, detailed clarifications are often needed, and one can further utilize keywords to highlight the special settings for better guiding LLMs in task completion. 
+
+
+\textbullet~\emph{Input data.} 
+In common cases, it is straightforward to describe input data (\eg an instance to be responded by LLMs) in natural language. 
+For special input data, such as knowledge graph and table, it is necessary to {apply an appropriate and convenient way} %
+to make them readable for LLMs.  %
+For structured data, linearization is commonly used to transform the original records (\eg knowledge triples) into sequences~\cite{Jiang-2023-arxiv-StructGPT} due to the simplicity.  
+Further, the programming language (\eg executable code) has also been utilized to formulate the structured data,  %
+{which can also support using external tools (\eg program executor) to produce the precise results~\cite{Beurer-arxiv-2023-Prompting,Lu-arxiv-2023-Chameleon}.
+}
+
+
+
+\textbullet~\emph{Contextual information.}
+In addition to the task description and input data, contextual or background information is also essential for specific tasks. For example, retrieved documents are highly useful for open-domain question answering as supporting evidence. Both the quality of the retrieved documents and their relevance to the question have an impact on the generated answers~\cite{Ren-arxiv-2023-Investigating}. 
+Thus, it needs to include such information in a proper prompt pattern or expression format.
+Furthermore, in-context task exemplars are also helpful for eliciting LLMs to accomplish a complex task, which can better depict the task goal, {the special output formats, and the mapping relation between input and output.}
+
+ 
+\textbullet~\emph{{Prompt} style.}
+For different LLMs, it is important to design a suitable prompt style for eliciting their abilities to solve specific tasks. 
+Overall, one should express the prompt as a clear question or detailed instruction that can be well understood and  answered. 
+In some cases, it is also useful to add the {prefix or suffix} to better guide LLMs.
+For example, using the prefix ``\emph{Let us think step by step}'' can help elicit LLMs perform step-by-step reasoning, and using the prefix ``\emph{You are an expert on this task (or in this domain)}'' can boost the performance of LLMs in some specific tasks. 
+Further, 
+for chat-based LLMs (\eg ChatGPT), instead of directly feeding a long or complex task prompt, it is suggested to decompose it into multiple prompts for the sub-tasks and then feed them into LLMs via a multi-turn conversation~\cite{Chen-2023-arXiv-chatcot}.
+
+
+\paratitle{Design Principles.} Based on the key ingredients of prompts, we summarize several critical design principles that can help create more  effective prompts for solving various  tasks.
+
+\textbullet~\emph{Expressing the task goal clearly.}  {Task descriptions should not be ambiguous or unclear, which likely lead to inaccurate or inappropriate responses.} This highlights the need for clear and unambiguous directives when utilizing these models~\cite{Ouyang-arxiv-2022-Training}. A clear and detailed description should contain various elements to explain a task, including task objective, input/output data (\eg ``\emph{Given a long document, I want you to generate a concise summary.}''),  and the response constraints (\eg ``\emph{the length of the summary cannot exceed 50.}''). By providing a well-clarified task description, LLMs can more effectively understand the target task and generate the desired output.
+
+{
+\textbullet~\emph{Decomposing into easy, detailed sub-tasks.} To solve complex tasks, it is important to decompose the difficult task into several more easier, detailed sub-tasks for helping LLMs accomplish the goal step by step, which is closely related to the planning technique in Section~\ref{subsec-planning}.
+}
+For example, following the suggestion~\cite{Santu-arxiv-2023-TELeR}, we can explicitly list the {sub-tasks in the form of multiple numbered items} (\eg ``\emph{Braid a coherent narrative by performing the following tasks: 1. ...; 2. ...; 3. ...}''). By decomposing a target task into sub-tasks, LLMs can focus on solving easier   sub-tasks and finally achieve more accurate results for complex tasks. 
+
+\textbullet~\emph{Providing few-shot demonstrations.} As discussed in Section~\ref{subsec-icl},  LLMs can benefit from in-context learning for solving complex tasks, where the prompts contain a small number of task examples of the desired input-output pairs, \ie few-shot demonstrations. Few-shot demonstrations can help LLMs learn the semantic mapping between input and output without parameter tuning.
+In practice, it is suggested that one should generate a few high-quality demonstrations for the target task, which would highly benefit the final task performance. 
+
+
+\textbullet~\emph{Utilizing model-friendly format.} 
+Since LLMs are pretrained on specially constructed datasets, there are some prompt formats that can make LLMs better understand the instruction. For example, as the OpenAI documentation suggests, we can use \texttt{\#\#\#} or \texttt{"""} as a stop symbol to separate the instruction and context, which can be better understood by LLMs. As a general guideline, most existing LLMs perform a task better in English, thus it is useful to employ English instructions to solve difficult tasks based on machine translation.
+
+
+\paratitle{Useful Tips.}
+In addition to the design principles, we also present a collection of  useful prompt tips based on existing work or our empirical experiences in Table~\ref{tab-tips}. 
+Note that these tips are suggested in a general manner, it does not indicate that they are  the best prompts for the corresponding tasks.  
+This part will be continuously updated with more guidelines or tips. We  welcome readers to contribute to this collection of  prompt tips.
+We present the detailed procedure to contribute to the prompt tips, at the link: \url{https://github.com/RUCAIBox/LLMSurvey/tree/main/Prompts}. 
+
+\begin{table*}[htb]
+    \centering
+    \caption{A collection of useful tips for designing prompts {that are collected from online notes~\cite{Santu-arxiv-2023-TELeR,White-arxiv-2023-Prompt,OpenAI-OpenAI-2023-PromptGuide,Contributors-AIShort-2023-AIShort} and experiences from our authors}, where we also show the related ingredients and principles (introduced in Section~\ref{subsec:promptdesign}). We abbreviate principles as Prin. and list the IDs of the related principles for each prompt.  {\textcircled{1}: expressing the task goal clearly; \textcircled{2}: decomposing into easy, detailed sub-tasks; \textcircled{3}: providing few-shot demonstrations; \textcircled{4}: utilizing model-friendly format.}}
+    \label{tab-tips}
+\scriptsize %
+\begin{tabular}{cp{0.75\textwidth}c}
+\toprule
+\textbf{Ingredient} & \textbf{Collected Prompts} & \textbf{
+Prin.}\\
+\midrule
+\multirow{4}{*}{\textbf{Task Description}}  & T1. Make your prompt \underline{\textbf{as detailed as possible}}, \eg ``\emph{Summarize the article into a short paragraph within 50 words. The major storyline and conclusion should be included, and the unimportant details can be omitted.}'' & \textcircled{1} \\
+& T2. It is helpful to let the LLM know that it is \textbf{\underline{an expert with a prefixed prompt}}, \eg ``\emph{You are a sophisticated expert in the domain of compute science.}'' & \textcircled{1} \\ 
+& T3. Tell the model \textbf{\underline{more what it should do}}, but not what it should not do. & \textcircled{1} \\
+& T4. To avoid the LLM to generate too long output, you can just use the prompt: ``\emph{Question: {} Short Answer: {}}''. Besides, you can also use the following suffixes, ``\emph{in a or a few words}'', ``\emph{in one of two sentences}''. & \textcircled{1} \\
+\midrule
+\multirow{2}{*}{\textbf{Input Data}} & I1. For the question required factual knowledge, it is useful to first \underline{\textbf{retrieve relevant documents}} via the search engine, and then \underline{\textbf{concatenate them into the prompt}} as reference. & \textcircled{4}\\
+& I2. To highlight some important parts in your prompt, please \underline{\textbf{use special marks}}, \eg \emph{quotation} ($""$) and \emph{line break} ($\backslash$n). You can also use both of them for emphasizing. & \textcircled{4} \\ 
+\midrule
+\multirow{4}{*}{\textbf{Contextual Information}}  & C1. For complex tasks, you can \textbf{\underline{clearly describe the required intermediate steps}} to accomplish it, \eg ``\emph{Please answer the question step by step as: Step 1 - Decompose the question into several sub-questions, $\cdots$}'' & \textcircled{2} \\
+& C2. If you want LLMs to provide the score for a  text, it is necessary to provide a \textbf{\underline{detailed description about the}} \textbf{\underline{scoring standard}} with examples as reference. & \textcircled{1} \\
+& C3. When LLMs generate text according to some context (\eg making recommendations according to purchase history), instructing them with \textbf{\underline{the explanation about the generated result}} conditioned on context is helpful to improve the quality of the generated text. & \textcircled{2} \\
+& C4. An approach similar to \textbf{\underline{tree-of-thoughts}} but can be \textbf{\underline{done in one prompt}}: \eg \emph{Imagine three different experts are answering this question. All experts will write down one step of their thinking, then share it with the group of experts. Then all experts will go on to the next step, etc. If any expert realizes they're wrong at any point then they leave. The question is} & \textcircled{2} \\
+\midrule
+\multirow{9}{*}{\textbf{Demonstration}} & D1. \underline{\textbf{Well-formatted in-context exemplars}} are very useful, especially for producing the outputs with complex formats. & \textcircled{3} \\
+& D2. For few-shot chain-of-thought prompting, you can also use the prompt ``\emph{Let's think step-by-step}'', and the few-shot examples should be \textbf{\underline{separated by ``$\backslash$n''}} instead of full stop. & \textcircled{1}\textcircled{3} \\
+& D3. You can also \textbf{\underline{retrieve similar examples}} in context to supply the useful task-specific knowledge for LLMs. To retrieve more relevant examples, it is useful to \textbf{\underline{first obtain the answer}} of the question, and then concatenate it with the question for retrieval. & \textcircled{3}\textcircled{4} \\
+& D4. The \textbf{\underline{diversity of the in-context exemplars}} within the prompt is also useful. If it is not easy to obtain diverse questions, you can also seek to keep the \textbf{\underline{diversity of the solutions}} for the questions. & \textcircled{3} \\
+& D5. When using chat-based LLMs, you can \textbf{\underline{decompose in-context exemplars into multi-turn messages}}, to better match the human-chatbot conversation format. Similarly, you can also decompose the reasoning process of an exemplars into multi-turn conversation. & \textcircled{3} \\
+& D6. \textbf{\underline{Complex and informative}} in-context exemplars can help LLMs answer complex questions. & \textcircled{3} \\
+& D7. As a symbol sequence can typically be divided into multiple segments (\eg $i_1, i_2, i_3$ $\longrightarrow$ $i_1, i_2$ and $i_2, i_3$), the preceding ones can be used \textbf{\underline{as in-context exemplars}} to guide LLMs to predict the subsequent ones,  meanwhile providing  historical information. & \textcircled{2}\textcircled{3} \\ %
+& D8. \textbf{\underline{Order matters}} for in-context exemplars and prompts components. For very long input data, the position of the question (first or last) may also affect the performance. & \textcircled{3} \\
+& D9. If you can not obtain the in-context exemplars from existing datasets, an alternative way is to use the \textbf{\underline{zero-shot}} \textbf{\underline{generated ones}} from the LLM itself. & \textcircled{3} \\
+\midrule
+\multirow{8}{*}{\textbf{Other Designs}}  & O1. Let the \underline{\textbf{LLM check its outputs}} before draw the conclusion, \eg ``\emph{Check whether the above solution is correct or not.}'' & \textcircled{2} \\
+& O2. If the LLM can not well solve the task, you can \textbf{\underline{seek help from external tools}} by prompting the LLM to manipulate them. In this way, the tools should be encapsulated into callable APIs with detailed description about their functions, to better guide the LLM to utilize the tools. & \textcircled{4} \\
+& O3. The prompt should be \textbf{\underline{self-contained}}, and better not include pronouns (\eg it and they) in the context. & \textcircled{1} \\
+& O4. When using LLMs for \textbf{\underline{comparing}} two or more examples, the order affects the performance a lot. & \textcircled{1} \\
+& O5. Before the prompt, \textbf{\underline{assigning a role for the LLM}} is useful to help it better fulfill the following task instruction, \eg \emph{``I want you to act as a lawyer''}. & \textcircled{1}\\
+& O6. OpenAI models can perform a task better in English than other languages. Thus, it is useful to first \textbf{\underline{translate the input into English}} and then feed it to LLMs. & \textcircled{4} \\
+& O7. For multi-choice questions, it is useful to \textbf{\underline{constrain the output space}} of the LLM. You can use a more detailed explanation or just imposing constraints on the logits. & \textcircled{1} \\
+& O8. For sorting based  tasks (\eg recommendation), instead of directly outputting the complete text of each item after sorting, one can  \textbf{\underline{assign indicators}} (\eg \emph{ABCD}) to the unsorted items and instruct the LLMs to directly output the sorted indicators. & \textcircled{1} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+%
+
+\paratitle{Empirical Analysis.}
+We further conduct empirical studies to present the impact of prompts on task performance.
+To conduct the experiments, we select a variety of tasks that span language generation, knowledge utilization, complex reasoning, structure data generation, and information retrieval. 
+For each task, we manually write a prompt that follows general guidelines introduced above. Note that the tested prompts may not be the optimal for these tasks, since they mainly aim to help readers understand how to write an effective prompt for solving different tasks. 
+Also, we add a simplified  prompt as the comparison for most tasks.  
+Following the experimental settings in Section~\ref{sec-empirical}, we examine the  3-shot performance of ChatGPT on complex reasoning tasks (Colored Objects and GSM8k), and zero-shot performance on other tasks.
+We report the experimental results in Table~\ref{tab-instructions}, where we also include the supervised  performance in existing papers as reference. 
+
+$\bullet$ \emph{Carefully designed prompts can boost the zero-shot or few-shot performance of ChatGPT.} 
+By comparing the results of using different prompts on the same task, we can see that using the carefully designed prompts  can achieve better performance than the simpler ones. 
+{In the carefully designed prompts, we provide a more clearly expressed task description (\eg WMT and WikiFact), or use a model-friendly format (\eg GSM8k and OBQA). 
+For example, for WikiFact task, the prompt with a more detailed task description leads to a performance increase  from 29.25 to 31.21.} 
+
+$\bullet$ {\emph{More complex tasks can benefit more from careful prompt engineering on ChatGPT.}
+In the WikiFact and Colored Objects tasks, the designed prompts have greatly improved the performance of ChatGPT, \ie from 23.61 to 28.47 on WikiFact and from 53.20 to 66.75 on Colored Objects.
+It indicates the necessity of prompt engineering for LLMs to perform well on complex tasks, since these tasks typically have specific output formats or require background knowledge. 
+Our example prompts  provide more detailed task description (\eg output format and task goal),  which can help ChatGPT better understand the complex task requirement  for fulfilling it.}
+
+$\bullet$  {\emph{For mathematical reasoning tasks, it is more effective to design specific prompts based on the format of programming language.}
+For GSM8k, the designed prompt employs code-formatted few-shot demonstrations to convert this mathematical reasoning task into code generation task, which can leverage the strong code synthesis ability of ChatGPT for solving mathematical problems. 
+Further, with the help of an external program executor, we are able to obtain more precise results instead of using LLMs for arithmetic operation.
+As we can see, the performance is boosted from 78.47 to 79.30 on GSM8k, indicating the usefulness of programming language in mathematical reasoning tasks.} %
+
+
+
+$\bullet$ {\emph{In knowledge utilization and complex reasoning tasks, ChatGPT with proper prompts achieves comparable performance or even outperforms the supervised baselines methods.}
+In knowledge utilization and  complex reasoning tasks, ChatGPT with proper zero-shot or few-shot prompts can achieve comparable performance or even outperform the supervised  methods, {\eg 31.21 (ChatGPT) \emph{v.s.} 34.20 (supervised baseline) on WikiFact.} 
+Despite that, ChatGPT still performs worse than supervised baseline models on some specific tasks (\eg ARC and WikiFact), since these supervised models have been specially optimized with task-specific data.  
+}
+
+
+$\bullet$ \emph{Through suitable prompt engineering, LLMs can handle some non-traditional NLP tasks.}  
+{With the help of specific prompts, ChatGPT can also accomplish non-traditional NLP tasks, \ie the general recommendation and conversational recommendation. 
+A key point is that these tasks can be well expressed or described in natural language. }
+However, the performance of ChatGPT is still far from the referenced performance in these tasks, as LLMs cannot directly fit these tasks, which require specific domain knowledge and task adaptation~\cite{Zhang-2023-arxiv-recommendation,Hou-2023-arxiv-large}.
+
+
+
+\begin{table*}[ht]
+	\footnotesize
+	\centering
+ \caption{Example instructions collected from \cite{Santu-arxiv-2023-TELeR,Chang-arxiv-2023-How}. The \colorbox{LightSkyBlue1}{blue} text denotes the task description, the \colorbox{tPink}{red} text denotes the contextual information, the \colorbox{tGreen}{green} text denotes the demonstrations, and the \colorbox{Khaki1}{gold} text denotes the prompt style.} 
+	\label{tab:prompt-examples}
+	\begin{tabular}{p\textwidth}
+		\toprule
+            \rowcolor{LightSkyBlue1}{\fontfamily{ppl}\selectfont Use the provided articles delimited by triple quotes to answer questions. If the answer cannot be found in the articles, write ``I could not find an answer.''} \\
+            \specialrule{0em}{1pt}{1pt}
+            \rowcolor{tGreen}
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont \textbf{Articles:} ``````Joao Moutinho is a Portuguese footballer who last played as a central midfielder for Premier League club Wolverhampton Wanderers and the Portugal national team.'''''' } \\
+            \specialrule{0em}{1pt}{1pt}
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont \textbf{Question:} Is the following sentence plausible?
+'Joao Moutinho was out at third.' } \\
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont \textbf{Answer:} \colorbox{Khaki2}{Let's think step by step. Joao Moutinho is a soccer player. Being out at third is part of baseball, not soccer.} So the answer is No.} \\
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont ...} \\
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont $<$Demonstrations$>$} \\
+            \\
+            {\fontfamily{ppl}\selectfont \textbf{Articles:} $<$insert articles, each delimited by triple quotes$>$} \\
+            {\fontfamily{ppl}\selectfont \textbf{Question:} $<$insert question$>$} \\
+            {\fontfamily{ppl}\selectfont \textbf{Answer:}} \\
+            
+            \midrule[0.9pt]
+            \midrule[0.9pt]
+            
+            \rowcolor{LightSkyBlue1}{\fontfamily{ppl}\selectfont Prepare a meta-review by answering the following questions from the reviewer comments (provided after the questions).} \\
+            \specialrule{0em}{1pt}{1pt}
+            \rowcolor{Khaki1}{\fontfamily{ppl}\selectfont 1. Based on the reviewer’s comments, what are the core contributions made by this manuscript?} \\
+            \rowcolor{Khaki1}{\fontfamily{ppl}\selectfont 2. What are the common strengths of this work, as mentioned by multiple reviewers?} \\
+            \rowcolor{Khaki1}{\fontfamily{ppl}\selectfont 3. What are the common weaknesses of this work, as highlighted by multiple reviewers?} \\
+            \rowcolor{Khaki1}{\fontfamily{ppl}\selectfont 4. What suggestions would you provide for improving this paper?} \\
+            \rowcolor{Khaki1}{\fontfamily{ppl}\selectfont 5. What are the missing references mentioned by the individual reviews?} \\
+            \specialrule{0em}{1pt}{1pt}
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont \textbf{The review texts are below:}  $<$insert three comments $R_1$, $R_2$, $R_3$ from the reviewers$>$} \\
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont \textbf{Meta-review:} $<$insert meta-review$>$} \\
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont ...} \\
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont $<$Demonstrations$>$} \\
+            \\
+            {\fontfamily{ppl}\selectfont Provide justification for your response in detail by explaining why you made the choices you actually made. A good output should be coherent, highlight major strengths/issues mentioned by multiple reviewers, be less than 400 words in length, and finally, the response should be in English only.} \\ 
+            \\
+            {\fontfamily{ppl}\selectfont \textbf{The review texts are below:} $<$insert three comments $R_1$, $R_2$, $R_3$ from the reviewers$>$} \\
+            {\fontfamily{ppl}\selectfont \textbf{Meta-review:} } \\
+
+            \midrule[0.9pt]
+            \midrule[0.9pt]
+
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont CREATE TABLE Highschooler (} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont ID int primary key,} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont name text,} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont grade int} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont );} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont /*} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont 3 example rows:} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont SELECT * FROM Highschooler LIMIT 3;} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont ID \quad name \quad grade} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont 1234 \quad Janie \quad 8} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont 5678 \quad Mary \quad 8} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont 9012 \quad Mike \quad 9} \\
+            \rowcolor{tPink}{\fontfamily{ppl}\selectfont */} \\
+            \specialrule{0em}{1pt}{1pt}
+            \rowcolor{LightSkyBlue1}{\fontfamily{ppl}\selectfont Using valid SQLite, answer the following questions for the tables provided above.} \\
+            \specialrule{0em}{1pt}{1pt}
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont \textbf{Question:}  What is Kyle's id?} \\
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont \textbf{SQL:} SELECT ID FROM Highschooler WHERE name=``Kyle'';} \\
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont ...} \\
+            \rowcolor{tGreen}{\fontfamily{ppl}\selectfont $<$Demonstrations$>$} \\
+            \\
+            {\fontfamily{ppl}\selectfont \textbf{Question:} $<$insert question$>$} \\
+            {\fontfamily{ppl}\selectfont \textbf{SQL:} } \\
+            
+            \bottomrule
+	\end{tabular}
+\end{table*}
+
+
+
+\subsubsection{Prompt Optimization} \label{sec:prompt_opt} 
+{Although manually creating task prompts is more intuitive, it is time consuming and, more importantly, models are highly sensitive to the crafted prompts---improper prompts will lead to low task performance (as shown in Table~\ref{tab-instructions}). Therefore, a large body of studies propose automatic optimization approaches for discrete prompts and continuous prompts to achieve the optimal performance~\cite{shin-EMNLP-2020-autoprompt,Li-ACL-2021-prefix}. In this part, we will detail these studies from two perspectives, \ie discrete prompts and continuous prompts.}
+
+\paratitle{Discrete Prompt Optimization.}  {Discrete prompt is typically composed of a sequence of natural language tokens. Despite that the form is simple and flexible, optimizing prompts in discrete space is a challenging problem due to the combinatorial huge search space. To automatically search effective prompts for downstream tasks, existing studies propose a wide spectrum of discrete prompt approaches, which are detailed as follows.}
+
+$\bullet$  {\textit{Gradient-based approaches.} This kind of approaches aims to optimize the prompt search process by maximizing the output likelihood via gradient update~\cite{shin-EMNLP-2020-autoprompt,Wen-CoRR-2023-Hard,Gao-ACL-2021-Making,Zhou-CoRR-2023-InstructZero}.
+As a representative work, Auto-Prompt~\cite{shin-EMNLP-2020-autoprompt} proposes a gradient-guided  method to greedily searches the optimal token for each position of the prompt,  leveraging the gradient approximated by the change in the log-likelihood when replacing a prompt token with another candidate token from vocabulary. However, such a search process can be extremely expensive since it needs to evaluate each candidate token for each position of the prompt, leading to a number of additional forward passes. Therefore, improved gradient method~\cite{Wen-CoRR-2023-Hard} has been proposed by transforming discrete tokens into continuous embeddings and computing the gradient on continuous space during  optimization.}
+
+$\bullet$ {\textit{RL-based approaches.} 
+Since discrete prompts are difficult to be learned through gradient back-propagation, a number of studies propose to formulate the discrete prompt optimization as a reinforcement learning (RL) problem and leverage RL algorithms for optimization~\cite{Deng-EMNLP-2022-RLPrompt,Zhang-ICLR-2023-TEMPERA}. For example, RLPrompt~\cite{Deng-EMNLP-2022-RLPrompt} {trains a policy network to generate desired prompts with multiple reward functions}. In this approach, several effective reward stabilization strategies are also proposed to enhance the RL training efficiency.  Compared to previous work that requires sufficient data for training, TEMPERA~\cite{Zhang-ICLR-2023-TEMPERA} proposes to directly generate prompts at test time {by utilizing a pre-trained RL agent to sequentially edit different parts of an manually-written initial prompt. 
+}}
+
+$\bullet$  {\textit{Edit-based approaches.} 
+For the above methods, gradient-based and RL-based tuning can be extremely computationally demanding for ever larger models, and may not be feasible for API-based model calls (\eg ChatGPT). Therefore, another line of work aims to directly edit existing prompts based on the task performance. Specifically, GPS~\cite{Xu-EMNLP-2022-GPS} borrows an idea from the genetic algorithm and proposes a genetic prompt search method that utilizes a language model (\ie T5) to edit prompts by  taking the cloze task form. In addition to model based edit methods, human-defined  operations can be also employed for prompt editing~\cite{Prasad-EACL-2023-GrIPS}, including delete, swap, paraphrase, and addition. Based on these operations, they iteratively edit the prompts and greedily search for the best prompt guided by the model performance on a small pool of examples.}
+
+$\bullet$  {\textit{LLM-based approaches.} Due to the exceptional capacities of LLMs, an increasing number of studies directly leverage LLMs as prompt generator~\cite{Zhou-ICLR-2023-Large,Pryzant-CoRR-2023-Automatic,Yang-CoRR-2023-Large}. Specifically, APE~\cite{Zhou-ICLR-2023-Large}  utilizes an LLM to generate initial prompts, then selects the best prompt with the highest accuracy, and finally improves the best candidate through an iterative Monte Carlo search method. Similarly, APO~\cite{Pryzant-CoRR-2023-Automatic} instructs the LLM to generate text feedback on how to refine an old prompt into new improved prompts. However, their search in the prompt space might be inefficient {without fully considering the whole refinement trace of previous prompts}, thus potentially leading to sub-optimal results. Therefore, another study~\cite{Yang-CoRR-2023-Large} incorporates the previous prompts with their scores to instruct LLMs for progressively generating better new prompts. However, these approaches still struggle in exploring the vast space of effective prompts. Inspired by human-like trial-and-error, prompt optimization is further formulated as a strategic planning problem~\cite{Wang-CoRR-2023-PromptAgent} and uses Monte Carlo tree search to navigate the vast prompt space.}
+
+
+\paratitle{Continuous Prompt Optimization.} %
+{Different from discrete prompts, continuous prompts consist of a set of continuous embeddings, which can be directly optimized through the gradient update based on the loss of downstream tasks. Note that continuous prompt optimization has been  mainly studied in PLMs, but draws limited attention in era of LLMs due to their massive magnitudes of parameters. We include the discussion of this part for content completeness. In prior work, most studies typically rely on supervised learning to train continuous prompts based on task data. Furthermore, in data-scarce scenarios, transfer learning methods can be employed to alleviate the lack of labeled data on target tasks. These two approaches are detailed below. 
+}
+
+$\bullet$ {\textit{Prompt learning  with sufficient data.} In this approach, most existing methods regard continuous prompts as trainable model parameters and then leverage supervised learning to optimize the continuous prompts by minimizing the cross-entropy loss based on sufficient downstream task data~\cite{Li-ACL-2021-prefix,Lester-ACL-2021-The,Tang-COLING-2022-Context,Liu-arXiv-2021-P-tuning}. As discussed in Section~\ref{sec-PEFT-methods}, prefix tuning~\cite{Li-ACL-2021-prefix} prepends a sequence of prefixes (\ie a set of trainable continuous vectors) to each Transformer layer in language models, while prompt tuning~\cite{Lester-ACL-2021-The} only incorporates trainable prompt vectors at the input layer. By fixing the large-scale parameters of LLMs and only tuning continuous prompt vector, this kind of approaches can be extremely parameter-efficient (Section~\ref{sec-PEFT}). However, these approaches are typically independent of the inputs, lacking sufficient consideration of input semantics. Therefore, the authors in \cite{Tang-COLING-2022-Context} propose context tuning, where the continuous prompts are derived based on the input text and learned through the downstream task losses.}
+
+
+$\bullet$  {\textit{Prompt transferring  with scarce data.} Supervised learning approaches demand in sufficient training data to learn optimal continuous prompts, which may not work well in data-scarce domains and tasks. To address this problem, SPoT~\cite{Vu-ACL-2022-SPoT} proposes a prompt-based transfer learning approach, which first learns  %
+{a single continuous prompt} for several representative source tasks and then uses this prompt to initialize the prompt for a target task.  {However, this approach leverages the same prompt for solving all instances of the target task. For a single task, even a well-learned prompt may not be suitable for all the data instances from a large population.} To address this issue, an improved method~\cite{Li-NAACL-2022-Learning} designs an adaptive attention mechanism during the prompt transfer process to derive the target prompts,  considering both task- and instance-level information.  %
+{The prompt transfer paradigm can leverage the knowledge of data-sufficient source tasks encoded in source prompts for  solving  data-scarce target tasks.}
+}
