@@ -21,8 +21,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 VERSION=0.1.0
-URL=https://arxiv.org/pdf/
-PURL=https://arxiv.org/e-print/
+URL=https://arxiv.org/pdf
+PURL=https://arxiv.org/e-print
 
 usage(){
 echo 'Usage: arxpdf [arXiv id]... to download a PDF of [arXiV id]...'
@@ -51,9 +51,9 @@ echo "Error: connection to the arXiv failed"
 
 # Check that the PDF isn't corrupt and has downloaded in its entirety 
 verify(){
-    if [ "$(tail -n 1 "$1".pdf )"  != "%%EOF" ]; then
+    if [ "$( tail -c 6 "$1".pdf)"  != "%%EOF" ]; then
         fail_verify $1
-        rm $1.pdf
+        rm "$1".pdf
     fi
 }
 
@@ -67,35 +67,36 @@ FILE="nope"
 ARX=$HOME/arxiv-psu
 
 while [ "$#" -gt 0 ]; do
-# Download using current identifier format
+    # Download using current identifier format
     if echo "$1" | grep '^[0-9]\{4\}\.[0-9]\{4\}\(v[0-9]\)\?$' -q ; then
         FILE=$1
     elif echo "$1" | grep '^[0-9]\{4\}\.[0-9]\{5\}\(v[0-9]\)\?$' -q ; then
         FILE=$1
     fi
+
     if [ $FILE != "nope" ] ; then
         echo $1
-	if [ -d ${ARX}/$1 ]; then
-	    echo $1 already exists
-	    exit
-	fi
+	    if [ -d ${ARX}/$1 ]; then
+	        echo $1 already exists
+	        exit
+	    fi
         mkdir ${ARX}/$1
         cd ${ARX}/$1
-        if ! curl  $URL/$1.pdf -o $1.pdf -s; then
+        if ! curl  $URL/$1 -o $1.pdf -s ; then
             fail_connect
         else
             verify $1
         fi 
-# also grab the e-print source. untar the tarball, or redownload as .tex if the tarball fails.
+        # also grab the e-print source. untar the tarball, or redownload as .tex if the tarball fails.
         if ! curl  $PURL/$1 -o $1.tgz -s; then
             fail_connect
         fi
         tar tfvz $1.tgz
         if [ $? -eq 1 ]; then
-	    echo tar failed try gunzip
+	        echo tar failed try gunzip
             mv $1.tgz $1.tex.gz
-	else
-	    tar xfvz $1.tgz
+	    else
+	        tar xfvz $1.tgz
         fi
         gunzip $1.tex.gz
         if [ $? -eq 1 ]; then
@@ -105,19 +106,19 @@ while [ "$#" -gt 0 ]; do
         git add .
         git status
         shift
-
-# Download using old identifier format
+    # Download using old identifier format
     elif echo $1 | grep '.\/[0-9]\{7\}\(v[0-9]\)\?$' -q; then
         FILE=$(printf '%s' "$1" | tr '/' '-')
         echo $FILE
-        
-	if [ -d ${ARX}/$FILE ]; then
-	    echo $1 already exists
-	    exit
-	fi
+
+	    if [ -d ${ARX}/$FILE ]; then
+	        echo $1 already exists
+	        exit
+	    fi
+
         mkdir ${ARX}/$FILE
         cd ${ARX}/$FILE
-        if ! curl $URL/$1.pdf -o $FILE.pdf -s; then
+        if ! curl $URL/$1 -o $FILE.pdf -s; then
             fail_connect
         else   
             verify $FILE
@@ -127,18 +128,19 @@ while [ "$#" -gt 0 ]; do
         fi
         tar tfvz $FILE.tgz
         if [ $? -eq 1 ]; then
-	    echo tar failed try gunzip
+	        echo tar failed try gunzip
             mv $FILE.tgz $FILE.tex.gz
-	else
-	    tar xfvz $FILE.tgz
+	    else
+	        tar xfvz $FILE.tgz
         fi
+        
         gunzip $FILE.tex.gz
         if [ $? -eq 1 ]; then
-	    echo gunzip failed, use .tex
+	        echo gunzip failed, use .tex
             mv $FILE.tex.gz $FILE.tex
         fi
         rm -f $FILE.tgz
-	rm -f $FILE.gz
+	    rm -f $FILE.gz
         git add .
         git status
         shift
@@ -146,11 +148,9 @@ while [ "$#" -gt 0 ]; do
     elif [ $1 = '--help' ] || [ $1 = '-h' ]; then       
         usage
         exit
-    
     elif [ $1 = '--version' ] || [ $1 = '-v' ]; then
         echo $VERSION
         exit
-
     else 
         echo "Unknown option: $1"
         usage
