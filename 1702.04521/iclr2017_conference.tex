@@ -1,0 +1,463 @@
+\documentclass{article}
+\usepackage{iclr2017_conference,times}
+\usepackage{adjustbox}
+% THIS ONE :)
+
+
+\usepackage{hyperref}
+\hypersetup{
+ unicode=false,
+ pdftoolbar=true,
+ pdfmenubar=true,
+ pdffitwindow=false,
+ pdfstartview={FitH},
+ pdfnewwindow=true,
+ colorlinks=true,
+ linkcolor=black,
+ citecolor=blue!50!black,
+ filecolor=black,
+ urlcolor=black
+}
+\usepackage{bm}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{tabularx}
+%\graphicspath{ {figures/} }
+
+\usepackage[utf8]{inputenc}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{multirow}
+\usepackage{url}
+\usepackage{subfig}
+\usepackage{tikz}
+\usepackage{verbatim}
+
+\definecolor{nice-red}{HTML}{E41A1C}
+\definecolor{nice-orange}{HTML}{FF7F00}
+\definecolor{nice-yellow}{HTML}{FFC020}
+\definecolor{nice-green}{HTML}{4DAF4A}
+\definecolor{nice-blue}{HTML}{377EB8}
+\definecolor{nice-purple}{HTML}{984EA3}
+
+
+\colorlet{dark-blue}{blue!50!black}
+\colorlet{dark-purple}{purple!50!black}
+\colorlet{dark-red}{red!50!black}
+\colorlet{todo}{red!85!black}
+\colorlet{todoref}{purple!70!black}
+
+\newcommand{\ie}{{\emph{i.e.}}}
+\newcommand{\eg}{{\emph{e.g.}}}
+\newcommand{\cf}{\emph{cf.}}
+\newcommand{\vect}[1]{\ensuremath{\bm{#1}}}
+\newcommand{\mat}[1]{\ensuremath{\bm{#1}}}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\usepackage[toc,page]{appendix}
+\usepackage{enumitem}
+
+
+\newcommand\BibTeX{B{\sc ib}\TeX}
+
+\title{Frustratingly Short Attention Spans in\\ Neural Language Modeling}
+
+\author{Michał Daniluk, Tim Rockt\"aschel, Johannes Welbl \& Sebastian Riedel\\
+Department of Computer Science\\
+University College London\\
+\texttt{michal.daniluk.15@ucl.ac.uk},\\
+\texttt{\{t.rocktaschel,j.welbl,s.riedel\}@cs.ucl.ac.uk} \\
+}
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\iclrfinalcopy
+
+\begin{document}
+  
+
+
+
+\maketitle
+\begin{abstract}
+Neural language models predict the next token using a latent representation of the immediate token history.
+Recently, various methods for augmenting neural language models with an attention mechanism over a differentiable memory have been proposed.
+For predicting the next token, these models query information from a memory of the recent history which can facilitate learning mid- and long-range dependencies.
+However, conventional attention mechanisms used in memory-augmented neural language models produce a single output vector per time step.
+This vector is used both for predicting the next token \emph{as well as} for the key and value of a differentiable memory of a token history. 
+In this paper, we propose a neural language model with a key-value attention mechanism that outputs separate representations for the key and value of a differentiable memory, as well as for encoding the next-word distribution.
+This model outperforms existing memory-augmented neural language models on two corpora.
+Yet, we found that our method mainly utilizes a memory of the five most recent output representations. 
+This led to the unexpected main finding that a much simpler model based only on the concatenation of recent output representations from previous time steps is on par with more sophisticated memory-augmented neural language models.
+\end{abstract}
+
+\section{Introduction}
+
+At the core of language models (LMs) is their ability to infer the next word given a context. 
+This requires representing context-specific dependencies in a sequence across different time scales.
+On the one hand, classical $N$-gram language models capture relevant dependencies between words in short time distances explicitly, but suffer from data sparsity.
+Neural language models, on the other hand, maintain and update a dense vector representation over a sequence where time dependencies are captured implicitly \citep{MIK10}.
+A recent extension of neural sequence models are attention mechanisms \citep{bahdanau2014neural}, which can capture long-range connections more directly.
+However, we argue that applying such an attention mechanism directly to neural language models requires output vectors to fulfill several purposes at the same time: 
+they need to
+(i) encode a distribution for predicting the next token,
+(ii) serve as a key to compute the attention vector, as well as 
+(iii) encode relevant content to inform future predictions.
+
+We hypothesize that such overloaded use of output representations makes training the model difficult and propose a modification to the attention mechanism which separates these functions explicitly, inspired by \cite{MIL16, ba2016using, reed2015neural, gulcehre2016dynamic}.
+Specifically, at every time step our neural language model outputs three vectors.
+The first is used to encode the next-word distribution, the second serves as key, and the third as value for an attention mechanism.
+We term the model \emph{key-value-predict} attention and show that it outperforms existing memory-augmented neural language models on the Children's Book Test \citep[CBT,][]{hill2015goldilocks} and a new corpus of $7500$ Wikipedia articles.
+However, we observed that this model pays attention mainly to the previous five memories.
+We thus also experimented with a much simpler model that only uses a concatenation of output vectors from the previous time steps for predicting the next token. 
+This simple model is on par with more sophisticated memory-augmented neural language models.
+Thus, our main finding is that modeling short attention spans properly works well and provides notable improvements over a neural language model with attention.
+Conversely, it seems to be notoriously hard to train neural language models to leverage long-range dependencies.
+
+In this paper, we investigate various memory-augmented neural language models and compare them against previous architectures.
+Our contributions are threefold:
+(i) we propose a key-value attention mechanism that uses specific output representations for querying a sliding-window memory of previous token representations,
+(ii) we demonstrate that while this new architecture outperforms previous memory-augmented neural language models, it mainly utilizes a memory of the previous five representations,
+and finally (iii) based on this observation we experiment with a much simpler but effective model that uses the concatenation of three previous output representations to predict the next word.
+
+
+
+
+
+
+
+
+
+
+\section{Methods}
+In the following, we discuss methods for extending neural language models with differentiable memory.
+We first present a standard attention mechanism for language modeling (\S\ref{sec:att}).
+Subsequently, we introduce two methods for separating the usage of output vectors in the attention mechanism: (i) using a dedicated key and value (\S\ref{sec:kv}), and (ii) further separating the value into a memory value and a representation that encodes the next-word distribution (\S\ref{sec:kvp}). 
+Finally, we describe a very simple method that concatenates previous output representations for predicting the next token (\S\ref{sec:ngram}).
+
+\begin{figure}[t!]
+\subfloat[Neural language model with attention.]{\includegraphics[width = 0.48\columnwidth]{attention_architecture}\label{fig:att}}\hfill
+\subfloat[Key-value separation.]{\includegraphics[width = 0.48\columnwidth]{kv_architecture}\label{fig:kv}}\\
+\subfloat[Key-value-predict separation.]{\includegraphics[width = 0.48\columnwidth]{kvn_architecture}\label{fig:kvp}}\hfill
+\subfloat[Concatenation of previous output representations.]{\includegraphics[width = 0.48\columnwidth]{rnnn_architecture}\label{fig:rnnn}}
+\caption{Memory-augmented neural language modelling architectures.}
+\label{fig:methods}
+\end{figure}
+
+
+
+\subsection{Attention for Neural Language Modeling}
+\label{sec:att}
+Augmenting a neural language model with attention \citep{bahdanau2014neural} is straight-forward.
+We simply take the previous $L$ output vectors as memory 
+$\mat{Y}_t = [\vect{h}_{t-L}\ \cdots\ \vect{h}_{t-1}] \in$ $\mathbb{R}^{k\times L}$ 
+where $k$ is the output dimension of a Long Short-Term Memory (LSTM) unit \citep{HOC97}.
+This memory could in principle contain all previous output representations, but for practical reasons we only keep a sliding window of the previous $L$ outputs.
+Let $\vect{h}_t \in \mathbb{R}^k$ be the output representation at time step $t$ and $\vect{1}\in\mathbb{R}^L$ be a vector of ones.
+
+The attention weights $\vect{\alpha}$ $ \in \mathbb{R}^{L}$ are computed from a comparison of the current and previous LSTM outputs. 
+Subsequently, the context vector $\vect{r}_t \in \mathbb{R}^{k}$ is calculated from a sum over previous output vectors weighted by their respective attention value. 
+This can be formulated as
+\begin{align}
+    \mat{M}_t &= \tanh(\mat{W}^Y \mat{Y}_t +(\mat{W}^h\vect{h}_t)\vect{1}^T) && \in \mathbb{R}^{k\times L}\label{eq:att1} \\
+    \vect{\alpha}_t &= \text{softmax}(\vect{w}^T \mat{M}_t) && \in \mathbb{R}^{1\times L}\\
+    \vect{r}_t  &= \mat{Y}_t\vect{\alpha}^T && \in \mathbb{R}^{k}\label{eq:att3}
+\end{align}
+where $\mat{W}^Y, \mat{W}^h \in \mathbb{R}^{k\times k}$ are trainable projection matrices and $\vect{w} \in \mathbb{R}^{k}$ is a trainable vector. 
+The final representation that encodes the next-word distribution is computed from a non-linear combination of the attention-weighted representation $\vect{r}_t$ of previous outputs and the final output vector $\vect{h}_t$ via
+\begin{align}
+    \vect{h}_t^* &= \tanh(\mat{W}^r \vect{r}_t + \mat{W}^x\vect{h}_t) &&\in \mathbb{R}^{k} \label{eq:att}
+\end{align}
+where $\mat{W}^r, \mat{W}^x \in\mathbb{R}^{k\times k}$ are trainable projection matrices. An overview of this architecture is depicted in Figure \ref{fig:att}.
+Lastly, the probablity distribution $\vect{y}_t$ for the next word  is represented by
+\begin{align}
+    \vect{y}_t &= \text{softmax}(\mat{W}^* \vect{h}_t^* + \vect{b}) &&\in\mathbb{R}^{|V|}\label{eq:lm}
+\end{align}
+where $\mat{W}^*\in\mathbb{R}^{|V|\times k}$ and $\vect{b}\in\mathbb{R}^{|V|}$ are a trainable projection matrix and bias, respectively.
+
+
+
+
+\subsection{Key-Value Attention}
+\label{sec:kv}
+Inspired by \cite{MIL16, ba2016using, reed2015neural, gulcehre2016dynamic}, we introduce a key-value attention model that separates output vectors into keys used for calculating the attention distribution $\vect{\alpha}_t$, and a value part used for encoding the next-word distribution and context representation.
+This model is depicted in Figure~\ref{fig:kv}.
+Formally, we rewrite Equations \ref{eq:att1}-\ref{eq:att} as follows:
+\begin{align}
+\begin{bmatrix}
+	\vect{k}_t \\
+	\vect{v}_t
+\end{bmatrix} &= \vect{h}_t && \in\mathbb{R}^{2k} \label{eq:kv}\\
+    \mat{M}_t &= \tanh(\mat{W}^Y [\vect{k}_{t-L}\ \cdots\ \vect{k}_{t-1}] + (\mat{W}^h\vect{k}_t)\vect{1}^T) && \in \mathbb{R}^{k\times L} \label{eq:kvm}\\
+    \vect{\alpha}_t &= \text{softmax}(\vect{w}^T \mat{M}_t) && \in \mathbb{R}^{1 \times L} \\
+    \vect{r}_t  &= [\vect{v}_{t-L}\ \cdots\ \vect{v}_{t-1}]\vect{\alpha}^T && \in \mathbb{R}^{k} \label{eq:kvr}\\
+    \vect{h}_t^* &= \tanh(\mat{W}^r \vect{r}_t + \mat{W}^x\vect{v}_t) &&\in \mathbb{R}^{k} \label{eq:kvh}
+\end{align}
+In essence, \autoref{eq:kvm} compares the key at time step $t$ with the previous $L$ keys to calculate the attention distribution $\vect{\alpha}_t$ which is then used in \autoref{eq:kvr} to obtain a weighted context representation from values associated with these keys.
+
+
+
+
+\subsection{Key-Value-Predict Attention}
+\label{sec:kvp}
+Even with a key-value separation, a potential problem is that the same representation $\vect{v}_t$ is still used both for encoding the probability distribution of the next word and for retrieval from the memory via the attention later.
+Thus, we experimented with another extension of this model where we further separate $\vect{h}_t$ into a \emph{key}, a \emph{value} and a \emph{predict} representation where the latter is only used for encoding the next-word distribution (see Figure~\autoref{fig:kvp}).
+To this end, equations \ref{eq:kv} and \ref{eq:kvh} are replaced by
+\begin{align}
+\begin{bmatrix}
+		\vect{k}_t \\
+		\vect{v}_t \\
+		\vect{p}_t \\		
+\end{bmatrix} &= \vect{h}_t && \in\mathbb{R}^{3k}\\
+    \vect{h}_t^* &= \tanh(\mat{W}^r \vect{r}_t + \mat{W}^x\vect{p}_t) &&\in \mathbb{R}^{k}
+\end{align}
+
+More precisely, the output vector $\vect{h}_t$ is divided into three equal parts: \emph{key}, \emph{value} and \emph{predict}. 
+In our implementation we simply split the output vector $\vect{h}_t$ into $\vect{k}_t$, $\vect{v}_t$ and $\vect{p}_t$. 
+To this end the hidden dimension of the key-value-predict attention model needs to be a multiplicative of three. 
+Consequently, the dimensions of $\vect{k}_t$, $\vect{v}_t$ and $\vect{p}_t$ are $100$ for a hidden dimension of $300$.  
+
+
+\subsection{$N$-gram Recurrent Neural Network}
+\label{sec:ngram}
+Neural language models often work best in combination with traditional $N$-gram models \citep{mikolov2011empirical,chelba2013one,williams2015scaling,ji2015blackout,shazeer2015sparse}, since the former excel at generalization while the latter ensure memorization.
+In addition, from initial experiments with memory-augmented neural language models, we found that usually only the previous five output representations are utilized. 
+This is in line with observations by \cite{tran2016recurrent}.
+Hence, we experiment with a much simpler architecture depicted in Figure~\autoref{fig:rnnn}.
+Instead of an attention mechanism, the output representations from the previous $N-1$ time steps are directly used to calculate next-word probabilities.
+Specifically, at every time step we split the LSTM output into $N-1$ vectors $[\vect{h}_t^1, \ldots, \vect{h}_t^{N-1}]$ and replace \autoref{eq:att} with
+\begin{align}
+    \vect{h}_t^* &= \tanh\left(W^N    
+\begin{bmatrix}
+		\vect{h}_t^1 \\
+		\vdots\vspace{0.25em} \\
+		\vect{h}_{t-N+1}^{N-1} \\		
+\end{bmatrix}
+    \right) && \in \mathbb{R}^k \label{eq:rnnn}
+\end{align}
+where $\mat{W}^N \in \mathbb{R}^{k\times (N-1)k}$ is a trainable projection matrix. 
+This model is related to higher-order RNNs \citep{soltani2016higher} with the difference that we do not incorporate output vectors from the previous steps into the hidden state but only use them for predicting the next word.
+Furthermore, note that at time step $t$ the first part of the output vector $\vect{h}_t^1$ will contribute to predicting the next word, the second part $\vect{h}_t^2$ will contribute to predicting the second word thereafter, and so on. 
+As the output vectors from the $N-1$ previous time-steps are used to score the next word, we call the resulting model an $N$-gram RNN.
+
+\section{Related Work}
+
+Early attempts of using memory in neural networks have been undertaken by \cite{taylor1959pattern} and \cite{steinbuch1963learning} by performing nearest-neighbor operations on input vectors and fitting
+parametric models to the retrieved sets. 
+The dedicated use of external memory in neural architectures has more recently witnessed increased interest. 
+\cite{weston2014memory} introduced Memory Networks to explicitly segregate memory storage from the computation of the neural network, and \cite{SUK15} trained this model end-to-end with an attention-based memory addressing mechanism.
+The Neural Turing Machines by \cite{graves2014neural} add an external differentiable memory with read-write functions to a controller recurrent neural network, and has shown promising results in simple sequence tasks such as copying and sorting. 
+These models make use of external memory, whereas our model directly uses a short sequence from the history of tokens to dynamically populate an addressable memory.
+
+
+In sequence modeling, RNNs such as LSTMs \citep{HOC97} maintain an internal memory state as they process an input sequence.
+Attending over previous state outputs on top of an RNN encoder has improved performances in a wide range of tasks, including machine translation \citep{bahdanau2014neural}, recognizing textual entailment \citep{rocktaschel2015reasoning}, sentence summarization \citep{rush2015attention}, image captioning \citep{xu2015show} and speech recognition \citep{chorowski2015attention}. 
+
+Recently, \cite{cheng2016long} proposed an architecture that modifies the standard LSTM by replacing the memory cell with a memory network \citep{weston2014memory}.
+Another proposal for conditioning on previous output representations are Higher-order Recurrent Neural Networks \citep[HORNNs,][]{soltani2016higher}.
+\citeauthor{soltani2016higher} found it useful to include information from multiple preceding RNN states when computing the next state. 
+This previous work centers around preceding state vectors, whereas we investigate attention mechanisms on top of RNN \emph{outputs}, \ie{} the vectors used for predicting the next word. 
+Furthermore, instead of pooling we use attention vectors to calculate a context representation of previous memories.
+
+\cite{yang2016reference} introduced a reference-aware neural language model where at every position a latent variable determines from which source a target token is generated, \eg{}, by copying entries from a table or referencing entities that were mentioned earlier.
+
+Another class of models that include memory into sequence modeling are Recurrent Memory Networks (RMNs) \citep{tran2016recurrent}. 
+Here, a memory block accesses the most recent input words to selectively attend over relevant word representations from a global vocabulary. 
+RMNs use a global memory with two input word vector look-up tables for the attention mechanism, and consequently have a large number of trainable parameters. Instead, we proposed models that need much fewer parameters by \emph{producing} the vectors that will be attended over in the future, which can be seen as a memory that is dynamically populated by the language model.
+
+Finally, the functional separation of look-up keys and memory content has been found useful for Memory Networks \citep{MIL16}, Neural Programmer-Interpreters \citep{reed2015neural}, Dynamic Neural Turing Machines \citep{gulcehre2016dynamic}, and Fast Associative Memory \citep{ba2016using}. 
+We apply and extend this principle to neural language models. 
+
+
+
+
+
+
+
+\section{Experiments}
+We evaluate models on two different corpora for language modeling.
+The first is a subset of the Wikipedia corpus.\footnote{The wikipedia corpus is available at \url{https://goo.gl/s8cyYa}.}
+It consists of 7500 English Wikipedia articles (dump from 6 Feb 2015) belonging to one of the following categories: \emph{People, Cities, Countries, Universities}, and \emph{Novels}.
+We chose these categories as we expect articles in these categories to often contain references to previously mentioned entities.
+Subsequently, we split this corpus into a train, development, and test part, resulting in corpora of $22.5$M words, $1.2$M and $1.2$M words, respectively. 
+We map all numbers to a dedicated numerical symbol $N$ and restrict the vocabulary to the $77$K most frequent words, encompassing 97\% of the training vocabulary. 
+All other words are replaced by the \textit{UNK} symbol. The average length of sentences is $25$ tokens. 
+In addition to this Wikipedia corpus, we also run experiments on the Children’s Book Test \citep[CBT][]{hill2015goldilocks}. 
+While this corpus is designed for cloze-style question-answering, in this paper we use it to test how well language models can exploit wider linguistic context.
+
+\subsection{Training Procedure}
+We use ADAM~\citep{kingma2014adam} with an initial learning rate of $0.001$ and a mini-batch size of $64$ for optimization. 
+Furthermore, we apply gradient clipping at a gradient norm of $5$~\citep{pascanu2013difficulty}.
+The bias of the LSTM's forget gate is initialized to $\vect{1}$ \citep{JOZ16}, while other parameters are initialized uniformly from the range $(-0.1, 0.1)$.
+Backpropagation Through Time \citep{rumelhart1985learning, werbos1990backpropagation} was used to train the network with $20$ steps of unrolling.
+We reset the hidden states between articles for the Wikipedia corpus and between stories for CBT, respectively.
+We take the best configuration based on performance on the validation set and evaluate it on the test set.
+
+\section{Results}
+\begin{figure}[t!]
+    \caption{Perplexities of memory-augmented neural language models on the Wikipedia corpus (a-c) and accuracies on the CBT test set (d).}
+    \centering
+    \subfloat[Test perplexity of different attention architectures with varying attention window sizes.
+    Best perplexity per model is italic.\label{tab:wiki_att_win}]{
+\resizebox{0.5\columnwidth}{!}{    
+\begin{tabular}[b]{lrrrr}
+\toprule
+Model & \multicolumn{4}{c}{Attention Window Size}\\
+  & 1 & 5 & 10 & 15       \\
+\midrule
+RM(+tM-g)~\citep{tran2016recurrent}   &$83.5$& $80.5$&$80.3$&$\mathit{80.1}$      \\ 
+\midrule
+Attention     &$82.2$ &$82.2$ & $\mathit{82.0}$  & $82.8$\\ 
+Key-Value  &$78.7 $ &$79.0 $ &$\mathit{78.2}$   &$78.9$    \\ 
+Key-Value-Predict &$76.1$& $\mathbf{75.8}$&$76.0$&$75.8$ \\ 
+\bottomrule
+\end{tabular}
+}
+    }\hfill
+    \subfloat[Comparison of $N$-gram neural language models. $w$ denotes the input size, $k$ the hidden size and $\theta_{M}$ the total number of model parameters.\label{tab:wiki_rnnn}]{
+\resizebox{0.45\columnwidth}{!}{        
+\begin{tabular}[b]{lrrrrr}
+\toprule
+Model  & $w$   & $k$   & $\theta_{M}$ & Dev   & Test  \\
+\midrule
+$2$-gram RNN & $300$ & $564$  & $23.9$M  & $76.0$& $77.1$\\ 
+$3$-gram RNN & $300$ & $786$  & $23.9$M & $74.9$& $75.9$ \\ 
+$4$-gram RNN & $300$ & $968$  & $23.9$M & $\mathbf{74.8}$& $\mathbf{75.9}$ \\ 
+$5$-gram RNN & $300$ & $1120$  & $23.9$M & $76.0$& $77.3$ \\ 
+\bottomrule
+\end{tabular} 
+}
+    }\\
+\subfloat[Summary of models with best attention window size $a$. 
+The total number of model parameters, including word representations, is denoted by $\theta_{W+M}$ (without word representations $\theta_{M}$).\label{tab:all_wiki}]{
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lrrrrrrr}
+\toprule
+Model             & $w$   & $k$  & $a$ & $\theta_{W+M}$ & $\theta_{M}$ &  Dev  & Test \\
+\midrule
+RNN             &$ 300$ & $307$ & - & $47.0$M      &$ 23.9$M     &$121.7$ & $125.7$ \\
+LSTM              & $300$ & $300$ & - & $47.0$M      & $23.9$M     & $83.2$ & $85.2$ \\
+\midrule
+FOFE HORNN (3-rd order) \citep{soltani2016higher} & $300$ & $303$ & - & $47.0$M      & $23.9$M   & $116.7$ & $120.5$  \\ 
+Gated HORNN (3-rd order) \citep{soltani2016higher} & $300$ & $297$ & - & $47.0$M      & $23.9$M  & $93.9$  & $97.1$\\
+RM(+tM-g)~\citep{tran2016recurrent}  & $300$ & $300$ & 15 & $93.7$M      & $70.6$M     & $78.2$ & $80.1$      \\ 
+\midrule
+Attention       & $300$ & $296$& $10$ &   $47.0$M  & $23.9$M & $80.6$ &$ 82.0$\\ 
+Key-Value   & $300$ & $560$ & $10$ &   $47.0$M  & $23.9$M & $77.1$ &$ 78.2$      \\ 
+Key-Value-Predict   & $300$ & $834$ & $5$ &   $47.0$M  & $23.9$M & $\mathbf{74.2}$ & $\mathbf{75.8}$  \\
+\midrule
+$4$-gram RNN             & $300$ & $968$ & -  &  $47.0$M  & $23.9$M    & $74.8$ &$ 75.9$\\ 
+\bottomrule
+\end{tabular}
+}
+}\\
+\subfloat[Results on CBT; those marked with $^\ddag$ are taken from \cite{hill2015goldilocks}\label{tab:all_children}.]{
+\resizebox{\textwidth}{!}{
+\begin{tabular}{lrrrr}
+\toprule
+Model      &  Named Entities  & Common Nouns   & Verbs & Prepositions \\ 
+\midrule
+Humans (context+query) $^\ddag $&  $0.816$   & $0.816$  & $ 0.828$ &  $0.708$ \\
+Kneser-Ney LM $^\ddag $&  $0.390$   & $0.544$  & $ 0.778$ &  $ 0.768$ \\
+Kneser-Ney LM + cache $^\ddag $&  $0.439$   & $0.577$  & $ 0.772$ &  $0.679$ \\
+LSTM (context+query) $^\ddag$&  $0.418$  &$0.560$ & $0.818$ & $0.791$  \\
+Memory Network $^\ddag$ & $0.666$   &$ 0.630$ & $0.690$ & $0.703$  \\
+\midrule
+AS Reader, avg ensemble \citep{kadlec2016text} & $0.706$   &$0.689$ & $-$ & $-$    \\
+AS Reader, greedy ensemble \citep{kadlec2016text}  & $0.710$   &$ 0.675$ & $-$ & $-$    \\
+QANN, 4 hops, GloVe \citep{weissenborn2016separating} & $\mathbf{0.729}$   &$-$ & $-$ & $-$    \\
+AoA Reader, single model \citep{cui2016attention} & $0.720$   &$0.694$ & $-$ & $-$ \\
+CAS Reader, mode avg \citep{cui2016consensus}     & $0.692$   &$0.657$ & $-$ & $-$    \\
+GA Reader, ensemble \citep{dhingra2016gated}  & $0.719$   &$0.694$ & $-$ & $-$    \\
+EpiReader, ensemble \citep{trischler2016natural} & $0.718$   &$\mathbf{0.706}$ & $-$ & $-$    \\
+\midrule
+FOFE HORNN (3-rd order) \citep{soltani2016higher}  & $0.465$   &$0.497$ & $0.774$ & $0.741$\\
+Gated HORNN (3-rd order) \citep{soltani2016higher} & $0.508$   &$0.547$ & $0.790$ & $0.774$\\
+RM(+tM-g) \citep{tran2016recurrent}  & $0.525$   & $0.597$ & $0.817$ & $0.797$\\ 
+\midrule
+LSTM     & $0.523$   &$0.604$ & $0.819$ & $0.786$ \\  
+Attention & $0.538$   &$0.595$ & $0.826$ & $0.803$\\ 
+Key-Value    & $0.528$   &$0.601$ & $0.822$ & $\mathbf{0.813}$ \\ 
+Key-Value-Predict & $0.528$   &$0.599$ & $\mathbf{0.829}$ & $ 0.803$\\ 
+\midrule
+$4$-gram RNN   & $0.532$   &$0.598$ & $0.815$ & $0.800$\\ 
+\bottomrule
+\end{tabular}
+}
+}
+\end{figure}
+
+
+
+\begin{figure}[t!]
+\centering
+\subfloat[]{
+\hspace{2em}\includegraphics[width=0.8\columnwidth]{wiki_random.png}
+}\\
+\centering
+\subfloat[]{
+\includegraphics[width = 1\columnwidth]{wiki_avg.png}
+}
+\caption{Attention weights of the Key-Value-Predict model on a randomly sampled Wikipedia article (a) and average attention weight distribution on the whole Wikipedia test set for RM(+tM-g), Attention, Key-Value and Key-Value-Predict models (b). The rightmost positions represent the most recent history. }
+\label{fig:avg}
+\end{figure}
+
+In the first set of experiments we explore how well the proposed models and \citeauthor{tran2016recurrent}'s Recurrent-memory Model can make use of histories of varying lengths. 
+Perplexity results for different attention window sizes on the Wikipedia corpus are summarized in Figure~\ref{tab:wiki_att_win}.
+The average attention these models pay to specific positions in the history is illustrated in  \autoref{fig:avg}.
+We observed that although our models attend over tokens further in the past more often than the Recurrent-memory Model, attending over a longer history does not significantly improve the perplexity of any attentive model. 
+
+The much simpler $N$-gram RNN model achieves comparable results (Figure~\ref{tab:wiki_rnnn}) and seems to work best with a history of the previous three output vectors ($4$-gram RNN).
+As a result, we choose the $4$-gram model for the following $N$-gram RNN experiments.
+
+\subsection{Comparison with state-of-the-art models}
+In the next set of experiments, we compared our proposed models against a variety of state-of-the-art models on the Wikipedia and CBT corpora. 
+Results are shown in Figure \ref{tab:all_wiki}  and \ref{tab:all_children}, respectively.
+Note that the models presented here do not achieve state-of-the-art on CBT as they are language models and not tailored towards cloze-sytle question answering. 
+Thus, we merely use this corpus for comparing different neural language model architectures.
+We reimplemented the Recurrent-Memory model by \cite{tran2016recurrent} with the temporal matrix and gating composition function (RM+tM-g). 
+Furthermore, we reimplemented Higher Order Recurrent Neural Networks (HORNNs) by \cite{soltani2016higher}. 
+
+To ensure a comparable number of parameters to a vanilla LSTM model, we adjusted the hidden size of all models to have roughly the same total number of model parameters. 
+The attention window size \textit{N} for the $N$-gram RNN model was set to $4$ according to the best validation set perplexity on the Wikipedia corpus.
+Below we discuss the results in detail.
+
+\paragraph{Attention} By using a neural language model with an attention mechanism over a dynamically populated memory, we observed a $3.2$ points lower perplexity over a vanilla LSTM on Wikipedia, but only notable differences for predicting verbs and prepositions in CBT. 
+This indicates that incorporating mechanisms for querying previous output vectors is useful for neural language modeling.
+
+\paragraph{Key-Value} Decomposing the output vector into a key-value paired memory improves the perplexity by $7.0$ points compared to a baseline LSTM, and by $1.9$ points compared to the RM(+tM-g) model. Again, for CBT we see only small improvements.
+
+\paragraph{Key-Value-Predict} By further separating the output vector into a key, value and next-word prediction part, we get the lowest perplexity and gain $9.4$ points over a baseline LSTM, 
+a $4.3$ points compared to RM(+tM-g), and $2.4$ points compared to only splitting the output into a key and value. 
+For CBT, we see an accuracy increase of $1.0$ percentage points for verbs, and $1.7$ for prepositions.
+As stated earlier, the performance of the Key-Value-Predict model does not improve significantly when increasing the attention window size. 
+This leads to the conclusion that none of the attentive models investigated in this paper can utilize a large memory of previous token representations. 
+Moreover, none of the presented methods differ significantly for predicting common nouns and named entities in CBT.
+
+\paragraph{$N$-gram RNN} Our main finding is that the simple modification of using output vectors from the previous time steps for the next-word prediction leads to perplexities that are on par with or better than more complicated neural language models with attention.
+Specifically, the $4$-gram RNN achieves only slightly worse perplexities than the Key-Value-Predict architecture.
+
+
+\section{Conclusion}
+In this paper, we observed that using an attention mechanism for neural language modeling where we separate output vectors into a key, value and predict part outperform simpler attention mechanisms on a Wikipedia corpus and the Children Book Test \citep[CBT,][]{hill2015goldilocks}.  
+However, we found that all attentive neural language models mainly utilize a memory of only the most recent history and fail to exploit long-range dependencies.
+In fact, a much simpler $N$-gram RNN model, which only uses a concatenation of output representations from the previous three time steps, is on par with more sophisticated memory-augmented neural language models.
+Training neural language models that take long-range dependencies into account seems notoriously hard and needs further investigation. 
+Thus, for future work we want to investigate ways to encourage attending over a longer history, for instance by forcing the model to ignore the local context and only allow attention over output representations further behind the local history.
+
+\subsubsection*{Acknowledgments}
+This work was supported by Microsoft Research and the Engineering and Physical Sciences Research Council through PhD Scholarship Programmes, an Allen Distinguished Investigator Award, and a Marie Curie Career Integration Award.
+
+\bibliography{iclr2017_conference}
+\bibliographystyle{iclr2017_conference}
+
+\end{document}
+
