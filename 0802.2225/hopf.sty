@@ -1,0 +1,936 @@
+\ProvidesPackage{hopf}
+
+\RequirePackage{xspace}
+\RequirePackage{hyphenat}
+\PassOptionsToPackage{right}{myshowlabels}
+
+\ifdraft
+\RequirePackage{mydraft}
+\fi
+
+\DeclareOption{nowarnings}{
+  \def\hopf@warning#1{}
+}
+
+\def\hopf@warning#1{\message{^^JWarning: #1 ^^J}}
+
+\ProcessOptions
+
+%%%
+%%% CATEGORICAL COMMANDS
+%%%
+
+%
+% Some conventions:
+%  Categories are calligraphic
+%  Objects of a category are the corresponding uppercase Latin
+%  Elements (in a set-based category) are the corresponding lowercase
+%   letter
+%  Morphisms are lowercase Latin from the set {f,g,h}, except where
+%   those morphisms are or will be derived from a natural
+%   transformation
+%  Functors are also uppercase Latin since most of our functors are
+%   representable
+%  Maybe non-representable functors should be something else,
+%   mathfrak?
+%  Natural transformations are lowercase Greek
+%
+
+%
+% easy switch for left and right actions
+%
+
+\newcommand{\action}[3]{#1 #2 #3}
+\newcommand{\revaction}[3]{#3 #2 #1}
+\newcommand{\swapaction}{%
+\let\action\revaction
+}
+
+%\swapaction
+
+%
+% Some useful auxilliary commands
+%
+
+\let\hopf@lower\MakeLowercase
+\let\hopf@upper\MakeUppercase
+\def\hopf@upperonce#1{#1\let\hopf@lower\MakeLowercase}
+\def\hopf@upperall#1{#1}
+\def\hopf@plural#1#2{#2}
+\def\hopf@single#1#2{#1}
+\def\hopf@strip#1#2.{#1}
+\def\hopf@trunc#1#2.{#2}
+\def\hopf@void{}
+\def\hopf@nonvoid{t}
+\def\hopf@arg{}
+\def\hopf@matharg#1{%
+\ifx#1\hopf@void
+\else
+, \ensuremath{#1},%
+\fi
+}
+\let\hopf@twprod\odot
+\def\hopf@co{\hopf@lower{C}o\hyp{}}
+%\def\hopf@do{\(\hopf@twprod\)\hyp{}}
+
+%
+% We need to be able to access \hopf@lower and \hopf@single in the
+% main document
+%
+
+\newcommand{\hopfLower}[1]{\hopf@lower{#1}}
+\newcommand{\hopfSingle}[2]{\hopf@single{#1}{#2}}
+\newcommand{\hopfMatharg}[1]{\hopf@matharg{#1}}
+
+%
+% Takes three arguments.  The first says whether to use the long form
+% or short form in text mode (void for short); the second is the
+% modifiers; the third is the thing to be modified.  It looks to see
+% whether the combined modifier has been defined, otherwise it strips
+% off the first modifier and calls '\xXo' passing to it as an argument
+% \hopf@modify with the rest of the modifiers and the thing to be
+% modified.
+%
+% Note: modifiers can be defined for particular modes without
+% requiring a modifier for all modes.
+%
+
+\def\hopf@modify#1#2#3{%
+  \edef\hopf@modarg{#2}%
+  \ifx\hopf@modarg\hopf@void
+    #3{}%
+  \else
+    \edef\hopf@modfirst{\expandafter\hopf@strip\hopf@modarg.}%
+    \edef\hopf@modlast{\expandafter\hopf@trunc\hopf@modarg.}%
+    \ifmmode
+      \@ifundefined{m\hopf@modarg o}{%
+        \@ifundefined{m\hopf@modfirst o}{%
+          \hopf@warning{math \hopf@modfirst\space modifier not
+            defined at \the\inputlineno, using fallback}%
+          {\hopf@modify{#1}{\hopf@modlast}{#3}}^{\hopf@modfirst}}{%
+          \csname m\hopf@modfirst o\endcsname
+          {\hopf@modify{#1}{\hopf@modlast}{#3}}}}{%
+        \csname m\hopf@modarg o\endcsname{#3}}%
+    \else
+      \edef\hopf@onelots{#1}%
+      \ifx\hopf@onelots\hopf@void
+        \edef\hopf@modtype{t}%
+      \else
+        \edef\hopf@modtype{c}%
+      \fi
+      \@ifundefined{\hopf@modtype\hopf@modarg o}{%
+        \@ifundefined{\hopf@modtype\hopf@modfirst o}{%
+          \@ifundefined{m\hopf@modarg o}{%
+            \@ifundefined{m\hopf@modfirst o}{%
+              \hopf@warning{couldn't figure out a valid
+            modifier for text \hopf@modtype\space \hopf@modarg\space
+            at \the\inputlineno, using ultimate fallback}%
+            \(\hopf@modfirst\)\hyp{}graded objects from
+            \hopf@modify{#1}{\hopf@modlast}{#3}}%
+      {%
+        \hopf@warning{text \hopf@modtype\space
+          \hopf@modarg\space modifier not defined at
+          \the\inputlineno, using math \hopf@modfirst\space modifier instead}%
+        \(\csname m\hopf@modfirst o\endcsname{\hopf@modify{#1}{\hopf@modlast}{#3}}\)}}%
+      {%
+        \hopf@warning{text \hopf@modtype\space
+          \hopf@modarg\space modifier not defined at \the\inputlineno,
+          using math \hopf@modarg\space modifier instead}%
+        \(\csname m\hopf@modarg o\endcsname{#3}\)}}%
+      {%
+        \hopf@warning{text \hopf@modtype\space
+          \hopf@modarg\space modifier not defined at
+          \the\inputlineno, using text \hopf@modtype\space
+          \hopf@modfirst\space modifier instead}%
+          \csname \hopf@modtype\hopf@modfirst o\endcsname
+          {\hopf@modify{#1}{\hopf@modlast}{#3}}}}%
+      {%
+        \csname \hopf@modtype\hopf@modarg o\endcsname{#3}}%
+    \fi
+  \fi
+}
+
+%
+% Generic functor font type
+%
+
+\newcommand{\func}[2][]{\csname #1\endcsname{\mathfrak{#2}}}
+
+%
+% Free functor command.  If the first argument is given then it
+% preceeds the 'F' (and is made into a command).  The second argument
+% is the subscript; if '#2cat' is defined then it is that, otherwise
+% it is simply what it is.
+%
+
+\newcommand{\free}[2][]{%
+\ifmmode
+\func[#1]{F}_{\@ifundefined{#2cat}{#2}{\csname #2cat\endcsname}}%
+\else
+free \(\@ifundefined{#2cat}{#2}{\csname #2cat\endcsname{}}\)\hyp{}algebra functor%
+\fi
+\xspace}
+
+%
+% Algebra functor command.  Either produces A_{#1cat} or {#1alg}
+% functor.
+%
+
+\newcommand{\algfun}[1][o]{%
+\ifmmode
+\func{A}_{\@ifundefined{#1cat}{#1}{\csname #1cat\endcsname}}
+\else
+\@ifundefined{#1alg}{#1}{\csname #1alg\endcsname} functor%
+\fi
+\xspace}
+
+%
+% Initial and terminal objects and morphisms.
+%
+
+\newcommand{\hopfTermObj}{T}
+\newcommand{\hopfInitObj}{I}
+
+\newcommand{\term}[2][]{%
+\csname #1\endcsname{\MakeUppercase{\hopfTermObj}}_{\@ifundefined{#2cat}{#2}{\csname #2cat\endcsname}}}
+
+\newcommand{\termm}[2][]{%
+\csname #1\endcsname{\MakeLowercase{\hopfTermObj}}_{#2}}
+
+
+\newcommand{\init}[2][]{%
+\csname #1\endcsname{\MakeUppercase{\hopfInitObj}}_{\@ifundefined{#2cat}{#2}{\csname #2cat\endcsname}}}
+
+\newcommand{\initm}[2][]{%
+\csname #1\endcsname{\MakeLowercase{\hopfInitObj}}_{#2}}
+
+%
+% This command will do the capitalisation and plurals of a given
+% command.  Its argument is the 'bare word' and it defines the 'u',
+% 's', and 'us' forms.  To work properly, the original command needs
+% to use hopf@lower and hopf@single.
+%
+% Actually need two versions of this to deal with whether or not the
+% original command has arguments.  Should be some way of testing this,
+% but perhaps that's more hassle than just writing it out twice.
+%
+
+\def\hopf@capluropt#1{
+
+  \expandafter\newcommand\expandafter{\csname #1u\endcsname}[1][]{%
+    {\let\hopf@lower\hopf@upperonce
+      \csname #1\endcsname[##1]}%
+    \xspace}
+
+  \expandafter\newcommand\expandafter{\csname #1s\endcsname}[1][]{%
+    {\let\hopf@single\hopf@plural
+      \csname #1\endcsname[##1]}%
+    \xspace}
+
+  \expandafter\newcommand\expandafter{\csname #1us\endcsname}[1][]{%
+    {\let\hopf@lower\hopf@upperonce
+      \let\hopf@single\hopf@plural
+      \csname #1\endcsname[##1]}%
+    \xspace}
+
+}
+
+\def\hopf@caplur#1{
+
+  \expandafter\newcommand\expandafter{\csname #1u\endcsname}{%
+    {\let\hopf@lower\hopf@upperonce
+      \csname #1\endcsname}%
+    \xspace}
+
+  \expandafter\newcommand\expandafter{\csname #1s\endcsname}{%
+    {\let\hopf@single\hopf@plural
+      \csname #1\endcsname}%
+    \xspace}
+
+  \expandafter\newcommand\expandafter{\csname #1us\endcsname}{%
+    {\let\hopf@lower\hopf@upperonce
+      \let\hopf@single\hopf@plural
+      \csname #1\endcsname}%
+    \xspace}
+
+}
+
+%
+% This is the command which generates the various commands associated
+% to a category.  Specifically we have:
+%
+% \Xelt, \Xobj, \Xcat, \Xobju, \Xobjs, \Xobjalt, \Xobjaltu, \Xobjalts,
+% \Xcat, \Xcatu, \Xmor, \Xmor, \Xmoru, \Xmors, \Xmorlng, \Xmorlngu,
+% \Xmorlngs, \Xmoralt, \Xmoraltu, \Xmoralts
+%
+% These further depend on \Xelt, \mathXcat, \textXcat, \mathXobj, and
+% \textXobj; thus changing these four alters all the rest.  Most are
+% 'math-aware' (all except \Xelt)
+%
+% The suffices are:
+%  'u': capitalisation suitable for the start of a sentence
+%  's': plural
+%  'alt': a different way of writing the text name of an object or a
+%         morphism in X
+%  'lng': an even longer way of writing the text name of a morphism in X
+%  Thus:
+%
+% \dvobj: V-algebra object in D
+% \dvobjalt: object in DV
+% \dvmor: DV-morphism
+% \dvmoralt: a morphism in DV
+% \dvmorlng: a morphism of objects in DV
+%
+% The arguments are: #1 the category, #2 the generic object/element
+%
+
+
+\def\objelt#1#2{%
+
+  \edef\hopf@catsym{#1}
+  \edef\hopf@objsym{#2}
+
+%
+% Abort if \hopf@catsym is null
+%
+
+  \ifx\hopf@catsym\hopf@void
+  \else
+
+    \edef\hopf@command{
+
+%
+% The first ones are those on which everything else depends; the
+% others are defined by resetting hopf@lower and hopf@single to
+% various things
+%
+
+      \noexpand\newcommand{\csname\hopf@catsym obj\endcsname}[1][]{%
+        \noexpand\ifmmode
+          \noexpand\csname math\hopf@catsym obj\noexpand\endcsname
+        \noexpand\else
+          \noexpand\def\noexpand\hopf@arg{####1}%
+          \noexpand\csname text\hopf@catsym obj\noexpand\endcsname
+        \noexpand\fi
+        \noexpand\xspace}
+
+      \noexpand\newcommand{\csname\hopf@catsym objalt\endcsname}[1][]{%
+        \noexpand\ifmmode
+          \noexpand\csname math\hopf@catsym obj\noexpand\endcsname
+        \noexpand\else
+          \noexpand\def\noexpand\hopf@arg{####1}%
+          \noexpand\hopf@lower{O}bject\noexpand\hopf@single{}{s}\noexpand\hopf@matharg{\noexpand\hopf@arg}
+      in \noexpand\(\noexpand\csname math\hopf@catsym cat\endcsname\noexpand\)%
+        \noexpand\fi
+        \noexpand\xspace}
+
+      \noexpand\newcommand{\csname\hopf@catsym mor\endcsname}[1][]{%
+        \noexpand\ifmmode
+          \noexpand\csname math\hopf@catsym mor\noexpand\endcsname
+        \noexpand\else
+          \noexpand\def\noexpand\hopf@arg{####1}%
+          \noexpand\(\csname math\hopf@catsym cat\endcsname\noexpand\)\hyp{}\noexpand\hopf@lower{M}orphism\noexpand\hopf@single{}{s}\noexpand\hopf@matharg{\noexpand\hopf@arg}%
+        \noexpand\fi
+        \noexpand\xspace}
+
+      \noexpand\newcommand{\csname\hopf@catsym morlng\endcsname}[1][]{%
+        \noexpand\ifmmode
+          \noexpand\csname math\hopf@catsym mor\noexpand\endcsname
+        \noexpand\else
+          \noexpand\def\noexpand\hopf@arg{####1}%
+          \noexpand\hopf@lower{M}orphism\noexpand\hopf@single{}{s}\noexpand\hopf@matharg{\noexpand\hopf@arg}
+          of \noexpand\hopf@lower{O}bjects in
+          \noexpand\(\expandafter\noexpand\csname math\hopf@catsym
+          cat\endcsname\noexpand\)%
+        \noexpand\fi
+        \noexpand\xspace}
+
+      \noexpand\newcommand{\csname\hopf@catsym moralt\endcsname}[1][]{%
+        \noexpand\ifmmode
+          \noexpand\csname math\hopf@catsym mor\noexpand\endcsname
+        \noexpand\else
+          \noexpand\def\noexpand\hopf@arg{####1}%
+          \noexpand\hopf@lower{M}orphism\noexpand\hopf@single{}{s}\noexpand\hopf@matharg{\noexpand\hopf@arg} in
+          \noexpand\(\expandafter\noexpand\csname math\hopf@catsym
+          cat\endcsname\noexpand\)%
+        \noexpand\fi
+        \noexpand\xspace}
+
+%
+% All the rest depnds on the earlier stuff
+%
+
+    \noexpand\hopf@capluropt{\hopf@catsym obj}
+    \noexpand\hopf@capluropt{\hopf@catsym objalt}
+    \noexpand\hopf@capluropt{\hopf@catsym mor}
+    \noexpand\hopf@capluropt{\hopf@catsym moralt}
+    \noexpand\hopf@capluropt{\hopf@catsym morlng}
+    
+  }
+
+  \hopf@command
+  
+    \expandafter\edef\csname\hopf@catsym cat\endcsname{%
+      {\noexpand\ifmmode
+        \expandafter\noexpand\csname math\hopf@catsym cat\endcsname
+      \noexpand\else
+        \expandafter\noexpand\csname text\hopf@catsym cat\endcsname
+      \noexpand\fi
+      }\noexpand\xspace}
+ 
+  \expandafter\hopf@caplur\expandafter{\hopf@catsym cat}
+  
+%
+% Now we just have to define math#1cat, text#1cat, math#1obj,
+% text#1obj, #1elt, and math#1mor.  We know that #1 (now fully
+% expanded into \hopf@catsym) is non-void so we loop over it,
+% stripping off the last 'chunk' from the rest.
+%
+
+    \edef\hopf@cattest{\hopf@void}
+    \edef\hopf@catfirst{\hopf@void}
+    \edef\hopf@catmods{\hopf@void}
+    \edef\hopf@catlast{\hopf@catsym}
+
+    \loop\ifx\hopf@cattest\hopf@void
+
+%
+% Strip off next character in \hopf@catlast
+%
+
+      \edef\hopf@catnext{\expandafter\hopf@strip\hopf@catlast.}
+      \ifx\hopf@catnext\hopf@catlast
+%
+% Was this the last character?  If so, prepare to exit the loop.
+%
+        \edef\hopf@cattest{\hopf@nonvoid}
+      \else
+%
+% It wasn't the last character.  Was it a capital letter?  If so, add
+% it to \hopf@catmods.  If not, add \hopf@catmods and \hopf@catnext to
+% \hopf@catfirst then truncate \hopf@catlast in readiness to loop
+% round again.
+%
+% NB there is an implicit assumption in this test that we are only
+% ever fed letters, either upper or lower case.  Divers alarums would
+% ensue if we were given other input.  Presumably we could test for
+% this earlier.
+%
+
+        \ifnum\expandafter`\hopf@catnext>`Z
+%
+% lowercase letter
+%
+          \edef\hopf@catfirst{\hopf@catfirst\hopf@catmods\hopf@catnext}
+          \edef\hopf@catmods{\hopf@void}
+        \else
+%
+% uppercase letter
+%
+          \edef\hopf@catmods{\hopf@catmods\hopf@catnext}
+        \fi
+
+        \edef\hopf@catlast{\expandafter\hopf@trunc\hopf@catlast.}
+      \fi
+    \repeat
+
+%
+% We now have \hopf@catfirst being the first chunk, \hopf@catlast
+% being the last letter, and \hopf@catmods being the modifiers.  What
+% we do now depends on whether or not \hopf@catfirst contains
+% anything.
+%
+
+    \ifx\hopf@catfirst\hopf@void
+%
+% No it didn't, so we have a single category possibly modified.
+%
+      \ifx\hopf@catmods\hopf@void
+%
+% No modifications so we simply define the category
+%
+        \expandafter\edef\csname math\hopf@catsym cat\endcsname
+          {\noexpand\mathcal{\noexpand\MakeUppercase{\hopf@catlast}}}
+
+        \expandafter\edef\csname text\hopf@catsym cat\endcsname
+          {\noexpand\(\expandafter\noexpand\csname math\hopf@catlast
+            cat\endcsname\noexpand\)}
+
+        \expandafter\edef\csname text\hopf@catsym obj\endcsname
+          {\noexpand\hopf@lower{O}bject\noexpand\hopf@single{}{s}\noexpand\hopf@matharg{\noexpand\hopf@arg} in
+            \noexpand\(\expandafter\noexpand\csname math\hopf@catlast cat\endcsname\noexpand\)}
+
+%
+% If we have a single category with no modifications then we have no
+% possible fall-back if we weren't given a default object
+%
+
+        \ifx\hopf@objsym\hopf@void
+          \def\hopf@objsym{X}
+        \fi
+  
+        \expandafter\edef\csname\hopf@catsym elt\endcsname{\noexpand\MakeLowercase{\hopf@objsym}}
+        \expandafter\edef\csname math\hopf@catsym obj\endcsname{\noexpand\MakeUppercase{\hopf@objsym}}
+        \expandafter\edef\csname math\hopf@catsym mor\endcsname{\noexpand\MakeLowercase{\hopf@objsym}}
+
+
+      \else
+%
+% Only one category but with modifications
+%
+
+        \expandafter\edef\csname math\hopf@catsym cat\endcsname
+          {\noexpand\hopf@modify{c}{\hopf@catmods}{\expandafter\noexpand\csname
+              \hopf@catlast cat\endcsname}}
+
+        \expandafter\edef\csname text\hopf@catsym cat\endcsname
+          {\noexpand\hopf@modify{c}{\hopf@catmods}{\expandafter\noexpand\csname
+              \hopf@catlast cat\endcsname}}
+
+        \expandafter\edef\csname text\hopf@catsym obj\endcsname
+          {\noexpand\hopf@lower{O}bject\noexpand\hopf@single{}{s}\noexpand\hopf@matharg{\noexpand\hopf@arg} in
+            \noexpand\(\expandafter\noexpand\csname math\hopf@catsym
+            cat\endcsname\noexpand\)}
+
+
+%
+% If we have a single category with modifications then we have a
+% possible fall-back if we weren't given a default object
+%
+
+        \ifx\hopf@objsym\hopf@void
+
+          \expandafter\edef\csname\hopf@catsym elt\endcsname{\expandafter\noexpand\csname \hopf@catlast elt\endcsname}
+          \expandafter\edef\csname math\hopf@catsym obj\endcsname{\expandafter\noexpand\csname math\hopf@catlast obj\endcsname}
+          \expandafter\edef\csname math\hopf@catsym mor\endcsname{\expandafter\noexpand\csname math\hopf@catlast mor\endcsname}
+
+        \else
+  
+          \expandafter\edef\csname\hopf@catsym elt\endcsname{\noexpand\MakeLowercase{\hopf@objsym}}
+          \expandafter\edef\csname math\hopf@catsym obj\endcsname{\noexpand\MakeUppercase{\hopf@objsym}}
+          \expandafter\edef\csname math\hopf@catsym mor\endcsname{\noexpand\MakeLowercase{\hopf@objsym}}
+
+        \fi
+
+%
+% Sanity check to ensure that the \hopf@catlast stuff is defined.
+%
+
+        \@ifundefined{\hopf@catlast cat}{
+            \hopf@warning{\hopf@catlast cat not defined, defining
+              it with object symbol \hopf@catlast}
+            \expandafter\objelt\expandafter{\hopf@catlast}{\hopf@catlast}
+          }{}
+  
+      \fi
+    \else
+%
+% More than one chunk
+%
+   
+      \expandafter\edef\csname math#1cat\endcsname
+        {\expandafter\noexpand\csname\hopf@catfirst cat\endcsname%
+          \noexpand\hopf@modify{}{\hopf@catmods}%
+            {\expandafter\noexpand\csname\hopf@catlast cat\endcsname}}
+
+
+      \expandafter\edef\csname text#1cat\endcsname
+        {\noexpand\hopf@lower{T}he \noexpand\hopf@lower{C}ategory of
+          \expandafter\noexpand\csname\hopf@catmods\hopf@catlast
+          algobjs\endcsname
+          in \noexpand\(\expandafter\noexpand \csname\hopf@catfirst
+          cat\endcsname\noexpand\)}
+
+      \expandafter\edef\csname text#1obj\endcsname
+        {\expandafter\noexpand\csname\hopf@catmods\hopf@catlast
+          algobj\endcsname{}\noexpand\hopf@matharg{\noexpand\hopf@arg} in
+          \noexpand\(\expandafter\noexpand
+          \csname\hopf@catfirst cat\endcsname\noexpand\)}
+
+%
+% We have more than one category so we have a possible fall-back if we
+% weren't given a default object
+%
+
+        \ifx\hopf@objsym\hopf@void
+
+          \expandafter\edef\csname\hopf@catsym elt\endcsname{\expandafter\noexpand\csname \hopf@catfirst elt\endcsname}
+          \expandafter\edef\csname math\hopf@catsym obj\endcsname{\expandafter\noexpand\csname math\hopf@catfirst obj\endcsname}
+          \expandafter\edef\csname math\hopf@catsym mor\endcsname{\expandafter\noexpand\csname math\hopf@catfirst mor\endcsname}
+
+        \else
+  
+          \expandafter\edef\csname\hopf@catsym elt\endcsname{\noexpand\MakeLowercase{\hopf@objsym}}
+          \expandafter\edef\csname math\hopf@catsym obj\endcsname{\noexpand\MakeUppercase{\hopf@objsym}}
+          \expandafter\edef\csname math\hopf@catsym mor\endcsname{\noexpand\MakeLowercase{\hopf@objsym}}
+
+        \fi
+  
+%
+% Now we do a sanity check.  We have defined our current category
+% symbols in terms of simpler ones so we should check that these are
+% themselves defined.  First we save a couple of tokens which won't be
+% wiped when we recall ourselves since the first call is on
+% \hopf@catlast which only contains one symbol and hence doesn't get
+% this far. 
+%
+
+      \edef\hopf@catfirstagain{\hopf@catfirst}
+      \edef\hopf@objsymagain{\hopf@objsym}
+
+%
+% Make sure that '\hopf@catmods\hopf@catlast-algebra objects' are
+% accessible
+%
+
+        \expandafter\expandafter\expandafter\algobj\expandafter\expandafter\expandafter{\expandafter\hopf@catmods\expandafter}\expandafter{\hopf@catlast}
+
+%
+% Make sure that 'hopf@catlast cat' is accessible
+%
+
+      \@ifundefined{\hopf@catlast cat}{
+          \hopf@warning{\hopf@catlast cat not defined, defining
+            it with object symbol \hopf@catlast}
+          \expandafter\objelt\expandafter{\hopf@catlast}{\hopf@catlast}
+        }{}
+
+      \edef\hopf@catfirstfirst{\expandafter\hopf@strip\hopf@catfirstagain.}
+      \ifx\hopf@catfirstfirst\hopf@catfirstagain
+        \edef\hopf@catfirstobj{\hopf@catfirstagain}
+      \else
+        \edef\hopf@catfirstobj{\hopf@objsymagain}
+      \fi
+
+      \@ifundefined{\hopf@catfirstagain cat}{
+          \hopf@warning{\hopf@catfirstagain cat not defined,
+            defining it with object symbol \hopf@catfirstobj}
+          \expandafter\objelt\expandafter{\hopf@catfirstagain}{\hopf@catfirstobj}
+        }{}
+
+    \fi
+  \fi
+}
+
+%
+% This lot is for when we want to talk off 'V-algebra's and 'V-algebra
+% object's without specifying the base category.
+%
+
+\def\algobj#1#2{
+
+  \@ifundefined{#1#2alg}{
+
+    \expandafter\def\csname #1#2alg\endcsname{\relax
+      \ifmmode\relax
+      \hopf@modify{}{#1}{\csname math#2obj\endcsname}\relax
+      \else\relax
+      \hopf@modify{}{#1}{\csname #2cat\endcsname{}}\hyp{}\hopf@lower{A}lgebra\hopf@single{}{s}\relax
+      \fi\relax
+      \xspace}
+
+    \expandafter\def\csname #1#2algobj\endcsname{\relax
+      \ifmmode\relax
+      \hopf@modify{}{#1}{\csname math#2obj\endcsname}\relax
+      \else\relax
+      \hopf@modify{}{#1}{\csname #2cat\endcsname{}}\hyp{}\hopf@lower{A}lgebra
+      \hopf@lower{O}bject\hopf@single{}{s}\relax
+      \fi\relax
+      \xspace}
+
+    \expandafter\def\csname #1#2type\endcsname{\relax
+      \ifmmode\relax
+      \hopf@modify{}{#1}{\csname math#2cat\endcsname}\relax
+      \else\relax
+      \(\hopf@modify{}{#1}{\csname math#2cat\endcsname}\)\relax
+      \fi\relax
+      \xspace}
+
+    \expandafter\def\csname math#1#2op\endcsname{\csname #2elt\endcsname}
+    \expandafter\def\csname text#1#2op\endcsname{\(\hopf@modify{}{#1}{\csname #2cat\endcsname}\)\hyp{}\hopf@lower{O}peration\hopf@single{}{s}}
+
+    \expandafter\def\csname #1#2op\endcsname{\relax
+      \ifmmode\relax
+      \csname math#1#2op\endcsname\relax
+      \else\relax
+      \csname text#1#2op\endcsname\relax
+      \fi\relax
+      \xspace}
+
+    \hopf@caplur{#1#2alg}
+    \hopf@caplur{#1#2algobj}
+    \hopf@caplur{#1#2op}
+  }{}
+}
+
+%
+% How to write the associated objects of a cohomology theory
+%
+% Provides:
+% Efunc: cohomology functor
+% Ehom:  homology functor
+% Ecoef: coefficient ring
+% Erep:  representing spaces
+% Evar:  variety of E^*-algebras
+% Ecoalg: an E^*-coalgebra
+% Emod:   an E^*-module
+% Ecoalgelt: element of an E^*-coalgebra
+% Emodelt:   element of an E^*-module
+% Ecoalgcat: category of E^*-coalgebras
+% Emodcat:   category of E^*-modules
+%
+% Plus usual capitalised and uppercase variants.
+%
+
+
+\def\cohtheory#1{
+\expandafter\newcommand\expandafter{\csname #1func\endcsname}[1][*]{%
+\MakeUppercase{#1}^{##1}}
+
+\expandafter\newcommand\expandafter{\csname B#1func\endcsname}[1][*]{%
+    \mBo{\csname #1func\endcsname[##1]}}
+
+\expandafter\newcommand\expandafter{\csname #1hom\endcsname}[1][*]{%
+\MakeUppercase{#1}_{##1}}
+
+\expandafter\newcommand\expandafter{\csname #1coef\endcsname}[1][*]{%
+\MakeUppercase{#1}^{##1}}
+
+\expandafter\newcommand\expandafter{\csname #1rep\endcsname}[1][*]{%
+\underline{\MakeUppercase{#1}}_{##1}}
+
+\expandafter\def\csname #1var\endcsname{%
+\mGo{\csname acat\endcsname}_{\csname #1coef\endcsname}}
+
+\expandafter\def\csname K#1var\endcsname{%
+\mKo{\mGo{\csname acat\endcsname}_{\csname #1coef\endcsname}}}
+
+\expandafter\def\csname #1alg\endcsname{%
+    \(\csname #1coef\endcsname\)\hyp{}\hopf@lower{A}lgebra\hopf@single{}{s}\xspace}
+
+\expandafter\newcommand\expandafter{\csname
+    text#1var\endcsname}[1][]{%
+\hopf@lower{T}he \hopf@lower{V}ariety of \hopf@lower{G}raded,
+    \hopf@lower{C}ommutative, \csname #1algs\endcsname}
+
+\expandafter\def\csname text#1coalg\endcsname{%
+\(\csname #1coef\endcsname\)\hyp{}\hopf@co\hopf@lower{A}lgebra\hopf@single{}{s}}
+
+\expandafter\def\csname text#1mod\endcsname{%
+\(\csname #1coef\endcsname\)\hyp{}\hopf@lower{M}odule\hopf@single{}{s}}
+
+\expandafter\def\csname math#1coalg\endcsname{%
+\cobj}
+
+\expandafter\def\csname math#1mod\endcsname{%
+\mobj}
+
+\expandafter\def\csname #1coalgelt\endcsname{%
+\celt}
+
+\expandafter\def\csname #1modelt\endcsname{%
+\melt}
+
+\expandafter\def\csname text#1coalgcat\endcsname{%
+    \hopf@lower{T}he \hopf@lower{C}ategory of \csname #1coalgs\endcsname{}}
+%    \(\csname #1coef\endcsname\)\hyp{}\Co{}\hopf@lower{A}lgebras}
+
+\expandafter\def\csname text#1modcat\endcsname{%
+    \hopf@lower{T}he \hopf@lower{C}ategory of \csname #1mods\endcsname{}}
+%    \(\csname #1coef\endcsname\)\hyp{}\hopf@co\hopf@lower{M}odules}
+
+\expandafter\def\csname math#1coalgcat\endcsname{%
+\ccat_{\csname #1coef\endcsname}}
+
+\expandafter\def\csname math#1modcat\endcsname{%
+\mcat_{\csname #1coef\endcsname}}
+
+\expandafter\def\csname #1coalgcat\endcsname{%
+\ifmmode
+\csname math#1coalgcat\endcsname
+\else
+\csname text#1coalgcat\endcsname
+\fi
+\xspace}
+
+\expandafter\def\csname #1modcat\endcsname{%
+\ifmmode
+\csname math#1modcat\endcsname
+\else
+\csname text#1modcat\endcsname
+\fi
+\xspace}
+
+\expandafter\def\csname #1coalg\endcsname{%
+\ifmmode
+\csname math#1coalg\endcsname
+\else
+\csname text#1coalg\endcsname
+\fi
+\xspace}
+
+\expandafter\def\csname #1mod\endcsname{%
+\ifmmode
+\csname math#1mod\endcsname
+\else
+\csname text#1mod\endcsname
+\fi
+\xspace}
+
+\hopf@caplur{#1alg}
+\hopf@caplur{#1coalg}
+\hopf@caplur{#1mod}
+}
+
+
+
+%%%
+%%% ARROWS
+%%%
+
+%
+% Make some variants on \overleftarrow and \overrightarrow
+%
+
+\DeclareMathSymbol{\hopf@halfdash}{\mathrel}{AMSa}{57}
+\DeclareMathSymbol{\hopf@rightarrowhead}{\mathrel}{AMSa}{75}
+\DeclareMathSymbol{\hopf@leftarrowhead}{\mathrel}{AMSa}{76}
+
+\def\hopf@phantom#1#2{%
+  \setbox\z@\hbox{$#1$}\setbox\tw@\null
+  \wd\tw@#2\wd\z@\box\tw@}
+
+\def\hopf@fulldash{\relbar}
+
+\def\hopf@leftdashgap{\phantom{\hopf@halfdash}\hopf@halfdash}
+\def\hopf@rightdashgap{\hopf@halfdash\phantom{\hopf@halfdash}}
+\def\hopf@middashgap{\hopf@phantom{\hopf@halfdash}{.5}\hopf@halfdash\hopf@phantom{\hopf@halfdash}{.5}}
+\def\hopf@middotgap{\hopf@phantom{\hopf@halfdash}{.3}\cdot\hopf@phantom{\hopf@halfdash}{.3}}
+
+\def\hopf@rightdasharrowfill{\arrowfill@{\mkern7mu}\hopf@rightdashgap\hopf@rightarrowhead}
+\def\hopf@rightfulldasharrowfill{\arrowfill@{\mkern7mu}\hopf@fulldash\hopf@rightarrowhead}
+\def\hopf@rightdotarrowfill{\arrowfill@{\mkern7mu}\hopf@middotgap\hopf@rightarrowhead}
+\def\hopf@leftdasharrowfill{\arrowfill@\hopf@leftarrowhead\hopf@leftdashgap{\mkern7mu}}
+\def\hopf@leftdotarrowfill{\arrowfill@\hopf@leftarrowhead\hopf@middotgap{\mkern7mu}}
+\def\hopf@surjrightdasharrowfill{\arrowfill@{\mkern7mu}\hopf@rightdashgap{\mkern2mu\hopf@rightarrowhead\mkern-5mu\hopf@rightarrowhead}}
+\def\hopf@injrightdasharrowfill{\arrowfill@{\lhook\mkern3mu}\hopf@middashgap\hopf@rightarrowhead}
+
+\newcommand{\overdashrightarrow}{%
+  \mathpalette{\overarrow@\hopf@rightdasharrowfill}}
+\newcommand{\overfullrightarrow}{%
+  \mathpalette{\overarrow@\hopf@rightfulldasharrowfill}}
+\newcommand{\overdashleftarrow}{%
+  \mathpalette{\overarrow@\hopf@leftdasharrowfill}}
+\newcommand{\overdotrightarrow}{%
+  \mathpalette{\overarrow@\hopf@rightdotarrowfill}}
+\newcommand{\overdotleftarrow}{%
+  \mathpalette{\overarrow@\hopf@leftdotarrowfill}}
+\newcommand{\oversurjdashrightarrow}{%
+  \mathpalette{\overarrow@\hopf@surjrightdasharrowfill}}
+\newcommand{\overinjdashrightarrow}{%
+  \mathpalette{\overarrow@\hopf@injrightdasharrowfill}}
+
+\ifpxfonts
+  \def\hopf@adjoint{\arrowfill@\relbar\relbar{\mkern10mu\mappedfromchar}}
+\else
+  \def\hopf@adjoint{\arrowfill@\relbar\relbar{\relbar\mkern-4mu\shortmid}}
+\fi
+
+\newcommand{\adjoint}{%
+  \mathrel{\mathop{%
+    \setbox\z@\hbox{\hopf@adjoint\displaystyle}%
+    \setbox\tw@\vbox{\m@th
+      \hbox{$\scriptstyle\mkern20mu$}%
+      \copy\z@
+    }%
+    \hbox to\wd\tw@{\unhbox\z@}}%
+}}
+
+\def\hopf@mapstofill{\arrowfill@{\mapstochar\mkern9mu}\hopf@halfdash{\mkern2mu\hopf@rightarrowhead}}
+\newcommand{\xmapsto}[2][]{\ext@arrow 0359\hopf@mapstofill{#1}{#2}}
+
+
+%
+% Padding command to ensure arrows are long enough.
+%
+
+\newlength{\hopf@padding}
+% Minimum length, globally visible to allow alteration
+\newlength{\hopfminpad}
+\settowidth{\hopfminpad}{$\rightarrow$}
+
+\newcommand{\padout}[1]{%
+  \settowidth{\hopf@padding}{$#1$}%
+  \addtolength{\hopf@padding}{-\hopfminpad}%
+  \ifdim\hopf@padding<0pt%
+  \hspace*{-.5\hopf@padding}#1\hspace*{-.5\hopf@padding}%
+  \else
+  #1%
+  \fi
+}
+
+
+%%%
+%%% QED COMMANDS
+%%%
+
+%
+% ``noproof'' command to put a box in the right place at the end of a
+% result which won't be proved
+%
+
+%
+% First, use an appropriate 'end of proof' symbol.  If the 'amsthm'
+% one is not available, we might be in lms.cls in which case we use
+% theirs.  The fall-back is copied from amsthm.sty.
+%
+
+\@ifundefined{noproof}{%
+  \@ifpackageloaded{amsthm}{%
+%
+% Using amsthm.sty
+%
+  \newcommand{\noproof}{%
+    \ifmmode
+    \pushQED{\qed}\qedhere
+    \else
+    {\hspace*{\fill}\qed}%
+    \fi}
+}{
+  \ifClassIs{lms}
+%
+% Using lms.cls
+%
+    \let\qed\proofbox
+    \let\qedhere\esinglebox
+    \newcommand{\noproof}{{\hspace*{\fill}\proofbox}}
+
+  \else
+%
+% Not using lms.cls or amsthm.sty, fall-back mode
+%
+    \newcommand{\qed}{\leavevmode
+      \hbox to.77778em{%
+        \hfil\vrule
+        \vbox to.675em{\hrule width.6em\vfil\hrule}%
+        \vrule\hfil}}%
+    \newcommand{\noproof}{{\hspace*{\fill}\qed}}
+  \fi
+}
+}{}
+
+%
+% Extra hyphenation commands (copied from mymacros.sty)
+%
+\@ifundefined{enhyp}{
+  \providecommand{\BreakableEnDash}{\leavevmode%
+    \prw@zbreak--\discretionary{}{}{}\prw@zbreak}
+  \DeclareRobustCommand{\enhyp}{%
+    \ifmmode--\else\BreakableEnDash\fi}
+}{}
+\@ifundefined{emhyp}{
+  \providecommand{\BreakableEmDash}{\leavevmode%
+    \prw@zbreak---\discretionary{}{}{}\prw@zbreak}
+  \DeclareRobustCommand{\emhyp}{%
+    \ifmmode---\else\BreakableEmDash\fi}
+}{}

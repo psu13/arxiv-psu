@@ -1,0 +1,619 @@
+\ProvidesPackage{mymacros}
+\RequirePackage{xspace}
+\RequirePackage{providetheorem}
+%\RequirePackage{home}
+
+\@ifundefined{ifClassIs}{%
+  \newcommand{\ifClassIs}[2]{}
+}{}
+
+\@ifundefined{drafttrue}{%
+  \newif\ifdraft}{}
+
+% Currently has some issues with beamer
+
+\ifClassIs{beamer}{
+}{
+\ifdraft
+ \RequirePackage[morose]{cmdtrack}
+\fi
+}
+
+%
+% My macros: shortcuts and macros that I often use
+%
+
+% The rather odd margin effect is so that grepping this file to find a
+% particular command tells you which option allows said command and
+% which packages it relys on.
+
+
+%
+% Some ifs to determine whether or not we have certain capabilities.
+% As these might be provided by several packages, we need to be more
+% subtle than just using \@ifpackageloaded.
+%
+
+% Are we providing theorem-like environments?  And are we using
+% amsthm.sty or amsart.cls to provide them?  (Can't just check if
+% we've loaded amsthm.sty as amsart.cls doesn't load it but
+% incorporates it within).
+
+\newif\ifthe@rem
+
+\newif\if@msthm
+
+\ifClassIs{amsart}{
+\@msthmtrue
+}{}
+
+\@ifpackageloaded{amsthm}{\@msthmtrue}{}
+
+% Load theorem defaults if available.
+
+\if@msthm
+ \the@remtrue
+\fi
+
+\ifClassIs{lms}{
+ \the@remtrue
+}{}
+
+% Beamer predefines loads of the theorem variants, best leave them
+% alone (for now)
+
+%\ifClassIs{beamer}{
+% \the@remfalse
+%}{}
+
+%\@ifpackageloaded{beamerarticle}{
+%  \the@remfalse
+%}{}
+
+% Debug option
+
+\newcommand{\myw@rning}[1]{}
+
+\DeclareOption{debug}{
+  \renewcommand{\myw@rning}[1]{%
+    \message{^^JMyMacro Warning: #1^^J}%
+  }
+}
+
+% Are we using tracking?
+
+\DeclareOption{track}{
+  \cmdtracktrue
+}
+
+% Dealing with differential operators
+
+\DeclareOption{diff}{
+ \newcommand{\diff}[2]{\ensuremath                                      % diff
+   \frac{d #1}{d #2}}
+ \newcommand{\pdiff}[2]{\ensuremath                                     % diff
+   \frac{\partial #1}{\partial #2}}
+ \newcommand{\diffn}[3]{\ensuremath                                     % diff
+   \frac{d^{#1} #2}{d #3^{#1}}}
+ \newcommand{\pdiffn}[3]{\ensuremath                                    % diff
+   \frac{\partial^{#1} #2}{\partial #3}}
+ \newcommand{\pdiffnn}[3]{\ensuremath                                   % diff
+   \frac{\partial^{#1} #2}{\partial {#3}^{#1}}}
+}
+
+% All the standard blackboard bold symbols
+
+\DeclareOption{bb}{
+  \ifx\mathbb\undefined
+  \else
+  \newcommand{\C}{\ensuremath {\mathbb{C}}\xspace}  % bb [amssymb/math/pxfonts]
+  \newcommand{\CP}{\ensuremath {\mathbb{CP}}\xspace}% bb [amssymb/math/pxfonts]
+  \newcommand{\F}{\ensuremath {\mathbb{F}}\xspace}  % bb [amssymb/math/pxfonts]
+  \newcommand{\N}{\ensuremath {\mathbb{N}}\xspace}  % bb [amssymb/math/pxfonts]
+  \renewcommand{\P}{\ensuremath {\mathbb{P}}\xspace}% bb [amssymb/math/pxfonts]
+  \newcommand{\Q}{\ensuremath {\mathbb{Q}}\xspace}  % bb [amssymb/math/pxfonts]
+  \newcommand{\R}{\ensuremath {\mathbb{R}}\xspace}  % bb [amssymb/math/pxfonts]
+  \newcommand{\Z}{\ensuremath {\mathbb{Z}}\xspace}  % bb [amssymb/math/pxfonts]
+  \fi
+}
+
+% Some geometrical symbols and operators
+
+\DeclareOption{geom}{
+ \newcommand{\Ci}{\ensuremath {C^\infty}\xspace}                        % geom
+ \newcommand{\restrict}{\!\!\mid}                                       % geom
+ \newcommand{\conj}[1]{\overline{#1}}                                   % geom
+ \newcommand{\exterior}{\Lambda}                                        % geom
+ \newcommand{\T}{\ensuremath{{S^1}}\xspace}                             % geom
+
+\@ifpackageloaded{amsmath}{%
+%	\DeclareMathOperator{\Det}{Det}                       % geom [amsmath]
+	\DeclareMathOperator{\gr}{Gr}                         % geom [amsmath]
+	\DeclareMathOperator{\gl}{Gl}                         % geom [amsmath]
+	\DeclareMathOperator{\spl}{Sl}                        % geom [amsmath]
+	\DeclareMathOperator{\un}{U}                          % geom [amsmath]
+	\DeclareMathOperator{\ind}{Index}                     % geom [amsmath]
+%	\DeclareMathOperator{\codim}{codim}                   % geom [amsmath]
+	\DeclareMathOperator{\coker}{coker}                   % geom [amsmath]
+	\DeclareMathOperator{\im}{im}                         % geom [amsmath]
+%	\DeclareMathOperator{\supp}{supp}                     % geom [amsmath]
+	\DeclareMathOperator{\spin}{Spin}                     % geom [amsmath]
+	\DeclareMathOperator{\tr}{Tr}                         % geom [amsmath]
+	\DeclareMathOperator{\End}{End}                       % geom [amsmath]
+%	\DeclareMathOperator{\sym}{Sym}                       % geom [amsmath]
+	\DeclareMathOperator{\map}{Map}                       % geom [amsmath]
+	\DeclareMathOperator{\dv}{Div}                        % geom [amsmath]
+}{}
+}
+
+%
+% If we use the package amsthm or the lms class, we should set up
+% various standards by default.  Provide an option to disable this,
+% however.
+%
+
+\DeclareOption{nothm}{
+  \the@remfalse
+}
+
+% Some useful abbreviations and shortcuts for including figures
+
+\DeclareOption{fig}{
+
+  \providecommand{\location}[2][\TeXhome/]%
+    {\newcommand{\figdir}{#1#2/figures}}
+
+  \providecommand{\colour}[1]{\color{#1}}
+  \providecommand{\definecolour}[3]{\definecolor{#1}{#2}{#3}}
+
+  \providecommand{\my@fig}[2][]{%
+      \myw@rning{Looking for \figdir/#2.pstex_t}
+      \IfFileExists{\figdir/#2.pstex_t}{%
+        \myw@rning{\figdir/#2.pstex_t found}%
+        \input{\figdir/#2.pstex_t}%
+        }{%
+        \myw@rning{\figdir/#2.pstex_t not found}%
+        \includegraphics[#1]{\figdir/#2}%
+      }%
+    }
+
+    \ifClassIs{beamer}{%
+      \providecommand{\myfig}[2][]{%
+        \ifbeamer@inlecture
+          \my@fig[#1]{#2}%
+        \fi
+        }}{%
+      \global\let\myfig\my@fig
+    }
+}
+
+\DeclareOption{wallpaper}{
+  \ExecuteOptions{fig}
+
+  \renewcommand{\useeso}{\usepackage{eso-pic}}
+  \renewcommand{\wallpaper}[2][Orange]{%
+    \color[named]{#1}
+    \ClearShipoutPicture
+    \AddToShipoutPicture{\put(0,0){%
+        \hspace{-\hoffset}
+        \parbox[b][\paperheight]{\paperwidth}{%       
+          \vfill
+          \centering
+          \includegraphics[width=\paperwidth,height=\paperheight,%
+            draft=false,keepaspectratio]{\wallhome/Backgrounds/faded/TeX/#2}%
+          \vfill
+    }}}
+  }
+  \renewcommand{\nowallpaper}{\color[named]{Black}\ClearShipoutPicture}
+  \renewcommand{\draftcolour}[2][named]{\color[#1]{#2}}
+  \renewcommand{\draftpagecolour}[2][named]{\pagecolor[#1]{#2}}
+}
+
+\DeclareOption{final}{
+  \PassOptionToPackage{mydraft}{final}
+}
+
+\DeclareOption{collaborate}{
+  \PassOptionToPackage{mydraft}{collaborate}
+}
+
+\DeclareOption{all}{
+  \ExecuteOptions{chcl,diff,abbrev,bb,geom,amsthm,fig}
+}
+
+\newcommand{\useeso}{}
+\newcommand{\usefig}{}
+\newcommand{\wallpaper}[2][Orange]{}
+\newcommand{\nowallpaper}{}
+\newcommand{\draftcolour}[2][named]{}
+\newcommand{\draftpagecolour}[2][named]{}
+
+\ProcessOptions
+
+\ifdraft
+\RequirePackage{mydraft}
+\fi
+
+\useeso
+
+%
+% Anglicisations
+%
+
+
+\@ifundefined{centre}{%
+\newenvironment{centre}{\center}{\endcenter}%
+}{}
+
+%
+% Theorem styles
+%
+
+\ifthe@rem
+
+  \if@msthm
+
+    \@ifundefined{th@my@style@thm}{%
+  \newtheoremstyle{my@style@thm}{3pt}{3pt}{\itshape}{}{\bfseries}{}{.5em}{}
+    }{}
+
+    \@ifundefined{th@my@style@def}{%
+  \newtheoremstyle{my@style@def}{3pt}{3pt}{\itshape}{}{\bfseries}{}{.5em}{}
+    }{}
+
+    \@ifundefined{th@my@style@rmk}{%
+  \newtheoremstyle{my@style@rmk}{3pt}{3pt}{\upshape}{}{\bfseries}{}{.5em}{}
+    }{}
+
+  \fi
+
+    \def\mythmstyle{my@style@thm}
+    \def\mydefstyle{my@style@thm}
+    \def\myrmkstyle{my@style@rmk}
+
+  \ifClassIs{lms}{
+    \let\my@newtheorem\providetheorem
+    \newcommand{\theoremstyle}[1]{%
+    \edef\my@style@given{#1}
+    \ifx\my@style@given\mythmstyle
+     \let\providetheorem\my@newtheorem
+    \else
+     \ifx\my@style@given\mydefstyle
+      \let\providetheorem\my@newtheorem
+     \else
+     \ifx\my@style@given\myrmkstyle
+      \let\providetheorem\newnumbered % Need to define 'providenumbered' in providetheorem.sty
+     \fi
+    \fi
+   \fi
+    }
+  }{}
+
+\@ifundefined{theoremstyle}{%
+  \newcommand{\theoremstyle}[1]{}}{}
+
+    \theoremstyle{\mythmstyle}
+
+  \providetheorem{theorem}{Theorem}[section]
+  \providetheorem{lemma}[theorem]{Lemma}
+  \providetheorem{proposition}[theorem]{Proposition}
+
+    \providetheorem{corollary}[theorem]{Corollary}
+    \providetheorem{thm}{Theorem}
+    \providetheorem{cor}[thm]{Corollary}
+    \providetheorem{deflemma}[theorem]{Definition and Lemma}
+
+\ifClassIs{lms}{}{
+% Starred versions are automatic under LMS
+    \providetheorem*{theorem*}{Theorem}
+    \providetheorem*{lemma*}{Lemma}
+    \providetheorem*{proposition*}{Proposition}
+    \providetheorem*{corollary*}{Corollary}
+}
+
+\theoremstyle{\mydefstyle}
+
+    \providetheorem{defn}[theorem]{Definition}
+    \providetheorem{conjecture}{Conjecture}
+    \providetheorem{axiom}[theorem]{Axiom}
+
+\ifClassIs{lms}{}{
+    \providetheorem*{defn*}{Definition}
+    \providetheorem*{conjecture*}{Conjecture}
+    \providetheorem*{axiom*}{Axiom}
+}
+
+    \theoremstyle{\myrmkstyle}
+
+    \providetheorem{example}[theorem]{Example}
+    \providetheorem{exercise}[theorem]{Exercise}
+    \providetheorem{remark}[theorem]{Remark}
+    \providetheorem{question}[theorem]{Question}
+
+  \renewcommand{\thetheorem}{\thesection.\arabic{theorem}}
+  \renewcommand{\theconjecture}{\Alph{conjecture}}
+  \renewcommand{\thethm}{\Alph{thm}}
+\fi
+
+%
+% 'noproof' commands
+%
+
+\@ifundefined{noproof}{%
+\if@msthm
+  \newcommand{\noproof}{%
+    \ifmmode
+    \pushQED{\qed}\qedhere
+    \else
+    {\hspace*{\fill}\qed}%
+    \fi}
+\else
+  \ifClassIs{lms}{
+    \let\qed\proofbox
+% The LMS way of putting a qed symbol at the end of an equation is
+% broken so we don't use it.  Short of importing the relevant bits
+% from amsthm.sty, I don't know how to fix it.
+
+    \let\qedhere\@empty
+    \newcommand{\noproof}{{\hspace*{\fill}\proofbox}}
+  }{
+    \newcommand{\qed}{\leavevmode
+      \hbox to.77778em{%
+        \hfil\vrule
+        \vbox to.675em{\hrule width.6em\vfil\hrule}%
+        \vrule\hfil}}%
+    \newcommand{\noproof}{{\hspace*{\fill}\qed}}
+  }
+\fi
+}{}
+
+% \noproof looks a little daft if the qed symbol is 'q.e.d.'
+
+\ifClassIs{jdg-p}{
+  \renewcommand{\noproof}{}
+}{}
+
+%
+% Font shortcuts
+%
+
+\newcommand{\m}[1]{\ensuremath {\mathcal{#1}}\xspace}
+\newcommand{\mf}[1]{\ensuremath {\mathfrak{#1}}\xspace}
+
+%
+% A rather horrendous topological gaff
+% 
+
+\newcommand{\smsh}{\land}
+\renewcommand{\wedge}{\lor}
+
+%
+% Allow conjoining of words without breaking hyphenation.
+% Three lengths: - -- --- corresponding to
+% \hyp, \enhyp, \emhyp
+%
+% If hyphenat pacakge is loaded, use \hyp from that and define \enhyp
+% and \emhyp similarly.
+% Otherwise, use a simpler hack.
+%
+
+\@ifpackageloaded{hyphenat}{%
+  \@ifundefined{enhyp}{
+  \providecommand{\BreakableEnDash}{\leavevmode%
+    \prw@zbreak--\discretionary{}{}{}\prw@zbreak}
+  \DeclareRobustCommand{\enhyp}{%
+    \ifmmode--\else\BreakableEnDash\fi}
+}{}
+  \@ifundefined{emhyp}{
+  \newcommand{\BreakableEmDash}{\leavevmode%
+    \prw@zbreak---\discretionary{}{}{}\prw@zbreak}
+  \DeclareRobustCommand{\emhyp}{%
+    \ifmmode---\else\BreakableEmDash\fi}
+}{}
+}{%
+  \providecommand{\hyp}{-\hspace{0pt}}
+  \providecommand{\enhyp}{--\hspace{0pt}}
+  \providecommand{\emhyp}{---\hspace{0pt}}
+}
+
+%
+% These only work with amssymb or pxfonts
+%
+
+\@ifundefined{smallsetminus}{}{%
+\newcommand{\ssetminus}{\ensuremath {\!\smallsetminus\!}}        % [!amssymb!]
+}
+
+%
+% These with only amsmath
+%
+
+\@ifpackageloaded{amsmath}{%
+  \renewcommand{\above}[2]{\genfrac{}{}{0pt}{}{#1}{#2}}           % [!amsmath!]
+  \newcommand{\abs}[1]{%                                          % [!amsmath!]
+    {\if@display
+       \left\lvert #1 \right\rvert
+     \else
+       \lvert #1 \rvert
+     \fi}}
+  \newcommand{\sabs}[1]{\lvert #1 \rvert}                         % [!amsmath!]
+  \newcommand{\dabs}[1]{\left\lvert #1 \right\rvert}              % [!amsmath!]
+  \newcommand{\norm}[1][\cdot]{\left\lVert #1 \right\rVert}       % [!amsmath!]
+  \newcommand{\ip}[2]{\langle #1, #2 \rangle}                     % [!amsmath!]
+}{}
+
+%
+% If we use the fancyhdr package
+%
+
+\@ifpackageloaded{fancyhdr}{%
+	\pagestyle{fancy}
+	\fancyhead{}
+	\cfoot{\thepage}
+
+	\renewcommand{\headrulewidth}{0pt}
+	\renewcommand{\footrulewidth}{0pt}
+}{}
+
+%
+% Adjust page size (should check for page size I guess)
+%
+
+\newlength{\resize}
+
+\newcommand{\textarea}[1]{%
+  \setlength{\resize}{#1}%
+  \addtolength{\textwidth}{\resize}
+  \addtolength{\hoffset}{-.5\resize}
+  \addtolength{\textheight}{1.4\resize}
+  \addtolength{\voffset}{-.7\resize}
+}
+
+%
+% Beamer and beamer-related stuff
+%
+
+%
+% Hack the title page to make a 'lecture title page' for each lecture
+%
+
+\ifClassIs{beamer}{
+\newcommand{\LectureTitlePage}{%
+    \setcounter{framenumber}{0}
+    \global\def\inserttitle{{Lecture \insertlecturenumber: \insertlecture}}
+    \global\def\insertshorttitle{{Lecture \insertlecturenumber: \insertlecture}}
+    \global\def\insertdate{\printdate{\csname beamer@currentlecturelabel\endcsname}}
+    \global\def\insertshortdate{\printdate{\csname beamer@currentlecturelabel\endcsname}}
+  \titlepage
+}
+% Allow frames to not be in any lecture without disrupting flow
+\newcommand{\nolecture}{%
+  \beamer@savemode
+  \mode<all>
+  \def\beamer@currentlecturelabel{}
+  \def\beamer@lecturename{}
+  \def\beamer@shortlecturename{}
+  \ifx\beamer@onlylecture\@empty
+  \else
+    \beamer@inlecturefalse
+  \fi
+  \beamer@resumemode
+}
+
+% Blank out non-displaying lectures rather than just not showing them
+% (Speeds up compilation considerably)
+
+\newcommand{\lecturemode}{%
+    \ifbeamer@inlecture
+    \else
+      \expandafter\mode\expandafter<\expandafter n\expandafter o\expandafter n\expandafter e\expandafter >\fi
+}
+
+
+% Sometimes the default spacing around displayed maths is a bit big
+% for my liking.  This gives the option of altering that spacing.  The
+% difference between sdmath and simath is what happens in article
+% mode.  One is replaced by equation*, the other by just math.
+
+\newlength{\smathgap}
+\newenvironment<>{sdmath}[1][0pt]{%
+    \setlength{\smathgap}{#1}
+    \begin{altenv}#2{%
+      \par\vspace{\smathgap}\par%
+      \hspace*{\fill}%
+      \math\displaystyle%
+    }{%
+      \endmath%
+      \hspace*{\fill}%
+      \par\vspace{\smathgap}\par%
+    }{%
+      \begin{equation*}%
+    }{%
+  \end{equation*}}}{\end{altenv}}
+
+  \newenvironment<>{simath}[1][0pt]{%
+    \setlength{\smathgap}{#1}
+    \begin{altenv}#2{%
+      \par\vspace{\smathgap}\par%
+      \hspace*{\fill}%
+      \math\displaystyle%
+    }{%
+      \endmath%
+      \hspace*{\fill}%
+      \par\vspace{\smathgap}\par%
+    }{%
+      \begin{math}%
+    }{%
+  \end{math}}}{\end{altenv}}
+  
+}{}  %%% End: ifClassIs{beamer}
+
+
+\@ifpackageloaded{beamerarticle}{
+    \newcommand{\LectureTitlePage}{%
+  \def\inserttitle{{Lecture \insertlecturenumber: \insertlecture}}
+  \def\insertdate{\printdate{\csname beamer@currentlecturelabel\endcsname}}
+  \titlepage
+}
+}{}
+
+%
+% If using pgfpages and pgf, defined a boxed version of 4up
+%
+
+\@ifpackageloaded{pgfpages}{
+  \@ifpackageloaded{pgf}{
+\pgfpagesdeclarelayout{4 on 1 boxed}
+{
+  \edef\pgfpageoptionheight{\the\paperheight} 
+  \edef\pgfpageoptionwidth{\the\paperwidth}
+  \edef\pgfpageoptionborder{0pt}
+}
+{
+  \pgfpagesphysicalpageoptions
+  {%
+    logical pages=4,%
+    physical height=\pgfpageoptionheight,%
+    physical width=\pgfpageoptionwidth%
+  }
+  \pgfpageslogicalpageoptions{1}
+  {%
+    border code=\pgfsetlinewidth{2pt}\pgfstroke,%
+    border shrink=\pgfpageoptionborder,%
+    resized width=.5\pgfphysicalwidth,%
+    resized height=.5\pgfphysicalheight,%
+    center=\pgfpoint{.25\pgfphysicalwidth}{.75\pgfphysicalheight}%
+  }%
+  \pgfpageslogicalpageoptions{2}
+  {%
+    border code=\pgfsetlinewidth{2pt}\pgfstroke,%
+    border shrink=\pgfpageoptionborder,%
+    resized width=.5\pgfphysicalwidth,%
+    resized height=.5\pgfphysicalheight,%
+    center=\pgfpoint{.75\pgfphysicalwidth}{.75\pgfphysicalheight}%
+  }%
+  \pgfpageslogicalpageoptions{3}
+  {%
+    border code=\pgfsetlinewidth{2pt}\pgfstroke,%
+    border shrink=\pgfpageoptionborder,%
+    resized width=.5\pgfphysicalwidth,%
+    resized height=.5\pgfphysicalheight,%
+    center=\pgfpoint{.25\pgfphysicalwidth}{.25\pgfphysicalheight}%
+  }%
+  \pgfpageslogicalpageoptions{4}
+  {%
+    border code=\pgfsetlinewidth{2pt}\pgfstroke,%
+    border shrink=\pgfpageoptionborder,%
+    resized width=.5\pgfphysicalwidth,%
+    resized height=.5\pgfphysicalheight,%
+    center=\pgfpoint{.75\pgfphysicalwidth}{.25\pgfphysicalheight}%
+  }%
+}
+}{}}{}
+
+
+%
+% Turn off command tracking
+%
+
+\@ifundefined{cmdtrackfalse}{}{\cmdtrackfalse}
