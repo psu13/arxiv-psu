@@ -1,0 +1,651 @@
+% !TEX root = clerical.tex
+\section{Specification logic}
+\label{sec:specification-logic}
+
+We devise a Hoare-style specification logic for proving the correctness of Clerical expressions.
+As briefly discussed in Section~\ref{sec:overview}, 
+it is necessary to have both forms of correctness: partial and total.
+While both types of correctness guarantee the avoidance of erroneous execution, the difference between them is that
+partial correctness allows non-termination and total correctness forbids it. 
+Having both forms of correctness is necessary  for the logic's correctness and expressivity, as will become clear when we present the proof rules in \cref{sec:proof-rules}.
+
+First, we  formulate the correctness specifications we will use, which are written in the style of Hoare-style triples. For each pure expression and general expression, we define the notions of partial and total correctness, yielding four variants, as follows.
+
+
+Given a context $\Gamma = (x_1 \of \tau_1, \ldots, x_n \of \tau_n)$, a pure expression $\Gamma \rotypes e : \tau$, a \defemph{precondition} $A \subseteq \sem{\Gamma}$ and a \defemph{postcondition} $B \subseteq \sem{\Gamma} \times \sem{\tau}$, we define the \defemph{partial} and \defemph{total (read-only) correctness triples} respectively as
+%
+\begin{align*}
+  \rotrip[\prt] {\Gamma} {A} {e} {B}
+  &\iff
+  \all{\gamma \in A} 
+  (\sem{e} \, \gamma \neq \emptyset 
+\,\land \,
+  \all{v \in \sem{e} \, \gamma}
+ (v \neq \bot \lthen (\gamma, v) \in B)),
+  \\
+  \rotrip[\tot] {\Gamma} {A} {e} {B}
+  &\iff
+   \all{\gamma \in A} 
+  (\sem{e} \, \gamma \neq \emptyset 
+\,\land \,
+  \all{v \in \sem{e} \, \gamma}
+ (v \neq \bot \land(\gamma, v) \in B)).
+\end{align*}
+%
+Here, $\sem{e}$ is an abbreviation for $\sem{\Gamma \rotypes e : \tau}$.
+Both forms of correctness state that the error state is not reached and that any value computed by~$e$ satisfies the postcondition. Note that partial correctness does not require termination, whereas total correctness guarantees it.
+
+Given a logical formula $\phi$ in variables $\vec{x} = (x_1, \ldots, x_n) \in \sem{\Gamma}$ and a formula $\psi$ in variables $(\vec{x}, y) \in \sem{\Gamma} \times \sem{\tau}$, the triple
+%
+\begin{equation*}
+  \rotrip[\prt]
+  {\Gamma} {\{\vec{x} \in \sem{\Gamma} \mid \phi\}}
+  {e}
+  {\{(\vec{x}, y) \in \sem{\Gamma} \times \sem{\tau} \such \psi\}}
+\end{equation*}
+%
+can be written more concisely as
+%
+\begin{equation}
+  \label{eq:notation-rotrip}
+  \rotrip[\prt]{\Gamma} {\phi} {e} {y \of \tau \such \psi}.
+\end{equation}
+%
+Read the above as: if $\phi$ holds then $e$ does not err, and if it terminates then every value~$y$ computed by~$e$ satisfies~$\psi$. By replacing the symbol $\prt$ with $\tot$ we obtain the analogous notation for total correctness: if $\phi$ holds then~$e$ does not err, it terminates and every value~$y$ computed by~$e$ satisfies~$\psi$.
+
+The analogous triples for general expressions are more complicated because they need to take state-change into account. Let $\Gamma; \Delta \rwtypes c : \tau$ be a general expression, $A \subseteq \sem{\Gamma} \times \sem{\Delta}$ and $B \subseteq \sem{\Gamma} \times  \sem{\Delta} \times \sem{\tau}$. Then we define the \defemph{partial} and \defemph{total (read-write) correctness triples} respectively as
+%
+\begin{multline*}
+  \rwtrip[\prt] {\Gamma; \Delta} {A} {c} {B} \iff {} \\
+  \all{(\gamma, \delta) \in A}
+  (\sem{c} \, \gamma \, \delta \neq \emptyset  \, \land\,
+  \all{w \in \sem{c} \, \gamma \, \delta} 
+  (w \neq \bot \lthen (\gamma, \delta_w,v_w) \in B),
+\end{multline*}
+%
+and
+%
+\begin{multline*}
+  \rwtrip[\tot] {\Gamma; \Delta} {A} {c} {B} \iff {} \\
+  \all{(\gamma, \delta) \in A}
+  (\sem{c} \, \gamma \, \delta \neq \emptyset  \, \land\,
+  \all{w \in \sem{c} \, \gamma \, \delta} \,
+  (w \neq \bot \land (\gamma, \delta_w,v_w) \in B), 
+\end{multline*}
+%
+where $\sem{c}$ is an abbreviation for $\sem{\Gamma; \Delta \rwtypes c : \tau}$, and we use the fact that
+any element $w \in \sem{c} \, \gamma \, \delta$ which is not $\bot$ is of the form $w = (\delta_w,v_w)$, so the conclusion 
+$(\gamma, \delta_w,v_w) \in B$ states that, in the new read-write state $(\gamma, \delta_w)$, the return value~$v_w$ satisfies the postcondition~$B$.
+
+Given a formula $\phi$ in variables $(\vec{x}, \vec{y}) \in \sem{\Gamma} \times \sem{\Delta}$ and a formula $\psi$ in variables $(\vec{x}, \vec{y}, z) \in \sem{\Gamma} \times \sem{\Delta} \times \sem{\tau}$,
+the triple
+%
+\begin{equation*}
+  \rwtrip[\prt]
+  {\Gamma; \Delta} {\{(\vec{x}, \vec{y}) \in \sem{\Gamma} \times \sem{\Delta} \such \phi\}}
+  {c}
+  {\{(\vec{x}, \vec{y}, z) \in \sem{\Gamma} \times \sem{\Delta} \times \sem{\tau} \such \psi\}}.
+\end{equation*}
+%
+can again be written more concisely as
+%
+\begin{equation}
+  \label{eq:notation-rwtrip}
+  \rwtrip[\prt]{\Gamma; \Delta} {\phi} {c} {z \of \tau \such \psi}.
+\end{equation}
+%
+Read the above as: if $\phi$ holds then~$c$ does not err, and if it terminates then it computes a value satisfying~$\psi$ in the new state.
+By replacing~$\prt$ with~$\tot$ we get analogous notation for total correctness: if $\phi$ holds then~$c$ does not err, it terminates and computes a value satisfying~$\psi$ in the new state.
+
+We introduce one further notational convention that streamlines reasoning about expressions of the trivial type~$\dU$: if~$\psi$ is a formula in which the variable~$y$ does not appear freely, then we write $\{ \psi \}$ instead of $\{ y \of \dU \such \psi \}$.
+
+
+\subsection{Proof rules}
+\label{sec:proof-rules}
+
+The notation~\eqref{eq:notation-rotrip} is general in the sense that it can be used to express any correctness triple $\rotrip[\prt]{\Gamma}{A}{e}{B}$ by taking $\phi$ to be the formula $\vec{x} \in A$ and $\psi$ to be $(\vec{x}, y) \in B$.
+%
+A similar observation holds for~\eqref{eq:notation-rwtrip}, therefore, notations~\eqref{eq:notation-rotrip} and~\eqref{eq:notation-rwtrip} may be used freely in rules about correctness triples.
+
+Many rules come in pairs differing only in the use of symbols~$\prt$ and~$\tot$. To avoid pointless duplication in such cases, we use the symbol~$\star$ to indicate that either~$\prt$ or~$\tot$ can be inserted in its place, consistently throughout a rule. For example, the rule \rref{Ro-Conj} in \cref{fig:rules-general} decompresses to the rules
+%
+\begin{mathpar}
+  \inferenceRule{Ro-Part-Conj}{
+    \rotrip[\prt] {\Gamma} {\phi} {e} {y \of \tau \such \psi_1} \\
+    \rotrip[\prt] {\Gamma} {\phi} {e} {y \of \tau \such \psi_2}
+  }{
+    \rotrip[\prt] {\Gamma} {\phi} {e} {y \of \tau \such \psi_1 \land \psi_2}
+  }
+
+  \inferenceRule{Ro-Tot-Conj}{
+    \rotrip[\tot] {\Gamma} {\phi} {e} {y \of \tau \such \psi_1} \\
+    \rotrip[\tot] {\Gamma} {\phi} {e} {y \of \tau \such \psi_2}
+  }{
+    \rotrip[\tot] {\Gamma} {\phi} {e} {y \of \tau \such \psi_1 \land \psi_2}
+  }
+\end{mathpar}
+%
+We partition the rules into three groups:
+the \emph{general rules} in \cref{fig:rules-general},
+the \emph{arithmetical rules} in \cref{fig:rules-arithmetic}, and
+the \emph{operational rules} in \cref{fig:rules-operational}.
+%
+In all of them, it is presupposed that the expressions appearing are well-typed in the indicated contexts and with the indicated type and that all the formulas are well-scoped in the given contexts.
+%
+Many rules have a logical side-condition for the rule to apply, written as an additional premise. 
+When a formula $\phi$ in variables $\vec{x} = (x_1, \ldots, x_n) \in \sem{\Gamma}$  is written as a premise, it means that the rule only applies in the case that $\phi$ holds for all $\vec{x} \in \sem{\Gamma}$.
+
+\begin{figure}
+  \centering
+  \begin{mdframed}
+    \footnotesize
+    \centering
+
+    \textbf{Logical rules:}
+    %
+    \begin{mathpar}
+      \inferenceRule{Ro-Imply}{
+        \rotrip {\Gamma} {\phi'} {e} {y \of \tau \such \psi'} \\\\
+        \phi \lthen \phi' \\
+        \psi' \lthen \psi
+      }{
+        \rotrip {\Gamma} {\phi} {e} {y \of \tau \such \psi}
+      }
+
+      \inferenceRule{Rw-Imply}{
+        \rwtrip {\Gamma; \Delta} {\phi'} {c} {z \of \tau \such \psi'} \\\\
+        \phi \lthen \phi' \\
+        \psi' \lthen \psi
+      }{
+        \rwtrip {\Gamma; \Delta} {\phi} {c} {z \of \tau \such \psi}
+      } \\
+
+      \inferenceRule{Ro-ExFalso}{
+      }{
+        \rotrip {\Gamma} { \bot } {e} { \psi }
+      }
+
+      \inferenceRule{Rw-ExFalso}{
+      }{
+        \rwtrip {\Gamma; \Delta} { \bot } {c} { \psi }
+      }
+
+      \inferenceRule{Ro-Conj}{
+        \rotrip {\Gamma} {\phi} {e} {y \of \tau \such \psi_1} \\
+        \rotrip {\Gamma} {\phi} {e} {y \of \tau \such \psi_2}
+      }{
+        \rotrip {\Gamma} {\phi} {e} {y \of \tau \such \psi_1 \land \psi_2}
+      }
+
+      \inferenceRule{Rw-Conj}{
+        \rwtrip {\Gamma; \Delta} {\phi} {c} {z \of \tau \such \psi_1} \\
+        \rwtrip {\Gamma; \Delta} {\phi} {c} {z \of \tau \such \psi_2}
+      }{
+        \rwtrip {\Gamma; \Delta} {\phi} {c} {z \of \tau \such \psi_1 \land \psi_2}
+      }
+
+      \inferenceRule{Ro-Disj}{
+        \rotrip {\Gamma} {\phi_1} {e} {y \of \tau \such \psi} \\
+        \rotrip {\Gamma} {\phi_2} {e} {y \of \tau \such \psi}
+      }{
+        \rotrip {\Gamma} {\phi_1 \lor \phi_2} {e} {y \of \tau \such \psi}
+      }
+
+      \inferenceRule{Rw-Disj}{
+        \rwtrip {\Gamma; \Delta} {\phi_1} {c} {z \of \tau \such \psi} \\
+        \rwtrip {\Gamma; \Delta} {\phi_2} {c} {z \of \tau \such \psi}
+      }{
+        \rwtrip {\Gamma; \Delta} {\phi_1 \lor \phi_2} {e} {z \of \tau \such \psi}
+      }
+    \end{mathpar}
+    
+    \medskip
+
+    \textbf{Variables and constants:}
+    %
+    \begin{mathpar}
+      \inferenceRule{Ro-Var}{
+      }{
+        \rotrip {\Gamma_1, x \of \tau, \Gamma_2} {\psi[x/y]} {x} {y \of \tau \such \psi}
+      }
+
+      \inferenceRule{Ro-Skip}{
+      }{
+        \rotrip {\Gamma} {\psi} \cskip {\psi}
+      }
+
+      \inferenceRule{Ro-Bool-Const}{
+        b \in \{\cfalse, \ctrue\}
+      }{
+        \rotrip {\Gamma} {\psi[b/y]} b {y \of \dB \such \psi}
+      }
+
+      \inferenceRule{Ro-Int-Const}{
+        k \in \IZ
+      }{
+        \rotrip {\Gamma} {\psi[k/y]} {\numeral{k}} {y \of \dZ \such \psi}
+      }
+    \end{mathpar}
+
+\medskip
+
+    \textbf{Passage between read-only and read-write correctness:}
+    %
+    \begin{mathpar}
+      \inferenceRule{Rw-Ro}{
+        \rwtrip {\Gamma; \emptyctx} {\phi} {c} {z \of \tau \such \psi}
+      }{
+        \rotrip {\Gamma} {\phi} {c} {z \of \tau \such \psi}
+      }
+
+      \inferenceRule{Ro-Rw}{
+        \rotrip {\Gamma, \Delta} {\phi} {e} {y \of \tau \such \psi}
+      }{
+        \rwtrip {\Gamma; \Delta} {\phi} {e} {y \of \tau \such \psi}
+      }
+    \end{mathpar}
+
+  \end{mdframed}
+  \caption{General proof rules}
+  \label{fig:rules-general}
+\end{figure}
+
+
+\begin{figure}
+  \centering
+  \begin{mdframed}
+    \footnotesize
+    \centering
+
+    \textbf{Coercion and exponentiation:}
+    %
+    \begin{mathpar}
+      \inferenceRule{Ro-Coerce}{
+        \rotrip {\Gamma} {\phi} e {y \of \dZ \such \psi[\inclZ{y}/y]}
+      }{
+        \rotrip {\Gamma} {\phi} {\ccoerce{e}} {y \of \dR \such \psi}
+      }
+
+      \inferenceRule{Ro-Exp}{
+        \rotrip {\Gamma} {\phi} {e} {x \of \dZ \such \psi[2^x/y]} 
+      }{
+        \rotrip {\Gamma} {\phi} {2^e} {y \of \dR \such \psi}
+      }
+
+    \end{mathpar}
+    
+    \medskip
+
+    \textbf{Integer arithmetic:}
+    \begin{mathpar}
+      \inferenceRule{Ro-Int-Op}{
+        \rotrip {\Gamma} {\phi} {e_1} {y_1 \of \dZ \such \psi_1} \\
+        \rotrip {\Gamma} {\phi} {e_2} {y_2 \of \dZ \such \psi_2} \\\\
+        \psi_1 \land \psi_2 \lthen \psi[(y_1 \op y_2)/y]
+      }{
+        \rotrip {\Gamma} {\phi} {e_1 \iop e_2} {y \of \dZ \such \psi}
+      }
+    \end{mathpar}
+
+\medskip
+
+    \textbf{Real arithmetic:}
+    \begin{mathpar}
+      \inferenceRule{Ro-Real-Op}{
+        \rotrip {\Gamma} {\phi} {e_1} {y_1 \of \dR \such \psi_1} \\
+        \rotrip {\Gamma} {\phi} {e_2} {y_2 \of \dR \such \psi_2} \\\\
+        \psi_1 \land \psi_2 \lthen \psi[(y_1 \op y_2)/y]
+      }{
+        \rotrip {\Gamma} {\phi} {e_1 \rop e_2} {y \of \dR \such \psi}
+      }
+    \end{mathpar}
+
+\medskip
+
+    \textbf{Reciprocal:}
+    %
+    \begin{mathpar}
+      \inferenceRule{Ro-Part-Recip}{
+        \rotrip[\prt] {\Gamma} {\phi} {e} {x \of \dR \such \theta} \\\\
+        \theta \land x \neq 0 \lthen \psi[x^{-1}/y]
+      }{
+        \rotrip[\prt] {\Gamma} {\phi} {\cinv{e}} {y \of \dR \such \psi}
+      }
+
+      \inferenceRule{Ro-Tot-Recip}{
+        \rotrip[\tot] {\Gamma} {\phi} {e} {x \of \dR \such \theta} \\\\
+        \theta \lthen x \neq 0 \land \psi[x^{-1}/y]
+      }{
+        \rotrip[\tot] {\Gamma} {\phi} {\cinv{e}} {y \of \dR \such \psi}
+      }
+    \end{mathpar}
+
+\medskip
+
+    \textbf{Integer comparison ${\sim} \in \{{\ieq}, {\ilt}\}$:}
+    \begin{mathpar}
+      \inferenceRule{Ro-Int-Comp}{
+        \rotrip {\Gamma} {\phi} {e_1} {y_1 \of \dZ \such \psi_1} \\
+        \rotrip {\Gamma} {\phi} {e_2} {y_2 \of \dZ \such \psi_2} \\\\
+        \psi_1 \land \psi_2 \lthen \psi[(y_1 \sim y_2)/b]
+      }{
+        \rotrip {\Gamma} {\phi} {e_1 \sim e_2} {b \of \dB \such \psi}
+      }
+    \end{mathpar}
+
+\medskip
+
+    \textbf{Real comparison:}
+    \begin{mathpar}
+      \inferenceRule{Ro-Part-Real-Lt}{
+        \rotrip[\prt] {\Gamma} {\phi} {e_1} {y_1 \of \dR \such \psi_1} \\
+        \rotrip[\prt] {\Gamma} {\phi} {e_2} {y_2 \of \dR \such \psi_2} \\\\
+        \psi_1 \land \psi_2 \land y_1 \neq y_2 \lthen \psi[(y_1 < y_2)/b]
+      }{
+        \rotrip[\prt] {\Gamma} {\phi} {e_1 \rlt e_2} {b \of \dB \such \psi}
+      }
+
+      \inferenceRule{Ro-Tot-Real-Lt}{
+        \rotrip[\tot] {\Gamma} {\phi} {e_1} {y_1 \of \dR \such \psi_1} \\
+        \rotrip[\tot] {\Gamma} {\phi} {e_2} {y_2 \of \dR \such \psi_2} \\\\
+        \psi_1 \land \psi_2 \lthen y_1 \neq y_2 \land \psi[(y_1 < y_2)/b]
+      }{
+        \rotrip[\tot] {\Gamma} {\phi} {e_1 \rlt e_2} {b \of \dB \such \psi}
+      }
+    \end{mathpar}
+
+\medskip
+
+    \textbf{Limit:}
+    \begin{mathpar}
+      \inferenceRule{Ro-Lim}{
+        \rotrip[t] {\Gamma, x \of \dZ} {\phi} {e} {z \of \dR \such \theta} \\
+        \phi \lthen \some{y \in \IR} \psi \land \all{x \in \IZ} \all{z \in \IR} \theta \lthen |z - y| < 2^{-x}
+      }{
+        \rotrip {\Gamma} {\phi} {\clim{x} e} {y \of \dR \such \psi}
+      }
+    \end{mathpar}
+
+  \end{mdframed}
+  \caption{Arithmetical proof rules}
+  \label{fig:rules-arithmetic}
+\end{figure}
+
+
+\begin{figure}
+  \centering
+  \begin{mdframed}
+    \footnotesize
+    \centering
+
+    \begin{mathpar}
+      \inferenceRule{Rw-Sequence}{
+        \rwtrip {\Gamma; \Delta} {\phi} {c_1} {\theta} \\
+        \rwtrip {\Gamma; \Delta} {\theta} {c_2} {z \of \tau \such \psi}
+      }{
+        \rwtrip {\Gamma; \Delta} {\phi} {c_1 ; c_2} {z \of \tau \such \psi}
+      }
+
+      \inferenceRule{Rw-New-Var}{
+        \rotrip {\Gamma, \Delta} {\phi} {e} {x \of \sigma \such \theta} \\
+        \rwtrip {\Gamma; \Delta, x \of \sigma} {\theta} {c} {z \of \tau \such \psi}
+      }{
+        \rwtrip {\Gamma; \Delta} {\phi} {\cvar{x}{e} c} {z \of \tau \such \psi}
+      }
+
+      \inferenceRule{Rw-Assign}{
+        \rotrip {\Gamma, \Delta} {\phi} {e} {x \of \tau \such \theta} \\
+        \theta \lthen \psi[x/y]
+      }{
+        \rwtrip {\Gamma; \Delta_1, y \of \sigma, \Delta_2} {\phi} {\clet{y}{e}} {\psi}
+      }
+
+      \inferenceRule{Rw-Cond}{
+        \rotrip {\Gamma, \Delta} {\phi} {e} {b \of \dB \such \theta } \\
+        \rwtrip {\Gamma; \Delta} {\theta[\semtt/b]} {c_1} {z \of \tau \such \psi} \\
+        \rwtrip {\Gamma; \Delta} {\theta[\semff/b]} {c_2} {z \of \tau \such \psi} \\
+      }{
+        \rwtrip {\Gamma; \Delta} {\phi} {\cif e \cthen c_1 \celse c_2 \cend} {z \of \tau \such \psi}
+      }
+
+      \inferenceRule{Rw-Part-Case}{
+        {\begin{aligned}
+        &\rotrip[\prt] {\Gamma, \Delta} {\phi} {e_i} {b \of \dB \such \theta_i }
+         &&\text{for $i = 1, \ldots, n$} \\[-0.25em]
+        &\rwtrip[\prt] {\Gamma; \Delta} {\theta_i[\semtt/b]} {c_i} {z \of \tau \such \psi}
+         &&\text{for $i = 1, \ldots, n$}
+        \end{aligned}}
+      }{
+        \rwtrip[\prt]
+          {\Gamma; \Delta}
+          {\phi}
+          {\ccase e_1 \To c_1 \mid \cdots \mid e_n \To c_n \cend}
+          {z \of \tau \such \psi}
+      }
+
+      \inferenceRule{Rw-Tot-Case}{
+        {\begin{aligned}
+          &\rotrip[\prt] {\Gamma, \Delta} {\phi} {e_i} {b \of \dB \such \theta_i}
+            &&\text{for $i = 1, \ldots, n$} \\[-0.25em]
+          &\rwtrip[\tot] {\Gamma; \Delta} {\theta_i[\semtt/b]} {c_i} {z \of \tau \such \psi}
+            &&\text{for $i = 1, \ldots, n$} \\[-0.25em]
+          &\phi \lthen \phi_1 \lor \cdots \lor \phi_n \\[-0.25em]
+          &\rotrip[\tot] {\Gamma, \Delta} {\phi_i} {e_i} {b \of \dB \such b = \semtt}
+            &&\text{for $i = 1, \ldots, n$}
+        \end{aligned}}
+      }{
+        \rwtrip[\tot]
+          {\Gamma; \Delta}
+          {\phi}
+          {\ccase e_1 \To c_1 \mid \cdots \mid e_n \To c_n \cend}
+          {z \of \tau \such \psi}
+      }
+
+      \inferenceRule{Rw-Part-While}{
+        \rotrip[\prt] {\Gamma, \Delta} {\phi} {e} {b \of \dB \such \theta} \\
+        \rwtrip[\prt] {\Gamma; \Delta} {\theta[\semtt/b]} {c} {\phi}
+      }{
+        \rwtrip[\prt] {\Gamma; \Delta} {\phi} {\cwhile e \cdo c \cend} {\phi \land \theta[\semff/b]}
+      }
+
+
+      \inferenceRule{Rw-Tot-While}{
+        \rotrip[\tot] {\Gamma, \Delta} {\phi} {e} {b \of \dB \such \theta} \\
+        \rwtrip[\tot]
+           {\Gamma; \Delta}
+           {\theta[\semtt/b]}
+           {c}
+           {\phi}
+        \\\\
+        \phi \lthen (\text{$\psi$ well-founded}) \\
+        \rwtrip[\tot]
+           {\vec{z} \of \Delta', \Gamma; \vec{y} \of \Delta}
+           {\theta[\semtt/b] \land \vec{z} = \vec{y} }
+           {c}
+           {\psi}
+      }{
+        \rwtrip[\tot] {\Gamma; \Delta} {\phi} {\cwhile e \cdo c \cend} {\phi \land \theta[\semff/b] }
+      }
+
+    \end{mathpar}
+
+  \end{mdframed}
+  \caption{Operational proof rules}
+  \label{fig:rules-operational}
+\end{figure}
+
+The general rules in \cref{fig:rules-general} postulate logical principles and govern variables and constants. The rules \rref{Ro-Rw} and \rref{Rw-Ro} allow passage between reasoning about pure and general expressions.
+
+Among the arithmetical rules in \cref{fig:rules-arithmetic} we point out the difference between the partial reciprocal rule \rref{Ro-Part-Recip} and its total variant \rref{Ro-Tot-Recip}. In the former, we may assume the argument to be non-zero, while in the latter we have to prove it.
+%
+A similar phenomenon happens with the strict comparison~$x \rlt y$ on the reals, where the partial rule \rref{Ro-Part-Real-Lt} provides the assumption $x \neq y$, whereas its total variant \rref{Ro-Tot-Real-Lt} requires a proof of $x \neq y$. The condition $x \neq y$ appears in these rules because $x \rlt y$ diverges when $x = y$. 
+% There was previously explanation of this divergence here in terms of semidecidability, but since the divergence has already been discussed in earlier sections 
+
+The limit rule \rref{Ro-Lim} states that $\clim{x} e$ computes $y \in \IR$ when~$e$ denotes a sequence rapidly converging to~$t$, i.e., any value computed by~$e$ is within distance~$2^{-x}$ of~$y$.
+%
+Note that the first premise imposes \emph{total} correctness, even in the partial version of the rule. This is necessary because the denotation of $\clim{x} e$ is~$\PPerr$ (rather than~$\PPbot$) as soon~$e$ fails to be total.
+
+The first three operational rules in \cref{fig:rules-operational}, which regulate sequencing, new variables and assignment, require no comment.
+%
+The remaining rules all handle the conditions and guards in a similar fashion,
+so we only look at the rule for conditional \rref{Rw-Cond}, keeping in mind that the boolean expression~$e$ is nondeterministic. The postcondition~$\theta$ describes the \emph{possible} values~$b$ of~$e$. The preconditions $\theta[\semtt/b]$ and $\theta[\semff/b]$ of~$c_1$ and $c_2$ should respectively be read as ``if $e$ evaluates to true'' and ``if $e$ evaluates to false''. 
+To see this formally, consider the triple in the premise
+\[
+\rotrip {\Gamma, \Delta} {\phi} {e} {b \of \dB \such \theta}
+\]
+and a state $\gamma \in\sem{\Gamma}$ that satisfies the precondition $\phi$.
+If $\semtt \in \sem{\Gamma \rotypes e : \dB}\,\gamma$, by the definition of triples, $\gamma$ satisfies $\theta[\semtt/b]$.
+Hence, $\theta[\semtt/b]$ is a necessary condition of the states satisfying $\phi$ to let $e$ admit a nondeterministic branch leading to $\semtt$,  allowing a possibility of having some branches fail to terminate when $\star = \prt$.
+Due to nondeterminism, the conditions $\theta[\semtt/b]$ and $\theta[\semff/b]$ need not exclude each other, even when~$\theta$ is as informative as it can be.
+%
+Incidentally, if desired the original precondition $\phi$ may be incorporated into~$\theta$ using the admissible rule \rref{Ro-Refine}; see \cref{sec:admissible-rules}.
+
+The rules for nondeterministic guarded cases employ a similar technique. The possible values of the guards~$e_i$ are described by the corresponding postconditions~$\theta_i$, after which each case is considered under the
+precondition~$\theta_i[\semtt/b]$. Again, $\theta_i[\semtt/b]$ need not preclude $\theta_i[\semff/b]$, nor any of the other preconditions $\theta_j[\semtt/b]$ with $j \neq i$.
+%
+One notable point in the total variant \rref{Rw-Tot-Case} is that it is not obtained from \rref{Rw-Part-Case} by changing $\prt$ to $\tot$.
+In \rref{Rw-Tot-Case}, each guard is required to be equipped with one partial correctness triple and one total correctness triple:
+\[\rotrip[\prt] {\Gamma, \Delta} {\phi} {e_i} {b \of \dB \such \theta_i}
+\quad\text{and}\quad
+\rotrip[\tot] {\Gamma, \Delta} {\phi_i} {e_i} {b \of \dB \such b = \semtt}
+\]
+The triple for capturing the values of $e_i$ is allowed to stay \emph{partial}, 
+though the guarded case requires to be total. 
+The reason is that the total correctness of the overall case expression does not require each of the guards to be total and
+we only need to make sure that there is a guard that can be chosen.
+The extra implication in the premise 
+$\phi \lthen \phi_1 \lor \cdots \lor \phi_n$ ensures that.
+The precondition $\phi_i$ of the total correctness triple 
+stands for the condition in which $e_i$ terminates and evaluates to and only to $\semtt$. 
+
+Lastly, we explain the rules for the loop $\cwhile e \cdo c \cend$. A superficial reading of \rref{Rw-Part-While} looks suspect because~$c$ seemingly need not satisfy an invariant. One has to read both premises together:  the invariant~$\phi$ starts as the precondition for~$b$ passes to $c$ via an intermediate statement~$\theta$, and emerges as the postcondition for~$c$.
+
+The total rule \rref{Rw-Tot-While} establishes an invariant the same way, and ensures termination by means of a well-founded relation, as follows.
+%
+The formula~$\psi$ involves the read-only variables~$\Gamma$, the mutable variables~$\vec{y} : \Delta$, and a read-only copy $\vec{z} : \Delta'$ of the mutable variables.  Given a read-only state $\gamma \in \sem{\Gamma}$, an \defemph{infinite $\psi$-chain} is a sequence $s : \IN \to \sem{\Delta}$ of states such that $\psi[s_i/\vec{z}, \gamma/\vec{x}, s_{i+1}/\vec{y}]$ holds for all $i \in \IN$. Say that~$\psi$ is \defemph{well-founded} under condition $\phi$ when, for every $\gamma \in \sem{\Gamma}$ and $\delta \in \sem{\Delta}$ satisfying $\phi[\gamma/\vec{x}, \delta/\vec{y}]$, there is no infinite $\psi$-chain starting from $\delta$.
+%
+In the rule \rref{Rw-Tot-While},
+%
+the precondition $\vec{z} = \vec{y}$ and the postcondition~$\psi$ together express the fact that the state just before the execution of~$c$ and the state just after forms a link in a $\psi$-chain. The loop must therefore terminate, or else it would yield an infinite $\psi$-chain.
+
+\begin{theorem}\label{t:sound}
+  The proof rules given in \cref{fig:rules-general,fig:rules-arithmetic,fig:rules-operational} are sound:
+  a derivable correctness triple is valid.
+\end{theorem}
+
+\begin{proof}
+  The proof proceeds by induction on the derivation of a triple, which amounts to checking for each rule that its conclusion is valid if the premises are.
+  %
+  Establishing the soundness of general rules in \cref{fig:rules-general} is just an easy exercise in logic.
+
+  To check the soundness of the arithmetical rules in \cref{fig:rules-arithmetic} one has to unwind the semantics of the premises and conclusions, and compare them to the denotational semantics of expressions involved.
+  %
+  We spell out just the total version of the limit rule \rref{Ro-Lim}.
+  %
+  Consider any $\gamma \in \sem{\Gamma}$ and $k \in \IZ$ such that $\phi(\gamma, k)$. The first premise guarantees that $\sem{e}(\gamma, k) \subseteq \IR$, as well as $\theta(\gamma, k, u)$ for all $u \in \sem{e}(\gamma, k)$.
+  The second premise further ensures the existence of $t \in \IR$ such that $\psi(\gamma, k, t)$ and $\all{u \in \sem{e} (\gamma, k)} |u - t| \leq 2^{-k}$. Thus, the conditions of the first clause in the semantics of $\clim{x} e$ in \cref{figure:ro-denotations} are met, hence $\sem{\clim{x} e}\,\gamma = \{t\}$, yielding the desired conclusion.
+\end{proof}
+
+\subsection{Admissible rules}
+\label{sec:admissible-rules}
+
+Some useful admissible rules are collected in \cref{fig:rules-admissible}. There are verified by structural induction on the derivation of the premises, see \cref{sec:formalization}.
+%
+The rules \rref{Ro-Tot-Part} and \rref{Rw-Tot-Part} allow us to pass from total to partial correctness.
+%
+The rules \rref{Ro-Refine} and \rref{Rw-Refine} are useful for eliding an statement~$\theta$ that does not play any role in a proof, where the latter rule requires on the side that~$\theta$ not mention the read-write variables.
+
+\begin{figure}[htbp]
+  \centering
+  \begin{mdframed}
+    \footnotesize
+    \centering
+
+\begin{mathpar}
+  \inferenceRule{Ro-Tot-Part}{
+    \rotrip[\tot] {\Gamma} {\phi} {e} {y \of \tau \such \psi}
+  }{
+    \rotrip[\prt] {\Gamma} {\phi} {e} {y \of \tau \such \psi}
+  }
+
+  \inferenceRule{Rw-Tot-Part}{
+    \rwtrip[\tot] {\Gamma; \Delta} {\phi} {c} {z \of \tau \such \psi}
+  }{
+    \rwtrip[\prt] {\Gamma; \Delta} {\phi} {c} {z \of \tau \such \psi}
+  }
+
+  \\
+
+  \inferenceRule{Ro-Refine}{
+    \rotrip {\Gamma} {\phi} {e} {y \of \tau \such \psi}
+  }{
+    \rotrip {\Gamma} {\phi \land \theta} {e} {y \of \tau \such \psi \land \theta}
+  }
+
+  \inferenceRule{Rw-Refine}{
+    \rwtrip {\Gamma;\Delta} {\phi} {e} {y \of \tau \such \psi} \\
+    \fv{\theta} \cap \dom{\Delta} = \emptyset
+  }{
+    \rwtrip {\Gamma;\Delta} {\phi \land \theta} {e} {y \of \tau \such \psi \land \theta}}
+\end{mathpar}
+
+  \end{mdframed}
+  \caption{Admissible rules}
+  \label{fig:rules-admissible}
+\end{figure}
+
+\subsection{Specification of functions and function calls}
+\label{sec:spec-first-order}
+
+Given a function definition
+%
+\begin{equation*}
+  \cfunction f {x_1 \of \tau_1, \ldots, x_n \of \tau_n} {\sigma} {e}
+\end{equation*}
+%
+the rule governing function calls to~$f$ is
+%
+\begin{equation*}
+  \inferenceRule{Ro-Call}{
+    \rotrip {\Gamma} {\phi} {e_i} {x_i \of \tau_i \such \theta_i} \quad\text{for $i = 1, \ldots, n$}
+    \\\\
+    \rotrip {\Gamma, x_1 \of \tau_1, \ldots, x_n \of \tau_n}
+            {\theta_1 \land \cdots \land \theta_n}
+            {e}
+            {y \of \sigma \such \psi}
+  }{
+    \rotrip {\Gamma} {\phi} {f(e_1, \ldots, e_n)} {y \of \sigma \such \psi}
+  }
+\end{equation*}
+%
+It is typically used indirectly, as follows. Upon defining~$f$, we prove an assertion
+%
+\begin{equation}
+  \label{eq:f-assertion}
+  \rotrip
+  {x_1 \of \tau_1, \ldots, x_n \of \tau_n}
+  {\phi_f}
+  {e}
+  {y \of \sigma \such \psi_f}
+\end{equation}
+%
+that is deemed to usefully characterize the body of the definition~$e$. Then, to establish
+%
+\begin{equation}
+  \label{eq:call-target}
+  \rotrip {\Gamma} {\phi} {f(e_1, \ldots, e_n)} {y \of \sigma \such \psi}
+\end{equation}
+%
+we prove for each $i = 1, \ldots, n$ an assertion
+%
+$\rotrip {\Gamma} {\phi} {e_i} {x_i \of \tau_i \such \theta_i}$
+%
+such that the implication $\theta_1 \land \cdots \land \theta_n \lthen \phi_f$ holds, we verify $\psi_f \lthen \psi$, and appeal to \rref{Ro-Call} and~\eqref{eq:f-assertion} to conclude~\eqref{eq:call-target}.
+%
+The method is demonstrated in the next section.
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "clerical"
+%%% End:

@@ -1,0 +1,238 @@
+% !TEX root = clerical.tex
+\section{Example: computation of \texorpdfstring{$\pi$}{π}}
+\label{sec:example}
+
+To showcase Clerical and its specification logic, we construct a program that computes~$\pi$ and prove that it really does so.
+%
+We carry out the task in three steps: the definition of absolute value, the definition of~$\sin$, and a computation of~$\pi$ by a zero-finding procedure. Because the definition of $\sin$ uses absolute values, and computation of~$\pi$  uses~$\sin$, we first define 
+functions $\mathtt{abs}$ and $\mathtt{sin}$, using the function notation of \cref{sec:first-order-func}.
+
+
+\paragraph*{Absolute value}
+\label{sec:absolute-value}
+
+As a warm-up exercise we prove that the function $\mathtt{abs}$ defined in \cref{fig:abs-def}, whose body we already discussed in \cref{sec:syntax}, computes absolute values.
+%
+\begin{figure}[htb]
+  \centering
+  \begin{mdframed}
+  \small
+\begin{lstlisting}
+let $\mathtt{abs}$(x:$\dR$):$\dR$ :=
+ lim n.
+   case
+      $x \rlt 2^{\iminus n\iminus  \numeral{1}}$ =>  $~\rminus x$ 
+    | $\rminus 2^{\iminus n\iminus \numeral{1}} \rlt x$ => $~x$
+   end
+\end{lstlisting}
+  \end{mdframed}
+  \caption{Implementation of absolute value.}
+  \label{fig:abs-def}
+\end{figure}
+%
+
+\begin{figure}[htb]
+{\centering\small
+\begin{mdframed}
+\begin{lstlisting}
+[\claim{ \top }]
+lim n .
+  [\claim{ \top }]
+  case
+    [\claim{ \top }] $x \rlt 2^{\iminus n\iminus  \numeral{1}}$ [\claimp{ b :  \dB \such b  \lthen x < 2^{-n-1} }]  =>
+    [\claim{ x < 2^{-n-1}}] $\rminus x$ [\claimt{ z  :  \dR \such \abs{z - \abs{x}} < 2^{-n} }]
+  | [\claim{ \top }] $\rminus 2^{\iminus n\iminus \numeral{1}} \rlt x$ [\claimp{ b :  \dB \such b \lthen - 2^{-n-1} < x}] =>
+    [\claim{\rminus 2^{-n-1} < x}] x [\claimt{ z  :  \dR \such \abs{z - \abs{x}} < 2^{-n} }]
+  end
+  [\claimt{ z  :  \dR \such \abs{z - \abs{x}} < 2^{-n} }]
+[\claimt{ y  :  \dR \such y = \abs{x} }]
+\end{lstlisting}
+%
+\end{mdframed}
+}
+  \caption{Specification of $\mathtt{abs}$.}
+  \label{fig:abs-correct}
+\end{figure}
+%
+The specification and proof of correctness of the body of~$\mathtt{abs}$ is shown in \cref{fig:abs-correct}.
+As is customary, we interleaved code and assertions to give a sequence of reasoning steps leading from the initial precondition to the final postcondition. That is, each line of code is preceded by a precondition and succeeded by a postcondition, which doubles as the precondition for the next line code.
+
+The outer assertion in \cref{fig:abs-correct} states that any value $y : \dR$ computed by the limit equals~$\abs{x}$.  This is established by an application of \rref{Ro-Lim}, which creates the obligation that the any value $z : \dR$ computed by the case expression is within $2^{-n}$ of~$\abs{x}$. This in turn is proved by an applying \rref{Rw-Tot-Case}, which generates obligations not shown in \cref{fig:abs-correct}, namely:
+%
+\begin{itemize}
+\item $\top \lthen x < 2^{-n - 1} \lor -2^{-n-1} < x$,
+\item $\{ x < 2^{-n-1} \}\; x < 2^{-n - \numeral{1}}\; \{ b : \dB \mid b \}^\tot$,
+\item $\{ -2^{-n-1} < x \}\; -2^{-n - \numeral{1}} < x \; \{ b : \dB \mid b \}^\tot$.
+\end{itemize}
+%
+These obviously hold.
+%
+Finally, there is an additional obligation due to \rref{Ro-Lim},
+%
+\begin{equation*}
+  \top \lthen
+   \some{y \in \IR}
+   y = \abs{x} \land
+   \all{n \in \IZ, z\in\IR} \abs{z - \abs{x}} < 2^{-n} \lthen \abs{z - y} < 2^{-n},
+\end{equation*}
+%
+which holds because we may take $y = \abs{x}$.
+
+\paragraph*{Sine function}
+
+We compute the sine function by employing its Taylor expansion at~$0$:
+%
+\begin{equation*}
+  \sin(x) = \sum_{i = 0}^\infty \frac{(-1)^i x^{2i+1}}{(2i+1)!}.
+\end{equation*}
+%
+The method is inefficient for large~$x$, but is good enough for $3 < x < 4$, which is what we need.
+%
+Define the terms of the expansion and the partial sums
+%
+\begin{equation*}
+  \mathbf{t}(i, x) \defeq \frac{(-1)^i x^{2i+1}}{(2i+1)!}
+  \qquad\text{and}\qquad
+  \mathbf{S}(j, x) \defeq \sum_{i=0}^j \mathbf{t}(i, x),
+\end{equation*}
+%
+and recall the error bound for the $j$-th partial sum
+%
+\begin{equation}
+  \label{eq:exa:sine-bound}
+  \abs{\sin(x) - \mathbf{S}(j,x)} \leq \abs{\mathbf{t}(j+1, x)}.
+\end{equation}
+%
+The recursive relations
+%
+\begin{align*}
+  \mathbf{t}(j+1, x) &= -\mathbf{t}(j, x) \cdot x^2 / ((2j + 2)(2j + 3)), \\
+  \mathbf{S}(j + 1, x) &= \mathbf{S}(j, x) + \mathbf{t}(j + 1, x)
+\end{align*}
+%
+with initial conditions $\mathbf{t}(0, x) = x$ and $\mathbf{S}(0, x) = x$ can be converted to computation by while loops. We do so in the definition of $\mathtt{sin}$, shown in \cref{fig:sin-def}.
+%
+Notice how the stopping condition for the while loop uses nondeterminism to ensure totality. It may stop if the error bound $\mathtt{abs}(t)$ is smaller than $2^{-n}$, or continue if it is larger than $2^{-n-1}$.
+%
+\begin{figure}
+  \centering
+  \begin{mdframed}
+  \small
+\begin{lstlisting}
+let $\mathtt{sin}$(x:$\dR$):$\dR$ :=
+  lim $n$.
+    var j := $\numeral{0}$ in
+    var S := $x$ in
+    var t := $-x \times x \times x/\ccoerce{\numeral{6}}$ in
+    while
+      (case $2^{\iminus n \iminus \numeral{1}} \rlt \mathtt{abs}(t)$=>true | $~\mathtt{abs}(t) \rlt 2^{\iminus n}$=>false)
+    do
+      j := j + $\numeral{1}$ ;
+      S := S + t ;
+      t := $-t \times x \times x/\ccoerce{\numeral{2} \imult j \iplus \numeral{3}}$
+    end ;
+    $S$
+\end{lstlisting}
+  \end{mdframed}
+  \caption{The definition of $\mathtt{sin}$}
+  \label{fig:sin-def}
+\end{figure}
+
+The correctness of the implementation is outlined in \cref{fig:sin-correct}.
+%
+The loop invariant, abbreviated as $\phi$, is
+%
+$j \geq 0 \land S = \mathbf{S}(j, x) \land t = \mathbf{t}(j + 1, x)$.
+%
+Upon exit from the loop, the invariant ensures that $S$ is the $j$-th partial sum, and the exit condition $|t| < 2^{-n}$ that the error is sufficiently small. Together they imply that $S$ is within $2^{-n}$ of $\sin(x)$, as required by \rref{Ro-Lim}.
+%
+We elide several side conditions, such us those imposed by \rref{Ro-Lim} and \rref{Rw-Tot-Case}.
+%
+The complete details of the formal proof are available in the Coq formalization, see \cref{sec:formalization}.
+
+\begin{figure}[htb]
+  \centering
+  \begin{mdframed}
+  \small
+\begin{lstlisting}
+[\claimt{\top}]
+lim $n$.
+  [\claimt{\top}]
+  var j := $\numeral{0}$ in
+  var S := $x$ in
+  var t := $-x \times x \times x/\ccoerce{\numeral{6}}$ in
+  [\claimt{\phi}]      [where $\phi$ is $j \geq 0 \land S = \mathbf{S}(j,x) \land t = \mathbf{t}(j + 1, x)$]
+  while
+    [\claimt{\phi}]
+    (case $2^{\iminus n \iminus \numeral{1}} \rlt \mathtt{abs}(t)$=>true | $~\mathtt{abs}(t) \rlt 2^{\iminus n}$=>false)
+    [\claimt{b : \dB\such \phi \land (b \lthen 2^{-n-1} < \abs{t}) \land (\neg b \lthen \abs{t} < 2^{-n})}]
+  do
+    [\claimt{\phi \land 2^{-n-1}< \abs{t}}]
+    [\claimt{j \geq 0 \land S = \mathbf{S}(j,x) \land t = \mathbf{t}(j + 1, x)}]
+    j := j + $\numeral{1}$ ;
+    [\claimt{j - 1 \geq 0 \land S = \mathbf{S}(j-1,x) \land t = \mathbf{t}(j, x)}]
+    S := S + t ;
+    [\claimt{j - 1 \geq 0 \land S = \mathbf{S}(j,x) \land t = \mathbf{t}(j, x)}]
+    t := $-t \times x \times x/\ccoerce{\numeral{2} \imult j \iplus \numeral{3}}$
+    [\claimt{j - 1 \geq 0 \land S = \mathbf{S}(j,x) \land t = \mathbf{t}(j+1, x)}]
+    [\claimt{\phi}]
+  end ;
+  [\claimt{\phi \land \abs{t} < 2^{-n}}]
+  [\claimt{S = \mathbf{S}(j, x) \land \abs{\mathbf{t}(j + 1, x)} < 2^{-n}}]
+  $S$
+  [\claimt{z  :  \dR\such \abs{z - \sin(x)} < 2^{-n}}]
+[\claimt{y  :  \dR\such y = \sin(x)}]
+\end{lstlisting}
+  \end{mdframed}
+  \caption{Specification of $\mathtt{sin}$.}
+  \label{fig:sin-correct}
+\end{figure}
+
+
+\paragraph*{Computation of $\pi$}
+
+
+We compute $\pi$ by using a root-finding algorithm to find the unique root of $\sin$ in the closed interval $[3,4]$.
+For this, we could use the general root-finding algorithm in~\cite{brausse2016semantics}, which repeatedly narrows the search interval by splitting it into two overlapping intervals each $2/3$ the width of the original interval.
+However, the fact that  we are computing a root that is known to be irrational, allows us to instead use a more efficient bisection-based search.
+%
+Once again, we proceed by computing a limit whose $n$-th term approximates the root within $2^{-n}$.
+%
+The code is shown in \cref{fig:pi-def}.
+%
+The bisection method is initialized with the lower bound $l = 3$ and the upper bound $u = 4$.
+At each step of the iteration, we compute the midpoint $m = \frac{l + u}{2}$ and narrow the search interval to either $[m, u]$ or $[l, m]$, depending on the sign of $\sin(m)$. The irrationality of the  root guarantees that the comparison $0 < \sin(m)$ always terminates, because $m$ is rational and so $\sin(m) \neq 0$.
+%
+The above considerations are incorporated into the loop invariant
+%
+\begin{equation*}
+  l \in \IQ \land u \in \IQ \land 3 \leq l < \pi < u \leq 4 \land u - l= 2^{-k}.
+\end{equation*}
+%
+We leave detailed verification of correctness as exercise for the reader, who can also avoid doing it by consulting the formalized proof~\cite{clerical_coq}.
+%
+\begin{figure}
+  \centering
+  \begin{mdframed}
+  \small
+\begin{lstlisting}
+lim $p$.
+  var k := 0 in
+  var l := $\ccoerce{\numeral{3}}$ in
+  var u := $\ccoerce{\numeral{4}}$ in
+  while k < n do
+    var m := $(l \rplus u) \rmult 2^{-\numeral{1}}$ in
+    if $\ccoerce{\numeral{0}} \rlt \mathtt{sin}(m)$ then
+      l := m
+    else
+      u := m
+    end ;
+    k := $k \iplus \numeral{1}$
+  end ;
+  $(l \rplus u) \rmult 2^{\iminus \numeral{1}}$
+\end{lstlisting}
+  \end{mdframed}
+  \caption{Computation of $\pi$.}
+  \label{fig:pi-def}
+\end{figure}
+

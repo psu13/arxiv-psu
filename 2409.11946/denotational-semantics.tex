@@ -1,0 +1,661 @@
+\section{Denotational semantics}
+\label{sec:denotation}
+
+In this section we assign mathematical meaning to the constituent parts of Clerical.
+%
+The types are interpreted by  the expected sets:
+%
+\begin{align*}
+\sem{\dZ} &\defeq \IZ &
+\sem{\dB} &\defeq \{\semff, \semtt\} &
+\sem{\dR} &\defeq \IR &
+\sem{\dU} &\defeq \{\star\} \enspace .
+\end{align*}
+%
+Typing contexts are interpreted by cartesian product:
+%
+\begin{align*}
+  \sem{x_1 \of \tau_1, \ldots, x_m \of \tau_m} &\defeq
+  \sem{\tau_1} \times \cdots \times \sem{\tau_m} \enspace .
+%  &
+%  \sem{\Gamma; \Delta} = \sem{\Gamma} \times \sem{\Delta}
+\end{align*}
+%
+The denotation $\sem{\Gamma}$ of a read-only context $\Gamma$ is thought of as an \defemph{environment} specifying values of variables, whereas the denotation of a read-write context $\Gamma ; \Delta$ has two components, the environment $\sem{\Gamma}$ and the \defemph{state} $\sem{\Delta}$.
+
+The meaning of a well-typed pure expression $\Gamma \rotypes e : \tau$ and
+general expression $\Gamma; \Delta \rwtypes c : \tau$ 
+ will be maps:
+%
+\begin{align*}
+  \sem{\Gamma  \rotypes e : \tau}  & : \sem{\Gamma} \to \PP{\sem{\tau}}, \\
+  \sem{\Gamma; \Delta \rwtypes c : \tau}  & : \sem{\Gamma} \to (\sem{\Delta} \to \PP{\sem{\Delta} \times \sem{\tau}}),
+\end{align*}
+%
+where $\PP{S}$ is  a \defemph{powerdomain}, a collection of sets representing the possible sets of outcomes of nondeterministic computations that return values from $S$. Due to the distinction between error and non-termination, already mentioned in Section~\ref{sec:overview}, 
+Clerical requires a rather specific form of powerdomain. In order to motivate it, we discuss the distinction between
+error and non-termination in more detail.
+
+Mathematically, we would like to  consider a well-behaved (deterministic) expression $e$ of type $\dR$ as defining a real number value $r$. Computationally, however, the best that $e$ will be able to do is to produce, on demand, an approximation of $r$ to within any specified precision. In the ideal case, given precision $\epsilon > 0$, the evaluation of $e$ will determine in finite time some rational approximation $q$ such that $|q - r| < \epsilon$. In Clerical, not every  deterministic expression of type $\dR$ achieves this ideal.
+
+Some expressions simply give rise to non-terminating computations that never provide any approximating information. Others, may appear to provide approximating information, but do so in a way that is either incomplete or inconsistent.\footnote{Incompleteness may  arise, for example, if approximating values are only computed for $\epsilon$ that are not too small. Similarly, inconsistency can occur if two different $\epsilon_1, \epsilon_2$ result in putative approximations $q_1,q_2$ with $|q_1 - q_2| \geq \epsilon_1 + \epsilon_2$.} Our semantics of Clerical distinguishes between these two eventualities. Expressions that produce incomplete or inconsistent approximating information are considered \defemph{erroneous}, and the semantics for Clerical will ensure that no such expression is ever executed within a program with valid semantics. The motivation for this is to avoid any situation in which faulty approximations can provide misleading information. In contrast, \defemph{non-terminating} expressions are considered harmless in the sense that they cannot be a source of incorrect information. As is standard in denotational semantics, such expressions are assigned the special denotation $\bot$. 
+These need to be distinguished from erroneous ones, because, as discussed in Section~\ref{sec:overview},  non-terminating expressions 
+have an essential role to play  when programming in Clerical.
+
+
+For any set~$S$,  define $\liftnoerr{S} \defeq S + \{\bot\}$, where~$\bot$ represents non-termination, as discussed above. 
+Although $S + \{\bot\}$ is strictly speaking a coproduct (sum) of two sets, in practice we shall only use it
+in instances in which $\bot \notin S$. This allows us to represent $\liftnoerr{S}$ as the (disjoint) union 
+$S \cup \{\bot\}$.
+Define:
+\begin{equation*}
+  \PP{S} \defeq
+  \{ X \subseteq \liftnoerr{S} \such
+       \text{$X$ infinite} \Rightarrow \bot \in X
+  \},
+\end{equation*}
+%
+A set $X \in  \PP{S}$ represents the results of a nondeterministic Clerical computation in the following way. Firstly, $X = \emptyset$ in the case that the computation is \emph{erroneous} (see the discussion above), in which case no result value is relevant. 
+%
+The case $\bot \in X$ applies if the nondeterministic computation has at least one non-terminating branch, in which case $X \setminus \{\bot\}$ is the set of all result values returned by terminating nondeterministic branches. If instead $\bot \notin X$ then $X$ represents the set of possible results of a necessarily terminating nondeterministic computation. Since Clerical has only  finite nondeterministic branching, such a set is necessarily finite.
+
+We shall implicitly make use of  the fact that powerdomain $\Pstar$ carries the structure of a monad on the category of sets. For the purposes of this paper, we never need to directly refer to the abstract structure of the monad. However, the following maps associated with this structure will be useful. Firstly, for any $S$, there is a map $x \mapsto \pure{x} : S \to \PP{S}$, that maps any $x \in S$ to the singleton $\pure{x}$ representing the deterministic computation that returns $x$ as its result. 
+Secondly, for any function $f : S \to  \PP{T}$ we define $\lift{f} : \PP{S} \to  \PP{T}$ by:
+\[
+\lift{f}(X) = 
+\begin{cases} 
+\emptyset & \text{if $\some{x \in X}\ f(x)= \emptyset$,}\\
+\textstyle
+\{\bot \such \bot \in X\} \cup \bigcup_{x \in X \setminus \{\bot\}} f(x) & \text{otherwise.}
+\end{cases}
+\]
+It is easily checked that this indeed defines a set in $\PP{T}$. The idea behind the definition is that 
+$\lift{f}(X)$ models a sequencing of nondeterministic computations: first execute the nondeterministic computation whose result is represented by $X$, then for each potential value $x \in X$
+run the nondeterministic computation modelled by $f(x)$ to obtain potential return values.
+This idea motivates the alternative notation
+\[
+\PPlet{x}{X}\, f(x)
+\]
+for  $\lift{f}(X)$, which we shall often use.
+
+The reason behind the first clause in the definition of 
+$\lift{f}(X)$ is that a computation is considered illegitimate if an error occurs along any possible nondeterministic branch. In such a case the entire computation is given the error denotation $\emptyset$.
+
+\begin{figure}
+  \begin{mdframed}
+  \centering
+  \small
+\begin{align*}
+  \sem{\Gamma \rotypes c : \tau} \, \gamma = {}&
+     \PPlet
+        {(v, ())}
+        {\sem{\Gamma; \emptyctx \rwtypes c : \tau} \, \gamma \, ()}
+        {\pure{v}}
+  \\
+  \sem{x_1 \of \tau_1; \ldots, x_n \of \tau_n \rotypes x_i : \tau_i} \, \gamma
+  = {}& \pure{\gamma_i}
+  \\
+  \sem{\Gamma \rotypes \cfalse : \dB} \, \gamma = {}& \pure{\semff} \\
+  \sem{\Gamma \rotypes \ctrue : \dB} \, \gamma = {}& \pure{\semtt} \\
+  \sem{\Gamma \rotypes \numeral{k} : \dZ} \, \gamma = {}& \pure{k} \\
+  \sem{\Gamma \rotypes \cskip : \dU} \, \gamma = {}& \pure{\semuu} \\
+  \sem{\Gamma \rotypes \ccoerce{e} : \dR} \, \gamma = {}& \PPlet
+        {z}
+        {\sem{\Gamma \rotypes e : \dZ}\,\gamma}
+        {\pure{\inclZ{z}}}
+  \\
+  \sem{\Gamma \rotypes e_1 \iop e_2 : \dZ} \, \gamma = {}&
+    \PPlet
+    {x}
+    {\sem{\Gamma \rotypes e_1 : \dZ}\,\gamma} 
+ \\
+ & \PPlet
+    {y}
+    {\sem{\Gamma \rotypes e_2 : \dZ}\,\gamma}
+    \pure{x \op y}
+ \\
+ \sem{\Gamma \rotypes e_1 \rop e_2 : \dR} \, \gamma = {}& 
+   \PPlet
+    {x}
+    {\sem{\Gamma \rotypes e_1 : \dR}\,\gamma}
+\\
+& \PPlet
+    {y}
+    {\sem{\Gamma \rotypes e_2 : \dR}\,\gamma}
+    \pure{x \op y}
+ \\
+ \sem{\Gamma \rotypes \cinv{e} : \dR} \, \gamma = {}&
+ \PPlet
+    {x}
+    {\sem{\Gamma \rotypes e : \dR}\,\gamma}
+    \begin{cases} 
+    \pure{x^{-1}} & \text{if $x \neq 0$} \\
+    \PPbot  & \text{if $x=0$}
+    \end{cases}
+ \\
+  \sem{\Gamma \rotypes e_1 = e_2 : \dZ} \, \gamma = {}&
+    \PPlet
+    {x}
+    {\sem{\Gamma \rotypes e_1 : \dZ}\,\gamma}
+\\
+& 
+\PPlet
+    {y}
+    {\sem{\Gamma \rotypes e_2 : \dZ}\,\gamma}
+    \begin{cases} 
+    \pure{\semtt} & \text{if $x = y$} \\
+    \pure{\semff} & \text{if $x \neq y$}
+    \end{cases}
+\\
+  \sem{\Gamma \rotypes e_1 < e_2 : \dZ} \, \gamma = {}&
+    \PPlet
+    {x}
+    {\sem{\Gamma \rotypes e_1 : \dZ}\,\gamma}
+\\
+& \PPlet
+    {y}
+    {\sem{\Gamma \rotypes e_2 : \dZ}\,\gamma}
+    \begin{cases} 
+    \pure{\semtt} & \text{if $x < y$} \\
+    \pure{\semff} & \text{if $x \geq y$}
+    \end{cases}
+\\
+   \sem{\Gamma \rotypes e_1 \rlt e_2 : \dR} \, \gamma = {}&
+    \PPlet
+    {x}
+    {\sem{\Gamma \rotypes e_1 : \dR}\,\gamma} \\
+    &\PPlet
+    {y}
+    {\sem{\Gamma \rotypes e_2 : \dR}\,\gamma}
+    \begin{cases}
+    \pure{\semtt} & \text{if $x < y$} \\
+    \pure{\semff} & \text{if $x > y$} \\
+    \PPbot &  \text{if $x = y$} 
+    \end{cases}
+  \\
+  \sem{\Gamma \rotypes (\clim{x}{e}) : \dR}\,\gamma = {}&
+  \begin{cases}
+    \pure{t} &
+      \begin{aligned}[t]
+      &\text{if $t \in \IR$ and $\all{k \in \IZ}$} \\
+      &\text{  $\sem{\Gamma, x \of \dZ \rotypes e : \dR} (\gamma, k) \subseteq \IR$ and} \\
+      &\text{  $\all{u \in \sem{\Gamma, x \of \dZ \rotypes e : \dR} (\gamma, k)} |u - t| < 2^{-k}$,}
+      \end{aligned}
+    \\
+    \PPerr   & \text{if no such $t \in \IR$ exists.}
+  \end{cases}
+\end{align*}
+\end{mdframed}
+\caption{Denotational semantics of pure expressions}
+\label{figure:ro-denotations}
+\end{figure}
+
+
+\begin{figure}
+  \begin{mdframed}
+  \centering
+  \small
+\begin{align*}
+\sem{\Gamma; \Delta \rwtypes e : \tau} \, \gamma \, \delta &=
+  \begin{aligned}[t]
+   &\PPlet
+     {v}
+     {\sem{\Gamma, \Delta \rotypes e : \tau} \, (\gamma, \delta)} \\
+             &
+        \quad
+     \pure{(\delta, v)}
+    \end{aligned}
+\\
+\sem{\Gamma; \Delta \rwtypes c_1 ; c_2 : \tau} \, \gamma \, \delta &=
+   \begin{aligned}[t]
+   &\PPlet
+     {(\delta', \semuu)}
+     {\sem{\Gamma; \Delta \rwtypes c_1 : \dU} \, \gamma \, \delta} 
+   \\
+   &  
+     \quad\sem{\Gamma; \Delta \rwtypes c_2 : \tau} \, \gamma \, \delta'
+       \end{aligned}
+\\
+\sem{\Gamma ; \Delta \rwtypes (\cvar{x}{e} c) : \tau} \, \gamma \, \delta &=
+  \begin{aligned}[t]
+   &\PPlet
+     {v}
+     {\sem{\Gamma, \Delta \rotypes e : \sigma} \, (\gamma, \delta)}
+   \\
+   &
+    \PPletx
+     {((\delta', v'), v'')}
+     \\
+     &
+     \qquad\PPinx{\sem{\Gamma; \Delta, x \of \sigma \rwtypes c : \tau} \, \gamma \, (\delta,v)}
+   \\
+    &
+     \quad\pure{(\delta', v'')}
+  \end{aligned}
+\\
+\sem{\Gamma ; \Delta \rwtypes (\clet{x}{e}) : \dU} \, \gamma \, \delta &=
+  \begin{aligned}[t]
+  &\PPlet
+    {v}
+    {\sem{\Gamma, \Delta \rotypes e : \tau} \, (\gamma, \delta)}
+        \\
+        &
+        \quad
+    \pure{(\delta[x :=v]), \semuu)}
+    \end{aligned}
+\\
+\sem{\Gamma ; \Delta \rwtypes (\cif e \cthen c_1 \celse c_2 \cend) : \tau} \, \gamma \, \delta &=
+  \begin{aligned}[t]
+  &\PPlet
+    {b}
+    {\sem{\Gamma, \Delta \rotypes e : \dU} \, (\gamma, \delta)}
+    \\
+    & \quad \begin{cases}
+    \sem{\Gamma; \Delta \rwtypes c_1 : \tau} \, \gamma \, \delta & \text{if $b = \semtt$} \\
+     \sem{\Gamma; \Delta \rwtypes c_2 : \tau} \, \gamma \, \delta & \text{if $b = \semff$}
+     \end{cases}
+  \end{aligned}
+\end{align*}
+%
+\end{mdframed}
+\caption{Denotational semantics of general expressions, excluding $\mathtt{case}$ and $\mathtt{while}$}
+\label{figure:rw-denotations}
+\end{figure}
+
+\Cref{figure:ro-denotations} assigns denotational semantics to pure expressions.
+One point that deserves explanation is the denotation of $\cinv{e}$, when~$e$ is a real expression representing~$0$. Since there is no appropriate real value to be given, the denotation could be chosen to be 
+either $\PPerr$ or $\PPbot$. We choose the latter, as it reflects the fact that an algorithm for calculating reciprocal will run forever, given a representation of the real number~$0$, without ever returning any erroneous approximation to a result value.
+Similarly, $\PPbot$ is given as the denotation of  $e_1 \rlt e_2$ when $e_1,e_2$ are two real expressions representing equal numbers, reflecting the fact that an algorithm trying to distinguish between the two numbers will run forever when given equal inputs.
+
+The most complex definition in \cref{figure:ro-denotations} is the semantics of the  limit operation $\clim{x}{e}$.
+%
+In this definition, note that there is at most one $t \in \IR$ satisfying the first condition.
+Its existence places strong requirements on the expression $e$, which must represent a sequence of sets of real numbers, such that every real number~$u$ in the $k$-th set lies within a distance of $2^{-k}$ of~$t$.
+That is, every choice of a real number from every set furnishes a Cauchy sequence rapidly converging to a common limit~$t$.
+The use of a sequence of sets allows the behaviour of~$e$ to be nondeterministic, but this nondeterminism is highly constrained by the common limit requirement. Furthermore, $e$ is neither allowed to diverge nor be erroneous. If any of the conditions required for~$t$ to exist fails, then the $\clim{x}{e}$ computation is declared erroneous.
+This is appropriate because, in an algorithmic implementation of the limit operation, the source of error may occur deep in the computation (e.g., only at some high value for the integer~$k$) meaning that the algorithm may, before the error transpires, return erroneous information in the form of approximating values to a non-existent limit.
+
+\Cref{figure:rw-denotations} assigns semantics to
+several of the general expression  constructors: sequencing $c_1 ; c_2$,
+local variable declarations $\cvar{x}{e} c$,
+assignments $\clet{x_{i}}{e}$,
+conditionals $\cif e \cthen c_1 \celse c_2 \cend$, and expressions $e$ qua commands.
+
+Next, let us define the semantics of guarded choice
+%
+\begin{equation*}
+  \Gamma ; \Delta \rwtypes (\ccase e_1 \To c_1 \such \cdots \such e_n \To c_n \cend) : \tau.
+\end{equation*}
+%
+Using the abbreviations
+%
+$\sem{e_i} = \sem{\Gamma, \Delta \rotypes e_i : \dB}$
+and
+$\sem{c_i} = \sem{\Gamma; \Delta \rwtypes c_i : \tau}$
+%
+we set
+%
+\begin{align*}
+  &\sem{\Gamma ; \Delta \rwtypes (\ccase e_1 \To c_1 \such \cdots \such e_n \To c_n \cend) : \tau} \, \gamma \, \delta = 
+  \\
+  &\quad
+  \begin{cases}
+    \emptyset \qquad\text{if $\some{i} \sem{e_i} \, (\gamma, \delta) = \emptyset \lor (\semtt \in \sem{e_i} \, (\gamma, \delta) \land \sem{c_i} \, \gamma \, \delta = \emptyset)$}
+    \\
+    S
+    \cup \{ \bot \such \all{i} \sem{e_i} (\gamma, \delta) \neq \pure{\semtt} \}
+    \qquad\text{otherwise}
+  \end{cases}
+  \\
+  &\quad\text{where $S = \bigcup \left\{\sem{c_i} \, \gamma \, \delta \such
+                 1 \leq i \leq n \land
+                \semtt \in \sem{e_i} (\gamma, \delta) \right\}.$}
+\end{align*}
+The idea behind this definition is as follows. 
+The $n$ (potentially nondeterministic) guard expressions $e_1, \dots, e_n$ are evaluated in parallel. 
+Ignoring, for the moment, the possibility that one of these expressions might be erroneous, suppose
+that one of them, 
+$e_i$ say, evaluates to $\semtt$. If this occurs, then the parallel evaluation of the other guards is terminated and the continuation
+$c_i$ is executed. Note that the choice of $i$ here is potentially nondeterministic.
+If instead none of the guards evaluates to  $\semtt$, then none of the continuations is triggered and we consider this as amounting to nontermination (no error is caused), so we include 
+$\bot$ in the denotation of the case expression. Note that this $\bot$ can arise as a result of \emph{bona fide} nontermination
+(none of the guards terminates) or of deadlock (all guards terminate with $\semff$).
+In the case that any of the $e_i$ guards causes an error (i.e., has denotation $\emptyset$), or if some $e_i$ has a possible evaluation to $\semtt$ that triggers the execution of an erroneous continuation command $c_i$, then the case statement is itself given the error denotation $\PPerr$.
+Some of the subtleties of guarded choice are illustrated through the examples in
+Section~\ref{sec:boolean-ops} below. 
+
+
+
+It remains to define the semantics of while loops.
+As usual, the meaning of a while loop is required to be invariant under unrolling; i.e.,
+\begin{align*}
+& \sem{\Gamma;\Delta \rwtypes \cwhile e \cdo c \cend :\dU}\,\gamma\,\delta  = 
+\\
+& \qquad \sem{\Gamma;\Delta \rwtypes\cif e \cthen (c\, ; \, \cwhile e \cdo c \cend) \celse \cskip \cend :\dU}\,\gamma\,\delta
+\end{align*}
+That is, we want the value $\sem{\Gamma ; \Delta \rwtypes (\cwhile e \cdo c \cend) : \dU} \, \gamma $ to be a fixed point of the map 
+%
+\begin{equation}
+  \label{eq:def-W}
+  \begin{aligned}
+    W_{\gamma} &:  \PP{\sem{\Delta} \times \{\semuu\}}^{\sem{\Delta}}
+    \to \PP{\sem{\Delta} \times \{\semuu\}}^{\sem{\Delta}}
+    \\
+    W_\gamma&(h) \, \delta 
+    \defeq \PPlet{b}{\sem{e}\,(\gamma,\delta)}
+      \begin{cases}
+        \lift{(h \circ \pi_1)}(\sem{\Gamma; \Delta \rwtypes c : \dU}\,\gamma\,\delta) & \text{if $b = \semtt$} \\
+        \pure{(\delta, \semuu)} & \text{if $b = \semff$}
+      \end{cases}
+  \end{aligned}
+\end{equation}
+%
+where $\pi_1$ is the projecting isomorphism from $\sem{\Delta} \times \{\semuu\}$ to $\sem{\Delta}$.
+
+As is standard, we find the appropriate fixed point  by showing that $\PP{S}$ carries the structure of a domain ($\omega$-complete partial order with least element) and that $W_\gamma$ is an $\omega$-continuous function with respect to the induced pointwise order on the function space 
+$\PP{\sem{\Delta} \times \{\semuu\}}^{\sem{\Delta}}$.
+This allows the definition of $\sem{\Gamma ; \Delta \rwtypes (\cwhile e \cdo c \cend) : \dU} \, \gamma $ as the least fixed point $\mathsf{LFP}(W_\gamma)$ of $W_\gamma$:
+%
+\begin{equation}
+\label{equation:lfp}
+  \sem{\Gamma ; \Delta \rwtypes (\cwhile e \cdo c \cend) : \dU} \, \gamma  \defeq
+  \mathsf{LFP}(W_\gamma) \enspace .
+\end{equation}
+%
+
+
+The required partial order on $\PP{S}$ is that of the Plotkin powerdomain~\cite{plotkin1976powerdomain} modified to take account of our use of the error set $\PPerr$:
+%
+\begin{equation*}
+  X \PPleq Y ~ \defiff~
+  X = Y  ~\lor ~
+  (\bot \in X \, \land\, (Y = \PPerr \lor (X \!\setminus\! \PPbot \subseteq Y))).
+\end{equation*}
+%
+For $X, Y$ other than the error set $\PPerr$, the above coincides with the usual Egli-Milner order of the Plotkin powerdomain.
+The positioning of~$\PPerr$ within the partial order is motivated by the following considerations.
+%
+The denotational semantics of $\cwhile e \cdo c \cend$ in environment~$\gamma$ is approximated by
+applying $W_\gamma$ iteratively to the constantly-bottom function  $\delta \mapsto \PPbot$, yielding an $\omega$-chain
+%
+\begin{equation*}
+  (\delta \mapsto \PPbot) \PPleq W_\gamma(\delta \mapsto \PPbot) \PPleq W_\gamma^2(\delta \mapsto \PPbot) \PPleq \dots
+\end{equation*}
+%
+with each new approximation corresponding to one further level of unrolling of the loop. 
+The presence of~$\bot$ in any $W_\gamma^n(\delta \mapsto \PPbot)\,\delta_0$ can indicate that
+further unfoldings are needed to determine
+$\sem{\Gamma ; \Delta \rwtypes (\cwhile e \cdo c \cend) : \dU} \, \gamma \, \delta_0$.
+It is possible that some such further unfolding will result in an erroneous computation, at which point the denotational semantics will assume the value~$\PPerr$. For this reason it is necessary to have $X \PPleq \PPerr$, whenever $\bot \in X$.
+In the case that $\PPbot \notin W_\gamma^n(\delta \mapsto \PPbot)\,\delta_0$, it holds that 
+$\sem{\Gamma ; \Delta \rwtypes (\cwhile e \cdo c \cend) : \dU} \, \gamma \, \delta_0 = 
+W_\gamma^n(\delta \mapsto \PPbot)\,\delta_0$, i.e., the semantics is fully determined at iteration $n$, and does not change under further iterations.
+Thus nonempty sets $X$ with $\bot \notin X$ do not approximate $\PPerr$, i.e., $X \not\PPleq \PPerr$.
+
+\begin{proposition} 
+\label{prop:domain}
+For any set $S$, it holds that $(\PP{S}, \PPleq)$ is an $\omega$-complete partial order with least element.
+\end{proposition}
+
+\begin{proof}
+The least element is $\PPbot$.
+%
+For $\omega$-completeness, suppose that
+%
+\begin{equation*}
+  X_0 \PPleq X_1 \PPleq X_2 \PPleq \dots
+\end{equation*}
+%
+is an $\omega$-chain.
+In the case that every $X_n$ contains $\bot$, it is easy to check that the supremum is $ \dsup{i} X_i \defeq \bigcup_i X_i$.
+If instead there exists $n$ such that $\bot \notin X_n$ then necessarily $X_m = X_n$ for all $m \geq n$, so 
+the supremum is $\dsup{i} X_i \defeq X_n$. (In the case that no $X_n$ is~$\PPerr$, the above coincides with the Plotkin powerdomain.)
+\end{proof}
+
+In the proof of the following proposition we use the \defemph{strict union} operation on $\PP{S}$, which models nondeterministic choice:
+\[
+X \uplus Y = \begin{cases}
+\emptyset & \text{if $X = \emptyset$ or $Y = \emptyset$,} \\
+X \cup Y & \text{otherwise.}
+\end{cases}
+\]
+
+\begin{proposition} 
+\label{prop:continuity}
+The function $W_\gamma$ defined by \eqref{eq:def-W} is continuous with respect to the
+pointwise partial order on $\PP{\sem{\Delta} \times \{\semuu\}}^{\sem{\Delta}}$.
+\end{proposition}
+%
+
+\begin{proof}
+%
+The function $W_\gamma$ is the composition of several maps, two of which need their continuity checked.
+%
+The first one is monadic evaluation
+%
+\begin{align*}
+   \PP{T}^S \times \PP{S} &\to \PP{T}  \\
+  (g, X) &\mapsto \lift{g}(X)
+\end{align*}
+%
+Monotonicity is straightforward.
+%
+To establish continuity in~$X$, consider an $\omega$-chain $X_0 \PPleq X_1 \PPleq X_2 \PPleq \dots$.
+If every $X_n$ contains $\bot$, then 
+\begin{multline*}
+\textstyle
+\lift{g}(\dsup{i}X_i) =
+\lift{g}\left(\bigcup_{i}X_i\right) =
+\{\bot\} \cup \bigcup \left\{g(x) \such x \in \left(\bigcup_i X_i\right) - \{\bot\}\right\}
+\\
+\textstyle
+= \{\bot\} \cup \bigcup_i \{g(x) \such x \in X_i - \{\bot\}\}
+= \dsup{i}  \lift{g}(X_i).
+\end{multline*}
+%
+Otherwise the chain is eventually constant and~$g$ preserves its supremum because it is monotone.
+
+To establish continuity in $g$, consider an $\omega$-chain $g_0 \PPleq g_1 \PPleq g_2 \PPleq \dots$ with respect to the pointwise order on $\PP{T}^S$.
+%
+If there are $k \in \IN$ and $x \in X$ such that $g_k(x) = \PPerr$ then $\lift{(\dsup{i} g_i)}(X) = \PPerr = \dsup{i} \lift{g_i}(X)$.
+Thus it remains to prove that the sets
+%
+\begin{equation*}
+  \textstyle
+  \lift{(\dsup{i} g_i)}(X) =
+      \{\bot \such \bot \in X\} \cup 
+      \bigcup_{x \in X \setminus \{\bot\}} \dsup{i} g_i(x) \eqdef A
+\end{equation*}
+%
+and
+%
+\begin{equation*}
+  \textstyle
+  \dsup{i} \lift{g_i}(X) =
+  \dsup{i} \left(
+      \{\bot \such \bot \in X\} \cup 
+      \bigcup_{x \in X \setminus \{\bot\}} g_i(x)
+   \right) \eqdef B.
+\end{equation*}
+%
+are equal, assuming $g_i(x) \neq \PPerr$ for all $i \in \IN$ and $x \in X$.
+%
+Clearly, $\bot \in A \liff \bot \in B$.
+%
+To show that $A \setminus \{\bot\} = B \setminus \{\bot\}$, we first note that, for all $k \in \IN$, $x \in X$ and $y \neq \bot$,
+%
+\begin{equation*}
+  y \in \dsup{i} g_i(x)
+  \iff
+  \some{i \in \IN} y \in g_i(x) \setminus \{\bot\},
+\end{equation*}
+%
+thanks to the standing assumption that~$\PPerr$ does not appear in the supremum.
+%
+Now, if $y \in A \setminus \{\bot\}$ then $y \in \dsup{i} g_i(x)$ for some $x \in X \setminus \{\bot\}$,
+hence $y \in g_j(x)$ for some $j \in \IN$, and so $y \in B$.
+%
+Conversely, if $y \in B \setminus \{\bot\}$ then $y \in g_j(x)$ for some $j \in \IN$ and $x \in X \setminus \{\bot\}$, hence $y \in \dsup{i} g_i(x)$, and so $y \in A$.
+
+The other function partaking in $W_\gamma$ is
+\begin{align*}
+  C &: \PP{\{\semff, \semtt\}} \times \PP{S} \times \PP{S} \to \PP{S}
+  \\
+  C &: (X,Y,Z) \mapsto \PPlet{b}{X} 
+      \begin{cases} 
+        Y & \text{if $b = \semtt$} \\
+        Z & \text{if $b = \semff$} 
+      \end{cases}
+\end{align*}
+%
+We only verify continuity in $Y$, which is done by case analysis on~$X$:
+%
+\begin{itemize}
+\item If $\semtt \notin X$ then, $C$ is constant in~$Y$.
+\item If $X = \pure{\semtt}$ then $C(\pure{\semtt},Y,Z) = Y$ is a projection.
+\item If $X = \{\semtt, \semff\}$ then $C(Y) = Y \uplus Z$.
+\item If $X = \{\semtt,\bot\}$ then $C(Y) = Y\cup \{\bot \such Y \neq \PPerr\}$.
+\item If $X = \{\semtt, \semff,\bot\}$ then  $C(Y) = (Y \uplus Z) \cup \{\bot \such (Y \uplus Z) \neq \PPerr\}$.\end{itemize}
+In each case, continuity in $Y$ is easy to show.
+\end{proof}
+
+It follows from \cref{prop:domain,prop:continuity} that the semantic definition of while commands in~\eqref{equation:lfp} is well-defined.
+
+
+\subsection{Semantics of first-order functions}
+\label{sec:semant-first-order}
+
+We briefly address the denotational semantics of first-order functions from \cref{sec:first-order-func}.
+The denotation of a function
+%
+\begin{equation*}
+  \cfunction f {x_1 \of \tau_1, \ldots, x_n \of \tau_n} {\sigma} {e}
+\end{equation*}
+%
+is just the denotation of its body,
+%
+\begin{equation*}
+  \sem{f} \defeq
+  \sem{x_1 \of \tau_1, \ldots, x_n \of \tau_n \rotypes e : \sigma} :
+  \sem{\tau_1} \times \cdots \times \sem{\tau_n} \to \PP{\sem{\sigma}}.
+\end{equation*}
+%
+We need to be a bit careful about the denotation of a function call $f(e_1, \ldots, e_n)$ because the arguments
+$e_1, \ldots, e_n$ may diverge or yield nondeterministic values, so it matters if and when they are evaluated.
+%
+We opt for the call-by-value evaluation strategy that is most commonly seen in imperative languages.
+
+Given sets~$S$ and~$T$, define the \defemph{monadic pairing}
+%
+$\PPtuple{{-}, {-}} : \PP{S} \times \PP{T} \to \PP{S \times T}$
+%
+by
+%
+\begin{equation*}
+  \PPtuple{X, Y} \defeq (\PPlet{x}{X} \PPlet{y}{Y} \{(x, y)\}).
+\end{equation*}
+%
+Note that the binding order does not matter, i.e., $(\PPlet{x}{X} \PPlet{y}{Y} \cdots) = (\PPlet{y}{Y} \PPlet{x}{X} \cdots)\})$ because $\Pstar$ is a commutative monad.
+%
+Monadic pairing is easily extended from pairs to $n$-tuples for arbitrary~$n$.
+
+The denotation of a function call is application adorned with the monad structure:
+%
+\begin{align*}
+  \sem{\Gamma \rotypes f(e_1, \ldots, e_n) : \sigma} \gamma \defeq &
+  \lift{\sem{f}} \PPtuple{\sem{e_1} \gamma, \ldots, \sem{e_n} \gamma}.
+\end{align*}
+
+
+\section{Nondeterminism and parallelism}
+\label{sec:boolean-ops}
+
+The guarded case construct of Clerical requires parallel evaluation of the guards
+leading to potential nondeterminism.  As a result, several basic operations involving nondeterminism and parallel evaluation are definable in Clerical.
+
+A simple binary nondeterministic choice between two pure expressions
+$\Gamma \rotypes e_1 : \tau$ and $\Gamma \rotypes e_2 : \tau$ is implemented
+by
+\[\Gamma \rotypes (\ccase \ctrue \To e_1 \such \ctrue \To e_2 \cend) : \tau \]
+This has the derived semantics
+\[
+\sem{\Gamma \rotypes (\ccase \ctrue \To e_1 \such \ctrue \To e_2 \cend) : \tau }\, \gamma
+~ = ~ \sem{\Gamma \rotypes e_1 : \tau } \, \gamma\,
+\uplus \,
+\sem{\Gamma \rotypes e_2  : \tau }\,\gamma
+\]
+using the strict union operation defined above Proposition~\ref{prop:continuity}.
+
+It is also possible to implement McCarthy's \defemph{ambiguous choice} between 
+$\Gamma \rotypes e_1 : \tau$ and $\Gamma \rotypes e_2 : \tau$, by:
+\[\Gamma \rotypes (\ccase (\cvar{x}{e_1} \ctrue) \To e_1 \such 
+(\cvar{x}{e_2} \ctrue) \To e_2 \cend) : \tau \]
+Writing $\Gamma \rotypes e_1 \,\mathtt{amb}\, e_2 : \tau$ for the above, 
+we have
+%
+\begin{multline*}
+\sem{\Gamma \rotypes  e_1 \,\mathtt{amb}\, e_2 : \tau }\, \gamma = \\
+  (\sem{\Gamma \rotypes e_1 : \tau } \, \gamma\, \uplus \, \sem{\Gamma \rotypes e_2  : \tau }\,\gamma)
+  \setminus
+  \{ \bot \mid \bot \notin (\sem{\Gamma \rotypes e_1  : \tau }\,\gamma 
+\,\cap \,\sem{\Gamma \rotypes e_2  : \tau}\,\gamma)\}\;.
+\end{multline*}
+
+A well-known issue with ambiguous choice is that it is not monotonic with respect to any reasonable powerdomain partial ordering \cite{LEVY2007221}, meaning that it does not have a domain-theoretic semantics. Indeed, such a failure of monotonicity holds with respect to 
+the ordering $\PPleq$ we have defined on our powerdomain $\PP{-}$. It follows that the denotational semantics of Clerical expressions does not, in general, act monotonically in the semantics of subexpressions. We present a  simple example of this phenomen.
+
+
+Consider the expression below, which is parametric in the subexpression
+$\rotypes e  : \dB$:
+%
+\begin{lstlisting}
+case
+| e => while true do skip end
+| true => skip
+end
+\end{lstlisting}
+%
+In the case that $\sem{e} =  \pure{\bot}$, the denotation of the whole expression is $\{\semuu\} $. If instead $\sem{e} =  \pure{\semtt}$, then the denotation of the expression is $\{\semuu, \bot\}$. This breaks monotonicity because
+$\pure{\bot} \PPleq  \pure{\semtt}$ in $\PP{\{\semff, \semtt\}}$, but $\{\semuu\} \not \PPleq \{\semuu, \bot\}$  in $\PP{\{\semuu\}}$.
+Similarly, considering the case in which $e$ is an erroneous expression (i.e., $\sem{e} = \PPerr$),
+we have $\pure{\bot} \PPleq  \PPerr$, but $\{\semuu\} \not \PPleq \PPerr$.
+
+
+Given the non-monotonicity properties illustrated above, it is perhaps surprising that it is possible to give Clerical a denotational semantics involving a domain-theoretic fixed-point argument to establish the semantics of while loops. The reason for this is that the operator $W_\gamma$, used in defining the semantics of while loops, is defined purely as a combination of conditional statements and sequencing, and does not involve the problematic non-monotonic aspects of Clerical. Indeed, as Proposition~\ref{prop:continuity} establishes,  the particular operator $W_\gamma$ is always continuous, hence \emph{a fortiori}  monotone. 
+
+Clerical, as we have defined it, does not include any primitive operator for manipulating booleans. This does not limit expressivity since logical operations are definable using the conditional construct.
+For example, negation of a boolean expression $b$ is defined by
+\[
+\neg b \defeq (\cif b \cthen \cfalse \celse  \ctrue  \cend)
+\]
+The most concise way of defining the disjunction of two boolean typed expressions $b_1$ and $b_2$ is by $\cif b_1 \cthen \ctrue \celse  b_2 \cend$. This is asymmetric: if 
+$\sem{b_1} = \pure{\semtt}$ and $\sem{b_2} = \pure {\bot}$ then the disjunction has denotation $\pure{\semtt}$, whereas if
+$\sem{b_1} = \pure{\bot}$ and $\sem{b_2} = \pure {\semtt}$ then 
+the resulting denotation is $\pure{\bot}$. It is similarly possible to define a symmetric strict disjunction by 
+\[\cif b_1 \cthen (\cif b_2 \cthen \ctrue \celse \ctrue \cend) \celse  b_2 \cend\]
+More interestingly, the guarded case construct can be used to define Plotkin's \defemph{parallel or} \cite{plotkin1977lcf}, another symmetric version of  disjunction which requires parallel evaluation, by
+\begin{equation*}
+b_1 \cdisj b_2 \defeq
+(\ccase
+      b_1 \To \ctrue
+\such b_2 \To \ctrue
+\such \neg b_1 \To \neg b_2
+\cend)
+\end{equation*}
+From a logical perspective, when applied to deterministic expressions, $b_1 \cdisj b_2$ computes the disjunction of $b_1$ and $b_2$ from Kleene (and Priest) 3-valued logic.
+
+Since Clerical is a nondeterministic language, the defined logical operators all have an induced effect on nondeterministic and erroneous expressions. For example, the derived full semantics for parallel or is:
+\begin{align*}
+\sem{\Gamma \rotypes b_1 \cdisj b_2 : \dB }(\gamma) &= \bigcup_{\substack{v_1 \in \sem{\Gamma \rotypes b_1:\dB}(\gamma)\\v_2 \in \sem{\Gamma \rotypes b_2 : \dB}(\gamma)}}\begin{cases}
+\{\semtt\}&\text{if }v_1 = \semtt \lor v_2 = \semtt,\\
+\{\semff\}&\text{if }v_1 = \semff \land v_2 = \semff,\\
+\{\bot\}&\text{otherwise}.
+\end{cases}
+\end{align*}
+
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "clerical"
+%%% End:

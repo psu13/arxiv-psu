@@ -1,0 +1,47 @@
+\section{Implementation}
+\label{sec:implementation}
+
+We turn attention to how Clerical, or a language based on it, might be implemented in practice.
+A sensible implementation ought to work in such a way that an error-free well-typed \defemph{program} (a closed expression) $e$ of type~$\tau$ evaluates to one of its denotations, i.e., if $\sem{\emptyctx \rotypes e : \tau}() \neq \emptyset$ then $e$ evaluates to any $v \in \sem{\emptyctx \rotypes e : \tau}()$. More precisely, $e$ ought to evaluate to a \emph{representation} of~$v$, with the proviso that~$\bot$ corresponds to a non-terminating evaluation.
+
+An implementation is certainly possible in principle. To see this, we can follow the approach of~\cite{brausse2016semantics} to show that Clerical programs are computable in the sense of Type Two Effectivity~\cite{w00}. We first endow each datatype~$\tau$ with a standard Baire space representation. In particular, reals are encoded by rapidly converging sequences of (encoded) rationals. We claim that whenever $\Gamma \rotypes e : \tau$ there is a type two Turing machine~$M$ which takes as input a representation of $\gamma \in \sem{\Gamma}$ and
+%
+\begin{itemize}
+\item either $\sem{\Gamma \rotypes e : \tau} \, \gamma = \emptyset$, or
+\item $M$ diverges and $\bot \in \sem{\Gamma \rotypes e : \tau} \, \gamma$, or
+\item $M$ outputs a representation of an element of $\sem{\Gamma \rotypes e : \tau} \, \gamma$.
+\end{itemize}
+%
+The construction of~$M$ proceeds recursively on the structure of~$e$. The most interesting is the $\ccase$ statement, which is implemented by combining the machines that compute the guards into a single machine that interleaves the guard computations and proceeds with the case whose guard first evaluates to~$\ctrue$.
+
+More interesting and relevant is the question of an actual implementation of Clerical.
+We implemented a proof-of-concept interpreter in OCaml, available at~\cite{clerical_ocaml}.
+The connoisseurs will recognize the strong influence of the iRRAM package for exact-real arithmetic~\cite{muller2000irram}, which we gladly acknowledge.
+%
+
+We use the GNU MPFR library~\cite{mpfr} to compute with large integers and multiple-precision floating-point numbers.
+%
+During evaluation, real numbers are approximated by intervals whose endpoints are represented by multiple-precision floating-point numbers, rounded at the current \defemph{working precision}.
+As the computation progresses, rounding, interval arithmetic, and limit approximations contribute to making the intervals ever wider.
+If the intervals approximating $x$ and $y$ in a comparison $x \rlt y$ overlap, its Boolean value cannot be computed and evaluation is aborted due to \defemph{loss of precision}. The control returns to the top level, where the entire computation is restarted with higher working precision. The computation of a reciprocal $x^{-1}$ behaves analogously in case the interval approximating~$x$ overlaps with~$0$.
+%
+If the top level needs to output the result of a computation at a given precision, it keeps restarting it with ever higher working precision until the desired output precision is achieved.
+
+The most interesting part of the interpreter is the implementation of guarded case
+%
+\begin{equation*}
+  \ccase e_1 \To c_1 \mid \cdots \mid e_n \To c_n \cend.
+\end{equation*}
+%
+Our semantics demands that one of the branches~$c_j$ must evaluate so long as one of the guards necessarily evaluates to $\ctrue$. Therefore, we cannot evaluate the guards $e_1, \ldots, e_n$ sequentially one after the other, lest the evaluation get stuck in a non-terminating guard.
+%
+We employed algebraic effects and handlers~\cite{plotkin09:_handl_algeb_effec,bauer15:_progr}, which are supported in OCaml~5, to implement cooperative threads that interleave the computations of the guards. The threads periodically yield control to the main scheduler, which enforces a round-robing evaluation strategy.
+%
+As soon as one of the threads~$e_i$ evaluates to~$\ctrue$, the other ones are aborted and the computation proceeds with the corresponding case~$c_i$.
+%
+We are looking forward to future experimentation with parallel execution of guards, which can be implemented using OCaml~5 multi-core features~\cite{sivaramakrishnan22:_retrof_concur}.
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "clerical"
+%%% End:

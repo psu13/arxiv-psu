@@ -1,0 +1,122 @@
+% !TEX root = clerical.tex
+\section{Introduction}
+In exact real-number computation, infinite representations are used to compute with real numbers precisely, without rounding errors.
+By representing reals as, e.g., infinite sequences of rational approximations,
+real-valued functions can be computed exactly, using stream algorithms or
+type-2 Turing machines~\cite{w00}.
+In many approaches to exact real-number computation \cite{tucker1999computation,tucker1999computation,tucker2015generalizing,escardo1996pcf,edalat2000integration,escardoSimpson2014,brausse2016semantics} the concrete representation of real numbers is veiled by an \emph{abstract datatype} or \emph{interface} that exposes only a suite of primitive operations on reals.
+This way programmers can think of the real numbers in ordinary mathematical terms, as
+a structure closely related to the usual one~\cite{hertling99:_real_number_struc_effec_categ,escardoSimpson2001}. Moreover, programs can be written and reasoned about intuitively, relying on familiarity with the traditional mathematics of real numbers, and without having to take rounding errors or representations into account.
+This approach has been substantiated in practice by several implementations~\cite{muller2000irram,lambov2007,Ariadne,aern}. 
+
+Imperative programming is a natural and ubiquitous programming paradigm, supported by a well-established precondition/postcondition-based program verification methodology~\cite{apt19:_fifty_years_hoare_logic}.
+One would naturally like to incorporate exact real-number computation into the imperative programming style and its verification methodology. This desire has been previously addressed in \cite{brausse2016semantics}, in which the authors introduce a simple imperative language with an abstract data type of reals, provide formal rules for proving correctness assertions, and present illustrative examples, such as a verified root-finding program.
+
+The goal of the present paper is to extend the work of \cite{brausse2016semantics} to a richer programming language, extended with a limit-finding primitive that calculates limits of Cauchy sequences, a central feature of exact real-number computation that makes it more expressive than purely algebraic or symbolic computation \cite{Bra03f,neumann2018topological}. The key operation takes a Cauchy sequence $f : \IN \to \IR$ (with a fixed rate of convergence) and returns its limit $\lim_{n \to \infty} f(n)$ as a value of real number type.
+Such functionality is implemented in practice~\cite{muller2000irram}. However, it is not included in the imperative language of \cite{brausse2016semantics}, in which limits can only be implemented \emph{indirectly} as top-level programs that calculate approximations forming Cauchy sequences. Because the limit values are not themselves directly accessible, they cannot be returned or used in intermediate calculations, nor can calculations using limits be composed.
+%
+A similar restriction can be found in the work of Tucker and Zucker \cite{tucker1999computation,tucker2015generalizing}.
+
+In this paper, we present an imperative language called 
+\emph{Clerical} (Command-Like Expressions for Real Infinite-precision Calculations)  that
+fully supports the construction of real numbers as limits, and we provide a program verification framework for it.
+
+The paper is organized as follows.
+%
+In \Cref{sec:overview} we give an overview of the design challenges and the solutions employed in Clerical.
+A formal account of the syntax and the type system is given in \Cref{sec:syntax}.
+%
+In \cref{sec:denotation} we introduce a modified Plotkin powerdomain and use it to define a denotational semantics of Clerical, including the relatively involved denotations of limits, guarded nondeterministic choice, and loops.
+%
+In \cref{sec:boolean-ops}, we show that Clerical is expressive enough to support parallel evaluation and nondeterministic operations, including McCarthy's ambiguous choice.
+%
+In \cref{sec:specification-logic} we define a specification logic and prove it to be sound for our denotational semantics.
+The capabilities of our setup are illustrated in \cref{sec:example}, where we implement a Clerical program computing~$\pi$ as the least positive root of the $\sin$ function and show its correctness.
+%
+In \cref{sec:implementation} we briefly address the operational aspects of Clerical and how one might implement a practical programming language based on it. We provide our own proof-of-concept implementation, with several minor extensions to the language.
+%
+Finally, in \cref{sec:formalization} we comment on our formalization of soundness of specification logic and several other parts of Clerical in the proof assistant Coq~\cite{coq}.
+
+
+
+\section{Overview of Clerical}
+\label{sec:overview}
+
+Clerical is an imperative-style programming language with mutable variables, conditional statements, loops, equipped with an abstract datatype of real numbers that supports basic arithmetic, and crucially, computation of real numbers as limits of Cauchy sequences. As the strict linear order~$<$ on the reals is only semidecidable, conditional statements need to cope with possibly nonterminating comparison tests, leading to a necessarily nondeterministic language.  
+%
+The language is designed to exploit the programming potential of interactions between mutable state, computation of limits, nondeterminism, and nontermination. Its type system and specification logic can be used to ensure that such interactions are only utilised in error-free ways.
+
+The limit-finding operator $\lim : (\IN \to \IR) \to \IR$ could be defined naturally as a higher-order function taking a Cauchy sequence $f: \IN \to \IR$ to its limits; see \cite{park23} for an example. 
+Instead, we adopt a more general approach that does not require  function types (but which is equivalent in their presence). 
+We introduce a custom expression $\clim{n}{e}$ that encapsulates a real-valued expression~$e$ (usually containing $n$) computing approximations of the limit.
+%
+When the sequence of approximations converges rapidly, i.e., the $n$-th one is within $2^{-n}$ of the limit, the expression $\clim{n}{e}$ is guaranteed to evaluate to the real number that is the limit of the sequence.
+%
+For the language to be rich enough to express interesting limits, it is important that the calculation of~$e$ can be an arbitrarily complex computation that may use the full set of programming features, including sequencing, loops and mutable state. In this sense, expressions in  Clerical are \emph{command-like}, 
+going far beyond the simple algebraic expressions included in the imperative languages typically used as the basis of Hoare logic~\cite{apt19:_fifty_years_hoare_logic}. Nevertheless,  
+as in such standard imperative languages, we do require the 
+expression~$e$ 
+in $\clim{n}{e}$ to be \emph{pure}, meaning that it does not alter the global state. To ensure this, $e$ is  allowed 
+to perform assignment only to its own \emph{local variables}, with all other variables accessed in a read-only fashion.
+This purity condition is enforced via a typing discipline, as explained in~\cref{sec:syntax}.
+
+Non-termination needs careful handling in exact real-number computation. 
+Even a simple order comparison of two real numbers can give rise to non-termination when the numbers coincide \cite[Theorem 4.1.16]{w00}. 
+That is, the test $x \rlt y$ does not terminate when $x$ and $y$ are equal.
+To safely deal with real number comparisons that may diverge, nondeterminism becomes essential \cite{LUCKHARDT1977321}. 
+In Clerical, nondeterminism is provided by a Dijkstra-style guarded case statement:
+\[\ccase e_1  \Rightarrow c_1 \mid e_2 \Rightarrow c_2 \mid \cdots \mid e_n \Rightarrow c_n \cend\;.\]
+This construct proceeds with parallel or interleaved evaluation of the guards $e_i$,
+and selects one of the guarded expressions~$c_i$ whose guard~$e_i$ evaluated to~$\ctrue$.
+If several guards are true, any one of the corresponding expressions may be selected nondeterministically,
+which allows non-termination to be bypassed: even if one of the guards fails to terminate,
+as long as there is some guarded expression that can be selected, the case expression safely selects such a branch.
+For example, soft comparison \cite{BRATTKA1998490}, a nondeterministic approximation to 
+order comparison, is expressed in Clerical as follows:
+\[
+\ccase x \rlt y \rplus 2^{-n}  \Rightarrow \ctrue \mid y \rlt x \rplus 2^{-n} \Rightarrow \cfalse \cend\;.
+\]
+In the case $x = y + 2^{-n}$, the first guard fails to terminate, as does the second in the case $x = y - 2^{-n}$.
+The overall expression evaluates deterministically to $\ctrue$ in the case that $x \leq  y - 2^{-n}$, to 
+$\cfalse$ in the case that $x \geq  y + 2^{-n}$, and nondeterministically to either truth value in the case
+$y - 2^{-n} < x < y + 2^{-n}$.
+
+The limit operator adds a further complication to Clerical.
+%
+It is not clear how to devise a coherent evaluation strategy for $\clim{n}{e}$ when the expression~$e$ fails to generate a rapidly converging Cauchy sequence.
+%
+For this reason, we consider any program that applies the limit operation to an expression $e$ that does not define a rapidly converging Cauchy sequence as being erroneous.
+%
+In the denotational semantics of Clerical, such programs will assume a special error value, which we must be able to combine semantically with non-termination and nondeterminism. For this purpose we 
+use  
+a modified version of the Plotkin powerdomain~\cite{plotkin1976powerdomain} in \cref{sec:denotation}.
+%
+We remark that the error value cannot be identified with non-termination, because, unlike non-termination, error values cannot be bypassed by guarded case statements.
+
+
+A general (possibly impure) expression in  Clerical has two main behaviours: it evaluates to a value and also, in the case that 
+it is impure, alters the state. 
+Accordingly, we use the following form of Hoare-style triples, whose postconditions can refer to return values as in \cite{hot,HONDA201475,iris},
+for partial and total correctness specifications for expressions:
+\[
+\{ \phi\} \, e\, \{ y \of \tau \such \psi \}^\tot
+    \qquad\text{and}\qquad
+\{ \phi\} \, e\, \{ y \of \tau \such \psi \}^\prt\;.
+\]
+The first triple expresses total correctness of the expression $e$ and says that,
+in any state satisfying the precondition $\phi$, every nondeterministic branch in the execution of $e$ terminates without introducing any error, and each branch results in a state and a value $y$ satisfying the postcondition $\psi$.
+The second triple for partial correctness still requires terminating nondeterministic branches to satisfy $\psi$ and all branches
+to be  error free, but
+permits the existence of nondeterministic branches that do not terminate.
+Although total correctness is the form of correctness that is usually desired in program verification, it turns out  to be necessary to also consider partial correctness in order to provide the correct proof rules for total correctness.
+When we prove the total correctness of a guarded case expression, it is appropriate to assume that the guards are only partially correct,
+since the case expression can still  terminate when some guards do not.
+Conversely, total correctness is required to formulate the correct proof rules for partial correctness.
+To prove a limit operation $\clim{n}{e}$ partially correct, it is still necessary to ensure that $e$ is totally correct, as any non-terminating behaviour in $e$ will prevent it from defining a rapid Cauchy sequence, and hence $\clim{n}{e}$ to be erroneous, as discussed above. 
+Accordingly, we provide proof rules for partial and total correctness that are intertwined and prove that they are sound with regard to the denotational semantics. 
+
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: "clerical"
+%%% End:

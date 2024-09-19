@@ -1,0 +1,387 @@
+\section{Syntax and type system}
+\label{sec:syntax}
+
+As just discussed, Clerical is an imperative language for exact real-number computation based on \emph{command-like expressions}, that is, value-returning expressions built up using the usual constructs  for forming imperative commands: while loops, case statements, sequential composition, variable assignment, etc. Variables and values are typed. The types of Clerical are:
+a  \text{unit} type, $\dU$, with only one value; booleans, $\dB$; integers, $\dZ$; and the abstract type of real numbers, $\dR$, whose 
+very presence is the \emph{raison d'\^{e}tre} of the language. 
+
+The well-typedness of expressions is ensured as usual by a type system that provides rules for 
+establishing that an expression $e$ has type $\tau$ in a context that assigns types to  all the variables that appear in $e$.
+There is, however, one particular subtlety that we need to deal with. As adumbrated in Section~\ref{sec:overview}, the programming language distinguishes between `pure' and general (`impure') expressions. By a \emph{pure} expression $e$, we understand one that can read from but not write to the variables in the context of the expression.  That is, $e$ must 
+not contain within it any assignment operation $\clet{x}{e'}$ to a variable $x$ in the context of $e$. 
+Since, in imperative programming, variable assigment is an essential component of almost any non-trivial computation, in order to permit a sufficiently expressive language of pure expressions in Clerical, we allow pure expressions to declare and assign values to 
+\emph{local variables} that do not appear in the context of $e$. This is formalized via  a type system in which the general form of judgement for assigning an expression $c$ the type $\tau$ is 
+\[
+  \Gamma; \Delta \rwtypes c : \tau  \enspace , 
+\]
+where $\Gamma = (x_1 \of \tau_1, \ldots, x_m \of \tau_m)$ is a list assigning types to variables that are read-only in~$c$,
+and $\Delta = (y_1 \of \sigma_1, \ldots, y_n \of \sigma_n)$ assigns types to read-write variables. 
+Pure expressions arise by requiring the context $\Delta$ of read-write variables to be empty. For convenience in defining the semantics of 
+Clerical in~\cref{sec:denotation},
+we include a separate judgement form for pure expressions:
+\[
+  \Gamma \rotypes e : \tau  \enspace , 
+\]
+in which $\Gamma$, as above,   is a context of read-only variables. In general, we refer to sequences $\Gamma$ as 
+\emph{read-only contexts}, and pairs
+%
+\begin{equation*}
+ \Gamma ; \Delta =
+ (x_1 \of \tau_1, \ldots, x_m \of \tau_m ;\; y_1 \of \sigma_1, \ldots, y_n \of \sigma_n)
+\end{equation*}
+%
+as \emph{read-write contexts}. The two judgement forms are connected by conversion  rules in each direction:
+\[
+   \inferenceRule{}{
+      \Gamma ; \emptyctx \rwtypes c : \tau
+    }{
+      \Gamma \rotypes c : \tau
+    }
+\qquad
+    \inferenceRule{}{
+      \Gamma, \Delta \rotypes e : \tau
+    }{
+      \Gamma ; \Delta \rwtypes e : \tau
+    }
+\]
+The first explicitly recognises the purity of a general expression with an empty sequence of write variables. The second allows us to use a pure expression
+as a general expression, by choosing any partition of the \emph{read-only} context $\Gamma,\Delta$ to identify the variables
+$\Delta$ that we allow the general expression to write to. 
+The distinction between~$c$ as the meta-notation for general expressions and~$e$ as the meta-notation for pure expressions reflects the fact that, in Clerical, we use general expressions~$c$ in syntactic positions in which `commands' usually appear in traditional imperative languages, and we use pure expressions~$e$ in positions that are traditionally restricted to  `expressions' in imperative language nomenclature. Indeed, our general value-returning expressions generalise the traditional value-free `commands' since we can consider the latter as being given by
+general expressions of unit type in read-write contexts in which all variables are writable:
+\[
+  \emptyctx  \, ; \Delta \rwtypes c : \dU \enspace . 
+\]
+Further mediation between the collections $\Gamma$ of read-only variables and $\Delta$ of read-write variables is provided by the typing rule for local variables
+\[
+ \inferenceRule{}{
+      \Gamma, \Delta \rotypes e : \sigma \\
+      \Gamma ; \Delta, x \of \sigma \rwtypes c : \tau
+     }{
+      \Gamma ; \Delta \rwtypes (\cvar{x}{e} c) : \tau
+    }
+\]
+The expression $\cvar{x}{e} c$ declares a fresh local variable $x$ and initializes it by computing the value of the subexpression~$e$, which is required to be pure. (This is an example of a syntactic position that would be occupied by an `expression' in a traditional imperative language, and which accordingly  requires a pure expression in Clerical.) The main expression then continues computation as the general expression~$c$, which is at liberty to overwrite the variable $x$ without affecting the status (read-only or read-write respectively) of the variables in~$\Gamma$ and~$\Delta$. 
+
+
+\begin{figure}
+  \centering
+  \begin{mdframed}
+  \small
+  \begin{align*}
+  \text{Expression}\ e, c
+  \bnfis& x                               &&\text{variable}\\
+  \bnfor& \ctrue \bnfor \cfalse \bnfor \numeral{k} \bnfor \cskip
+                                          &&\text{constants}\\
+  \bnfor& \ccoerce{e}                     &&\text{coercions from $\dZ$}\\ 
+  & &&\quad \text{to $\dR$}\\
+  \bnfor& 2^e                             &&\text{exponentiation by $2$}\\
+  \bnfor& e_1 \iop e_2                    &&\text{integer arithmetic} \\ 
+  & &&\quad\text{${\iop} \in \{{\iplus}, {\iminus}, {\imult}\}$}\\
+  \bnfor& e_1 \rop e_2 \bnfor \cinv{e}    &&\text{real arithmetic} \\
+  & &&\quad\text{${\rop} \in \{{\rplus}, {\rminus}, {\rmult}\}$} \\
+  \bnfor& e_1 \ilt e_2 \bnfor e_1 = e_2   &&\text{integer comparison}\\
+  \bnfor& e_1 \rlt e_2                    &&\text{real comparison}\\
+  \bnfor& \clim{x}{e}                     &&\text{limit ($x$ bound in $e$)} \\
+  \bnfor& c_1 ; c_2                       &&\text{sequencing}\\
+  \bnfor& \cvar{x}{e} c                   &&\text{local variable}\\
+   & && \quad\text{($x$ bound in $c$)}\\
+  \bnfor& \clet{x}{e}                     &&\text{assignment}\\
+  \bnfor& \cif e \cthen c_1 \celse c_2 \cend
+                                          &&\text{conditional}\\
+  \bnfor& \ccase e_1 \To c_1 \mid \cdots \mid e_n \To c_n \cend
+                                          &&\text{guarded cases}\\
+  \bnfor& \cwhile e \cdo c \cend          &&\text{loop} \\[1ex]
+  \text{Type}\ \tau, \sigma
+  \bnfis& \dU                             &&\text{unit}\\
+  \bnfor& \dB                             &&\text{boolean}\\
+  \bnfor& \dZ                             &&\text{integer}\\
+  \bnfor& \dR                             &&\text{real} \\[1ex]
+  %
+  \text{Typing context}\ \Gamma, \Delta
+  \bnfis& \ x_1 \of \tau_1, \ldots, x_m \of \tau_m \\
+  \text{Read-only context}
+  \bnfis& \ \Gamma \\
+  \text{Read-write context}
+  \bnfis& \ \Gamma; \Delta
+  \end{align*}
+  \end{mdframed}
+  \caption{Abstract syntax}
+  \label{fig:syntax}
+\end{figure}
+
+
+
+\begin{figure}[htbp]
+  \centering
+  \begin{mdframed}
+  \begin{mathpar}
+    \inferenceRule{Ty-Rw-Ro}{
+      \Gamma ; \emptyctx \rwtypes c : \tau
+    }{
+      \Gamma \rotypes c : \tau
+    }
+
+    \inferenceRule{Ty-Ro-Rw}{
+      \Gamma, \Delta \rotypes e : \tau
+    }{
+      \Gamma ; \Delta \rwtypes e : \tau
+    }
+    
+    \inferenceRule{Ty-Var}{
+      \Gamma(x) = \tau
+    }{
+      \Gamma \rotypes x : \tau
+    }
+
+    \inferenceRule{Ty-False}{
+    }{
+      \Gamma \rotypes \cfalse : \dB
+    }
+
+    \inferenceRule{Ty-True}{
+    }{
+      \Gamma \rotypes \ctrue : \dB
+    }
+
+    \inferenceRule{Ty-Int}{
+    }{
+      \Gamma \rotypes \numeral{k} : \dZ
+    }
+
+    \inferenceRule{Ty-Skip}{
+     }{
+      \Gamma \rotypes \cskip : \dU
+    }
+
+    \inferenceRule{Ty-Coerce}{
+      \Gamma \rotypes e : \dZ
+    }{
+      \Gamma \rotypes \ccoerce{e} : \dR
+    }
+
+    \inferenceRule{Ty-Exp}{
+      \Gamma \rotypes e : \dZ
+    }{
+      \Gamma \rotypes 2^e : \dR
+    }
+
+    \inferenceRule{Ty-Int-Op}{
+      \Gamma \rotypes e_1 : \dZ \\
+      \Gamma \rotypes e_2 : \dZ
+    }{
+      \Gamma \rotypes e_1 \iop e_2 : \dZ
+    }
+
+    \inferenceRule{Ty-Real-Op}{
+      \Gamma \rotypes e_1 : \dR \\
+      \Gamma \rotypes e_2 : \dR
+    }{
+      \Gamma \rotypes e_1 \rop e_2 : \dR
+    }
+
+    \inferenceRule{Ty-Recip}{
+      \Gamma \rotypes e : \dR
+    }{
+      \Gamma \rotypes \cinv{e} : \dR
+    }
+
+    \inferenceRule{Ty-Int-Lt}{
+      \Gamma \rotypes e_1 : \dZ \\
+      \Gamma \rotypes e_2 : \dZ
+    }{
+      \Gamma \rotypes e_1 < e_2 : \dB
+    }
+
+    \inferenceRule{Ty-Int-Eq}{
+      \Gamma \rotypes e_1 : \dZ \\
+      \Gamma \rotypes e_2 : \dZ
+    }{
+      \Gamma \rotypes e_1 = e_2 : \dB
+    }
+
+    \inferenceRule{Ty-Real-Lt}{
+      \Gamma \rotypes e_1 : \dR \\
+      \Gamma \rotypes e_2 : \dR
+    }{
+      \Gamma \rotypes e_1 \rlt e_2 : \dB
+    }
+
+    \inferenceRule{Ty-Lim}{
+      \Gamma,x \of \dZ \rotypes e : \dR
+    }{
+      \Gamma \rotypes (\clim{x}{e}) : \dR
+    }
+
+    \inferenceRule{Ty-Sequence}{
+      \Gamma ; \Delta \rwtypes c_1 : \dU \\
+      \Gamma ; \Delta \rwtypes c_2 : \tau
+     }{
+      \Gamma ; \Delta \rwtypes (c_1 ; c_2) : \tau
+    }
+
+    \inferenceRule{Ty-New-Var}{
+      \Gamma, \Delta \rotypes e : \sigma \\
+      \Gamma ; \Delta, x \of \sigma \rwtypes c : \tau
+     }{
+      \Gamma ; \Delta \rwtypes (\cvar{x}{e} c) : \tau
+    }
+
+    \inferenceRule{Ty-Assign}{
+      \Delta \rotypes x : \tau \\
+      \Gamma, \Delta \rotypes e : \tau
+     }{
+      \Gamma ; \Delta \rwtypes (\clet{x}{e}) : \dU
+    }
+
+    \inferenceRule{Ty-Cond}{
+      \Gamma, \Delta \rotypes e : \dB \\
+      \Gamma ; \Delta \rwtypes c_1 : \tau \\
+      \Gamma ; \Delta \rwtypes c_2 : \tau
+    }{
+      \Gamma ; \Delta \rwtypes (\cif e \cthen c_1 \celse c_2 \cend) : \tau
+    }
+
+    \inferenceRule{Ty-Case}{
+      \Gamma, \Delta \rotypes e_i : \dB \\
+      \Gamma ; \Delta \rwtypes c_i : \tau \\
+      (i = 1, \ldots, n)
+    }{
+      \Gamma ; \Delta \rwtypes (\ccase e_1 \To c_1 \mid \cdots \mid e_n \To c_n \cend) : \tau
+    }
+
+    \inferenceRule{Ty-While}{
+      \Gamma, \Delta \rotypes e : \dB \\
+      \Gamma ; \Delta \rwtypes c : \dU
+    }{
+      \Gamma ; \Delta \rwtypes (\cwhile e \cdo c \cend) : \dU
+    }
+  \end{mathpar}
+  \end{mdframed}
+  \caption{Typing rules}
+  \label{fig:typing-rules}
+\end{figure}
+
+
+The abstract syntax of expressions is shown in \cref{fig:syntax}, where we indicate expressions with~$e$ and $c$ according to whether they are intended to be pure or impure. However, as discussed above, the distinction between purity and impurity is in actuality implemented by the 
+type system, and the two kinds of expression share the same grammar for their abstract syntax. 
+
+Among the pure expressions are variables~$x$, of which we presume to have an unbounded supply, boolean constants $\cfalse$ and $\ctrue$, integer numerals~$\numeral{k}$ for $k \in \IZ$, the trivial expression~$\cskip$, coercion from integers to reals $\ccoerce{e}$, exponentiation $2^e$, arithmetical operations, integer comparisons $e_1 = e_2$ and $e_1 < e_2$, real comparison $e_1 \rlt e_2$ (but not equality of reals), and the limit expression $\clim{x}{e}$.
+%
+The (potentially) state-changing expressions are sequencing $c_1; c_2$, introduction of a local variable $\cvar{x}{e} c$, variable assignment $\clet{x}{e}$, the conditional $\cif e \cthen c_1 \celse c_2 \cend$, guarded case $\ccase e_1 \To c_1 \mid \cdots \mid e_n \To c_n \cend$, and the loop $\cwhile e \cdo c \cend$. These syntactic constructions can also give rise to pure expressions  in certain circumstances dictated by the type system, which is presented in  \cref{fig:typing-rules}. 
+
+Since the focus of Clerical is real-number computation, we briefly discuss some relevant aspects of the language and give an example program. A fully  detailed semantic explanation of the language follows in~\cref{sec:denotation}, and many more  examples appear in \cref{sec:boolean-ops,sec:example}.
+
+The abstract datatype $\dR$ of real numbers, includes constants $\ccoerce{m}$ for every integer $m$  coerced to a real number via
+the inclusion $\mathbb{Z} \subseteq \mathbb{R}$, and $2^m$ for an integer-exponent power of $2$, which of course includes fractional values when $m$ is negative. The latter construct is particularly useful for implementing bounds related to the limit operation $\clim{x}{e}$,
+which assumes that $e$ defines a \emph{rapidly converging} Cauchy sequence in its integer variable $x$: namely
+$(e_m)_{m \in \mathbb{Z}}$ is a Cauchy sequence whose limit $l = \lim_{m \to \infty} e_m$ satisfies
+$|\,l-e_m| < 2^{-m}$, for all $m\in \mathbb{Z}$,
+where we write $e_m$ for the real-number
+computed by $e$ when $x$ takes value $m$. (Note that, for simplicity, and with no loss of generality, our sequences are indexed by all integers including negative indices.)
+As built-in arithmetic operations on the reals, we include addition, subtraction, multiplication and reciprocal. The strict comparison operator
+$e_1 \rlt e_2$ is boolean-valued, and returns the expected truth value whenever $e_1$ and $e_2$ compute to distinct reals. 
+In the case of equality, however, it diverges. As discussed in Section~\ref{sec:overview}, such behaviour is an unavoidable feature of
+exact-real-number computation. We do not include an equality test on reals since, for essentially the same reason, the best one could achieve is divergence in the case of equality, meaning an equality test would never return true. 
+
+The behaviour of the guarded case construct and its relationship to such non-termination properties has been discussed in Section~\ref{sec:overview}. To end this section, we present  a short example program that demonstrates how this case construct interacts with the limit operator to define mathematically useful operations; albeit, in this case, a particularly simple one. The program below is a pure expression of type $\dR$, with a single read-only variable $x$ also of type $\dR$.  It calculates the absolute value of the real number assigned to the variable $x$. Because of the non-termination properties of exact-real-number comparison, this cannot be defined using a simple if-then-else conditional that tests whether the value of $x$ is negative or not. Instead, we need to combine the limit operator with the guarded case construct:
+%
+\begin{lstlisting}
+lim n.
+ case
+    $x \rlt 2^{\iminus n\iminus  \numeral{1}}$ =>  $~\rminus x$ 
+  | $\rminus 2^{\iminus n\iminus \numeral{1}} \rlt x$ => $~x$
+ end
+\end{lstlisting}
+%
+Here $\rminus e$ is an abbreviation for $\ccoerce{\numeral{0}} \rminus e$.
+Given a real number $x$, to approximate its absolute value $|x|$ up to accuracy $2^{-n}$, for any integer $n$, we make a parallel test if $x < 2^{-n-1}$ holds or $x > -2^{-n-1}$ holds;  at least one of which is guaranteed to evaluate to true. 
+If the first condition does, we return $-x$ as the $2^{-n}$ approximating value.
+If the second condition does, we return $x$. 
+In both cases, the returned value lies within $2^{-n}$ of $|x|$. Thus 
+the sequence, as $n$ tends to $\infty$, has the required rapid rate of convergence to the limit value  $|x|$.
+
+One slightly subtle point with the above example, is that the `sequence' defined by the case statement is actually nondeterministic. 
+In the case that $-2^{-n-1} < x < 2^{-n-1}$, either of the values $x$ or $-x$ may arise as the $2^{-n}$ approximation. In the semantics of Clerical, we do not try to determinize this. In principle, two successive evaluations of the  $2^{-n}$ approximation, may yield two different answers. In any case, the limit of the sequence is uniquely determined. 
+In the next section, 
+the semantics of the limit operator defines it in general for nondeterministic sequences.
+
+
+\subsection{First-order functions}
+\label{sec:first-order-func}
+
+In this section, we extend the core Clerical language presented above with first-order functions. This extension does not change the expressive power of Clerical, since  all uses functions in programs can be eliminated by inlining their definitions. Nevertheless, functions play an essential role in practical programming, since they allow  compositional programming, providing a convenient way of breaking up code into smaller, reusable pieces.
+
+In the extended Clerical, a function is simply an abbreviation of an expression that depends on parameters.
+Functions are defined using the syntax
+%
+\begin{equation*}
+\cfunction f {x_1 \of \tau_1, \ldots, x_n \of \tau_n} {\sigma} {e}.
+\end{equation*}
+%
+Informally, $f$ takes $n$ parameters of types $\tau_1, \ldots, \tau_n$ are returns a value of type~$\sigma$, computed by the function body~$e$.
+%
+It is a \defemph{first-order function} because the types $\tau_1, \ldots, \tau_n$ and $\sigma$ are just the primitive Clerical types, as opposed to function types (that do not exist in Clerical anyhow).
+
+Functions are used through \defemph{function call} expressions:
+%
+\begin{equation*}
+  \text{Expression}\ e, c
+  \bnfis \cdots
+  \bnfor f(e_1, \ldots, e_n)
+  \bnfor \cdots
+\end{equation*}
+%
+To keep track of the defined functions, we introduce a \defemph{top-level environment}
+%
+\begin{align*}
+  T =
+    [&\cfunction {f_1} {x_1 \of \tau_{1,1}, \ldots, x_{n_1} \of \tau_{1,n_1}} {\sigma_1} {e_1}), \\
+     &\qquad\vdots\\
+     &\cfunction {f_k} {x_1 \of \tau_{k,1}, \ldots, x_{n_1} \of \tau_{k,n_k}} {\sigma_k} {e_k})],
+\end{align*}
+%
+which is just a list of function definitions.
+%
+Typing judgements are extended with~$T$ (it would suffice to keep just the signatures of the defined functions, without their bodies):
+%
+\begin{equation*}
+  T ; \Gamma \rotypes e : \tau
+  \qquad\text{and}\qquad
+  T ; \Gamma ; \Delta \rwtypes e : \tau
+\end{equation*}
+%
+The previously given inference rules just pass~$T$ from conclusions to premises. There is one new inference rule governing function calls:
+%
+\begin{equation*}
+  \inferenceRule{Ty-Ro-Call}{
+    (\cfunction f {x_1 \of \tau_1, \ldots, x_n \of \tau_n} {\sigma} {e}) \in T \\\\
+    T ; \Gamma \rotypes e_i : \tau_i \quad \text{for $i = 1, \ldots, n$}
+  }{
+    T ; \Gamma \rotypes f(e_1, \ldots, e_n) : \sigma
+  }
+\end{equation*}
+%
+Note that function calls are pure expressions.
+
+We also need a custom judgement for checking top-level environments:
+%
+\begin{equation*}
+  \inferenceRule{Env-Empty}{ }{[\,] \isEnv}
+  %
+  \qquad\qquad
+  %
+  \inferenceRule{Env-Extend}{
+    T \isEnv
+    \\
+    f \not\in T
+    \\
+    T ; x_1 \of \tau_1, \ldots, x_n \of \tau_n \rotypes e : \sigma
+  }{
+    [T, (\cfunction f {x_1 \of \tau_1, \ldots, x_n \of \tau_n} {\sigma} {e})] \isEnv
+  }
+\end{equation*}
+%
+The rule \rref{Env-Empty} validates the empty environment, while \rref{Env-Extend} extends an environment with a function definition, so long as the function body is a pure expression of return type when given read-only access to the arguments.
+%
+Note that each function may call previously defined functions, but may not call itself. We discuss the lack of recursion in~\cref{sec:future-work}.
