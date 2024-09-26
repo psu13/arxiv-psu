@@ -1,4 +1,4 @@
-\documentclass[12pt]{article}
+\documentclass[11pt]{article}
 
   \usepackage[numbers,sort&compress,square]{natbib}
 
@@ -2669,7 +2669,7 @@ clauses, where the body $n$ of each clause $u = \many{r} \mapsto n$ is
 a Core Frank construction instead of a source Frank construction.
 
 The pattern matching elaboration function $\PE$ is defined in
-Figure~\ref{fig:pattern-matching-elaboration}. For this purpose we
+Figures~\ref{fig:pattern-matching-elaboration} and \ref{fig:pattern-matching-elaboration-2}. For this purpose we
 find it convenient to use functional programming list notation. We
 write $\emptylist$ for the empty list, $v \cons \vs$ for the list
 obtained by prepending element $v$ to the beginning of the list $\vs$,
@@ -2678,58 +2678,35 @@ the list obtained by appending list $\ws$ to the end of list $\vs$.
 %
 \begin{figure*}
 \small
-\begin{equations}
-\PE(x \cons \xs, D\,\Rs \cons \Qs, \us, G) &=&
-    \bl
-    \PE(\xs, \Qs, \us \proj x, G)  \quad \text{if } \hdless(\us)
-    \el \\
-\PE(x \cons \xs, D\,\Rs \cons \Qs, \us, G) &=&
-    \bl
-    \key{case}~x~\key{of}\\
-    \quad
-      (k_i~\ys_i \mapsto \\
-      \PE(\ys_i \concat \xs, \PatternTypes(D\,\Rs, k_i) \concat \Qs, \us \proj k_i~\ys_i, G))_i\\
-    \text{where} \\
-    \quad (k_i~\ys_i)_i = \Patterns(D) \\
-    \el\\
-\PE(x \cons \xs, \effin{\adj}A \cons \Qs, \us, G) &=&
-    \bl
-    \key{handle}^{\sem{\adj}}_{\sem{G}}~x!~\key{with} \\
-    \quad
-    \bl
-      (\effin{\handle{c_i~\ys_i}{z_i}} \mapsto
-         \PE(z_i \cons \ys_i \concat \xs, \PatternTypes(\adj, c_i) \concat \Qs, \us \proj \effin{\handle{c_i~\ys}{z_i}}, G))_i \\
-      w \mapsto \PE(w \cons \xs, A \cons \Qs, \us, G) \\
-    \el \\
-    \text{where} \\
-    \quad w \cons (\effin{\handle{c_i~\ys_i}{z_i}})_i = \Patterns(\adj) \\
-    \el \\
-\PE(x \cons \xs, Q \cons \Qs, \us, G) &=& \PE(\xs, \Qs, \us \proj x, G) \\
-\PE(\emptylist, \emptylist, (\emptylist \mapsto n) \cons \us, G) &=& n \\
-\end{equations}
-
-\begin{equations}
-  \hdless(\emptylist) &=& \true\\
-  \hdless(u \cons \us) &=& \hdless(u) \wedge \hdless(us)\\[1ex]
-
-  \hdless(x \cons \rs \mapsto n) &=& \true\\
-  \hdless(\effin{x} \cons \rs \mapsto n) &=& \true\\
-  \hdless(r \cons \rs \mapsto n) &=& \false\\
-\end{equations}
-
-\begin{equations}
-   \emptylist \proj r &=& \emptylist \\
-(u \cons \us) \proj r &=& (u \proj r) \cons (\us \proj r) \\[1ex]
-(k~\ps' \cons \rs \mapsto n) \proj k~\ps &=&
+\begin{align*}
+\Patterns(D) &= (k~\xs_k)_{k \in D},  \quad \text{each }\xs_k \text{ fresh} \\
+\Patterns(I) &= (\effin{\handle{c~\xs_c}{y_c}})_{c \in I}, \quad \text{each }\xs_c, y_c \text{ fresh} \\
+\Patterns(\id) &= [w], \quad w \text{ fresh} \\
+\Patterns(\Delta + I~\Rs) &= \Patterns(\Delta) \concat \Patterns(I) \\
+\PatternTypes(D\,\Rs, k) &= \As,  \text{where }\dcon(D\,\Rs, k) = \As \\
+\PatternTypes(I\,\Rs, c) &= \bullet \cons \As,    \text{where }\icom(I\,\Rs, c) = \As \to B \\
+\PatternTypes(I\,\Rs, c) &= [],  \text{if }\icom(I\,\Rs, c)\text{ undefined} \\
+\PatternTypes(\id) &= \emptylist \\
+\PatternTypes(\Delta + I~\Rs, c) &= 
+\PatternTypes(\Delta, c) \concat \PatternTypes(I~\Rs, c) \\
+\\
+\hdless(\emptylist) &= \true\\
+  \hdless(u \cons \us) &= \hdless(u) \wedge \hdless(us)\\[1ex]
+  \hdless(x \cons \rs \mapsto n) &= \true\\
+  \hdless(\effin{x} \cons \rs \mapsto n) &= \true\\
+  \hdless(r \cons \rs \mapsto n) &= \false\\
+   \emptylist \proj r &= \emptylist \\
+(u \cons \us) \proj r &= (u \proj r) \cons (\us \proj r) \\
+(k~\ps' \cons \rs \mapsto n) \proj k~\ps &=
         [\ps \concat \rs \mapsto \key{let}~\ps' = \ps~\key{in}~n] \\
 % (1) CM: ADDED k' <> k rule
-(k'~\ps' \cons \rs \mapsto n) \proj k~\ps &=& [], \quad \text{if }k \neq k'\\
-    (x \cons \rs \mapsto n) \proj k~\ps &=&
+(k'~\ps' \cons \rs \mapsto n) \proj k~\ps &= [], \quad \text{if }k \neq k'\\
+    (x \cons \rs \mapsto n) \proj k~\ps &=
         [\ps \concat \rs \mapsto \key{let}~x = k~\ps~\key{in}~n] \\
 % (2) CM: ADDED thunk case (see discussion below)
-(\effin{x} \cons \rs \mapsto n) \proj k~\ps &=& [ps \concat \rs \mapsto
+(\effin{x} \cons \rs \mapsto n) \proj k~\ps &= [ps \concat \rs \mapsto
           \key{let}~x = \thunk{k~\ps}~\key{in}~n]\\
-     (r \cons \rs \mapsto n) \proj k~\ps &=& \emptylist \\[1ex]
+     (r \cons \rs \mapsto n) \proj k~\ps &= \emptylist\\
 %CM: I think we were missing a case for constructors; consider:
 % data Foo = one
 %
@@ -2739,45 +2716,42 @@ the list obtained by appending list $\ws$ to the end of list $\vs$.
 % implies incomplete pattern matching
 %
 %SL: Well spotted!
-
-(\effin{\handle{c~\ps'}{q'}} \cons \rs \mapsto n) \proj \effin{\handle{c~\ps}{q}} &=&
+(\effin{\handle{c~\ps'}{q'}} \cons \rs \mapsto n) \proj \effin{\handle{c~\ps}{q}} &=
   [q \cons \ps \concat \rs \mapsto \key{let}~(q' \cons \ps') = (q \cons \ps)~\key{in}~n] \\
-(\effin{x} \cons \rs \mapsto n) \proj \effin{\handle{c~\ps}{q}} &=&
+(\effin{x} \cons \rs \mapsto n) \proj \effin{\handle{c~\ps}{q}} &=
   [q \cons \ps \concat \rs \mapsto \key{let}~x = \thunk{q~(c~\ps)}~\key{in}~n] \\
-(r \cons \rs \mapsto n) \proj \effin{\handle{c~\ps}{q}} &=& \emptylist \\[1ex]
-(y \cons \rs \mapsto n) \proj x &=& [\rs \mapsto \key{let}~y = x~\key{in}~n] \\
-(\effin{y} \cons \rs \mapsto n) \proj x &=&
+(r \cons \rs \mapsto n) \proj \effin{\handle{c~\ps}{q}} &= \emptylist \\[1ex]
+(y \cons \rs \mapsto n) \proj x &= [\rs \mapsto \key{let}~y = x~\key{in}~n] \\
+(\effin{y} \cons \rs \mapsto n) \proj x &=
   [\rs \mapsto \key{let}~y = \thunk{x}~\key{in}~n] \\
-\end{equations}
-
-\[
-\ba{@{}r@{~}c@{~}l@{\quad}l@{}}
-\Patterns(D) &=& (k~\xs_k)_{k \in D},  &\text{each }\xs_k \text{ fresh} \\
-\Patterns(I) &=& (\effin{\handle{c~\xs_c}{y_c}})_{c \in I}, &\text{each }\xs_c, y_c \text{ fresh} \\
-\ea
-\qquad
-\begin{eqs}
-\Patterns(\id) &=& [w], \quad w \text{ fresh} \\
-\Patterns(\Delta + I~\Rs) &=& \Patterns(\Delta) \concat \Patterns(I) \\
-\end{eqs}
-\]
-
-\[
-\ba{@{}r@{~}c@{~}l@{\quad}l@{}}
-\PatternTypes(D\,\Rs, k) &=& \As, & \text{where }\dcon(D\,\Rs, k) = \As \\
-\PatternTypes(I\,\Rs, c) &=& \bullet \cons \As,   & \text{where }\icom(I\,\Rs, c) = \As \to B \\
-\PatternTypes(I\,\Rs, c) &=& [], & \text{if }\icom(I\,\Rs, c)\text{ undefined} \\
-\ea
-\qquad
-\begin{eqs}
-\PatternTypes(\id) &=& \emptylist \\
-\PatternTypes(\Delta + I~\Rs, c) &=& \\
-\multicolumn{3}{@{\qquad}l@{}}{\PatternTypes(\Delta, c) \concat \PatternTypes(I~\Rs, c)} \\
-\end{eqs}
-\]
-
+\end{align*}
 \caption{Pattern Matching Elaboration}
 \label{fig:pattern-matching-elaboration}
+\end{figure*}
+\begin{figure*}
+\small
+\begin{align*}
+\PE(x \cons \xs, D\,\Rs \cons \Qs, \us, G) &=
+    \PE(\xs, \Qs, \us \proj x, G)  \quad \text{if } \hdless(\us)\\
+\PE(x \cons \xs, D\,\Rs \cons \Qs, \us, G) &=
+    \key{case}~x~\key{of}\\
+    & \quad
+      (k_i~\ys_i \mapsto
+      \PE(\ys_i \concat \xs, \PatternTypes(D\,\Rs, k_i) \concat \Qs, \us \proj k_i~\ys_i, G))_i\\
+    & \text{where} \\
+    & \quad (k_i~\ys_i)_i = \Patterns(D) \\
+\PE(x \cons \xs, \effin{\adj}A \cons \Qs, \us, G) &=
+    \key{handle}^{\sem{\adj}}_{\sem{G}}~x!~\key{with} \\
+    & \quad
+      (\effin{\handle{c_i~\ys_i}{z_i}} \mapsto \\
+         & \quad \quad \PE(z_i \cons \ys_i \concat \xs, \PatternTypes(\adj, c_i) \concat \Qs, \us \proj \effin{\handle{c_i~\ys}{z_i}}, G))_i \\
+    & \quad  w \mapsto \PE(w \cons \xs, A \cons \Qs, \us, G) \,\\
+    & \quad\quad \text{where}\,\, w \cons (\effin{\handle{c_i~\ys_i}{z_i}})_i = \Patterns(\adj) \\
+\PE(x \cons \xs, Q \cons \Qs, \us, G) &= \PE(\xs, \Qs, \us \proj x, G) \\
+\PE(\emptylist, \emptylist, (\emptylist \mapsto n) \cons \us, G) &= n \\
+\end{align*}
+\caption{Pattern Matching Elaboration}
+\label{fig:pattern-matching-elaboration-2}
 \end{figure*}
 %
 There are four cases for $\PE$. If the head pattern type is a data type,
@@ -2945,7 +2919,7 @@ coverage and redundancy of pattern matching. Incomplete coverage can
 occur iff $\PE$ is invoked on three empty lists $\PE(\emptylist,
 \emptylist, \emptylist, G)$, which means $\PE$ is undefined on its
 input. Redundancy occurs iff the final clause defining $\PE$ in
-Figure~\ref{fig:pattern-matching-elaboration} is invoked in a
+Figure~\ref{fig:pattern-matching-elaboration-2} is invoked in a
 situation in which $\us$ is non-empty.
 %
 As an extension to Frank, we could allow incomplete and ambiguous
