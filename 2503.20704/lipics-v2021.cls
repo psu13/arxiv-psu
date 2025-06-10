@@ -27,9 +27,6 @@
     [2023/05/12 v3.1.3 LIPIcs articles]
 \NeedsTeXFormat{LaTeX2e}[2015/01/01]
 \emergencystretch1em
-\advance\hoffset-1in
-\advance\voffset-1in
-\advance\hoffset2.95mm
 \newif\if@nobotseplist  \@nobotseplistfalse
 \def\@endparenv{%
   \addpenalty\@endparpenalty\if@nobotseplist\else\addvspace\@topsepadd\fi\@endpetrue}
