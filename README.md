@@ -1,4 +1,5 @@
-This is mostly an archive of arxiv papers that I reformatted to look nicer.
+This is mostly an archive of arxiv papers that I reformatted to look nicer, and related
+support files that make that easier.
 
 But, there are also a few other things typed from scratch:
 
