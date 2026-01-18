@@ -14,9 +14,9 @@ all: scott-main.tex
 	pdflatex scott-1980-pal-eu.tex
 	pdflatex scott-1980-pal-eu.tex
 	pdflatex scott-1980-pal-eu.tex
-	lualatex scott-1980-ch.tex
-	lualatex scott-1980-ch.tex
-	lualatex scott-1980-ch.tex
+	pdflatex scott-1980-ch.tex
+	pdflatex scott-1980-ch.tex
+	pdflatex scott-1980-ch.tex
 	cp scott-1980-pal.pdf "$(L)/Scott, D - Relating Theories of the λ-Calculus (1980,psu).pdf"
 	cp scott-1980-cmr.pdf "$(L)/Scott, D - Relating Theories of the λ-Calculus (1980,cmr).pdf"
 	cp scott-1980-ch.pdf "$(L)/Scott, D - Relating Theories of the λ-Calculus (1980,ch).pdf"
