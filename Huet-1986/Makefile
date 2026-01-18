@@ -1,20 +1,17 @@
-DEST="/Users/psu/Google/Reader/Math and Physics/More Math/Cons \& Logic"
-
+L=/Users/psu/Google/Reader/Math and Physics/Maths/Cons & Logic
+CCC=/Users/psu/Google/Reader/Math and Physics/Howard-CCC
+T=Huet - Cartesian Closed Categories and Lambda Calculus (1986
 all:
-	pdflatex lambek-1984-pal.tex
-	pdflatex lambek-1984-pal.tex
-	pdflatex lambek-1984-pal.tex
-	pdflatex lambek-1984-cmr.tex
-	pdflatex lambek-1984-cmr.tex
-	pdflatex lambek-1984-cmr.tex
-
-	cp lambek-1984-pal.pdf "/Users/psu/Google/Reader/Math and Physics/More Math/Cons & Logic/Lambek, Scott - Aspects of Higher Order Categorical Logic (1984, pal).pdf"
-	cp lambek-1984-cmr.pdf "/Users/psu/Google/Reader/Math and Physics/More Math/Cons & Logic/Lambek, Scott - Aspects of Higher Order Categorical Logic (1984, cmr).pdf"
-
-	cp lambek-1984-cmr.pdf /Users/psu/Google/Reader/Math\ and\ Physics/Howard-CCC/Lambek\,\ Scott\ -\ Aspects\ of\ Higher\ Order\ Categorical\ Logic\ \(1984\,\ cmr\).pdf
-
-	cp lambek-1984-pal.pdf /Users/psu/Google/Reader/Math\ and\ Physics/Howard-CCC/Lambek\,\ Scott\ -\ Aspects\ of\ Higher\ Order\ Categorical\ Logic\ \(1984\,\ pal\).pdf
-
+	pdflatex huet-1986-pal.tex
+	pdflatex huet-1986-pal.tex
+	pdflatex huet-1986-pal.tex
+	pdflatex huet-1986-cm.tex
+	pdflatex huet-1986-cm.tex
+	pdflatex huet-1986-cm.tex
+	cp huet-1986-pal.pdf "$L/$T, psu).pdf"
+	cp huet-1986-cm.pdf "$L/$T, psu,cm).pdf"
+	cp huet-1986-pal.pdf "$(CCC)/$T, psu).pdf"
+	cp huet-1986-cm.pdf "$(CCC)/$T, psu,cm).pdf"
 
 clean:
 	rm -rf *.out *.log *.aux *sync*
